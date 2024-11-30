@@ -7,7 +7,8 @@ This collection provides roles and modules to manage WSL environments, leveragin
 
 ## Requirements
 - `ansible-core` >= 2.15.0
-- `ansible.windows` >= 1.0.0
+- `ansible.windows` >= 1.14.0
+- `community.general` >= 9.0.0
 
 ## Features
 - Install and Configure WSL (Windows Subsystem for Linux) on Windows Host

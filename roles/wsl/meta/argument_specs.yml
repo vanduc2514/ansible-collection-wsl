@@ -1,0 +1,25 @@
+argument_specs:
+  main:
+    options:
+      wsl_arch_version:
+        default: 2
+        description: The WSL architecture version for new distributions (1 or 2).
+        type: int
+      wsl_version:
+        default: 2.3.26
+        description: The WSL binary version from WSL Github Repository
+        type: str
+      wsl_state:
+        default: present
+        description: Whether the WSL binary should be installed (present) or removed (absent).
+        type: str
+      wsl_config:
+        description: >-
+          Optional WSL configuration settings in YAML format, which will be converted to INI format
+          for .wslconfig. If not defined, WSL will use default values. For detailed configuration
+          options, refer to `Advanced Settings Configuration in WSL` Documentation.
+        type: dict
+      wsl_config_state:
+        default: present
+        description: Whether the WSL binary configuration should be created (present) or removed (absent).
+        type: str

@@ -1,0 +1,39 @@
+- name: Install WSL features
+  ansible.windows.win_optional_feature:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - Microsoft-Windows-Subsystem-Linux
+    - VirtualMachinePlatform
+  register: wsl_win_features
+  notify:
+    - Restart Windows
+
+- name: Install WSL binary
+  ansible.windows.win_package:
+    path: "https://github.com/microsoft/WSL/releases/download/{{ wsl_version }}/Microsoft.WSL_{{ wsl_version }}.0_x64_ARM64.msixbundle"
+    provider: msix
+    product_id: MicrosoftCorporationII.WindowsSubsystemForLinux
+    state: "{{ wsl_state }}"
+  register: wsl_binary
+  notify:
+    - Restart Windows
+
+- name: Set default WSL version
+  ansible.windows.win_regedit:
+    path: HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss
+    name: DefaultVersion
+    data: "{{ wsl_arch_version }}"
+    type: dword
+    state: "{{ 'present' if wsl.rc == 0 else 'absent' }}"
+
+- name: Prepare WSL kernel configuration file
+  ansible.windows.win_file:
+    path: "{{ wsl_config_path }}"
+    state: "{{ 'absent' if wsl_config_state == 'absent' else 'touch' if wsl_config_state == 'present' }}"
+
+- name: Apply WSL kernel configuration
+  ansible.windows.win_copy:
+    content: "{{ wsl_config | community.general.to_ini }}"
+    dest: "{{ wsl_config_path }}"
+  when: wsl_config is defined and wsl_config_state == 'present'

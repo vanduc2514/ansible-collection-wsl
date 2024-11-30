@@ -1,0 +1,6 @@
+- name: Restart Windows Machine
+  ansible.windows.win_reboot:
+    msg: "Reboot From Ansible"
+    test_command: 'powershell -Command "(Get-Date) - (gcim Win32_OperatingSystem).LastBootUpTime"'
+  listen: Restart Windows
+  when: wsl_win_features.results | map(attribute='reboot_required') || wsl_binary | map(attribute='reboot_required')

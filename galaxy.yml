@@ -14,7 +14,8 @@ tags:
   - infrastructure
   - vm
 dependencies:
-  "ansible.windows": ">=1.0.0"
+  "ansible.windows": ">=1.14.0"
+  "community.general": ">=9.0.0"
 repository: https://git.vanduc2514.io.vn/vanduc2514/wsl-ansible-collection.git
 documentation: ""
 homepage: ""
