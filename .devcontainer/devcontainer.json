@@ -1,0 +1,57 @@
+{
+    "name": "Homelab Bootstrap Devcontainer",
+    "image": "mcr.microsoft.com/devcontainers/base:bullseye",
+    "features": {
+        "ghcr.io/devcontainers/features/python:1": {
+            "version": "3.11"
+        },
+        "ghcr.io/devcontainers-contrib/features/pipx-package:1": {
+            "package": "ansible-core",
+            "version": "2.18"
+        },
+        "ghcr.io/hspaans/devcontainer-features/ansible-lint:1": {
+            "version": "24.10"
+        },
+        "ghcr.io/joedmck/devcontainer-features/cloudflared:1": {}
+    },
+    // Change this can effect mount and remote env
+    "remoteUser": "vscode",
+    "postCreateCommand": "ansible-galaxy install -r requirements.yaml",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                // Ansible settings
+                "ansible.python.interpreterPath": "/usr/local/python/current/bin/python",
+                "ansible.ansible.useFullyQualifiedCollectionNames": true,
+                "files.associations": {
+                    "*.yml": "ansible",
+                    "*.yaml": "yaml"
+                },
+                // Editor Settings
+                "editor.linkedEditing": true,
+                "editor.tabCompletion": "on",
+                "editor.tabSize": 4,
+                "editor.insertSpaces": true,
+                "editor.detectIndentation": false,
+                "editor.renderWhitespace": "boundary",
+                "editor.suggest.shareSuggestSelections": true,
+                "editor.suggestSelection": "first",
+                "editor.semanticHighlighting.enabled": true,
+                "explorer.confirmDelete": true,
+                "files.autoSave": "onFocusChange",
+                "files.trimFinalNewlines": false,
+                "files.trimTrailingWhitespace": true,
+                "yaml.schemas": {
+                    "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/requirements.json": "requirements.yaml"
+                }
+            },
+            "extensions": [
+                "redhat.vscode-yaml",
+                "redhat.ansible",
+                "eamodio.gitlens",
+                "wholroyd.jinja",
+                "Codium.codium"
+            ]
+        }
+    }
+}
