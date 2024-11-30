@@ -25,7 +25,7 @@
     name: DefaultVersion
     data: "{{ wsl_arch_version }}"
     type: dword
-    state: "{{ 'present' if wsl.rc == 0 else 'absent' }}"
+    state: "{{ 'present' if wsl_binary.rc == 0 else 'absent' }}"
 
 - name: Prepare WSL kernel configuration file
   ansible.windows.win_file:
