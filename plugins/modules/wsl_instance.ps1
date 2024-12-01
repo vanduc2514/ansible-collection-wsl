@@ -11,8 +11,8 @@ $spec = @{
         }
         state = @{
             type     = "str"
-            default  = "present"
-            choices  = @("present", "absent")
+            default  = "install"
+            choices  = @("install", "import", "unregister")
             description = "Desired state of the WSL distribution."
         }
         method = @{
@@ -58,19 +58,13 @@ $spec = @{
 
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
-# FIXME: Method Naming and implementation does not match
-Function Assert-WSLDistributionExists {
-    <#
-    .SYNOPSIS
-    Checks if a WSL distribution exists.
+Function Test-WSLDistributionExists {
 
-    .PARAMETER Name
-    The name of the WSL distribution.
-
-    .RETURNS
-    <Boolean> True if the distribution exists; otherwise, False.
-    #>
-    param([string]$Name)
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name
+    )
 
     try {
         $wslOutput = wsl.exe --list --verbose 2>&1
@@ -83,31 +77,12 @@ Function Assert-WSLDistributionExists {
         return $distributions.Count -gt 0
     }
     catch {
-        Write-Error "Error checking WSL distributions: $_"
+        Write-Error "Error checking WSL distribution existence: $_"
         return $false
     }
 }
 
 Function Install-WSLDistribution {
-    <#
-    .SYNOPSIS
-    Installs a WSL distribution using the install method.
-
-    .PARAMETER Name
-    The name of the WSL distribution.
-
-    .PARAMETER NoLaunch
-    If set, the distribution will not be launched after installation.
-
-    .PARAMETER WebDownload
-    If set, the installation will use web download.
-
-    .PARAMETER Version
-    The WSL version to set for the distribution.
-
-    .RETURNS
-    <Boolean> True if installation succeeds; otherwise, False.
-    #>
     param(
         [string]$Name,
         [bool]$NoLaunch,
@@ -116,7 +91,7 @@ Function Install-WSLDistribution {
     )
 
     try {
-        $args = @("--install", $Name)
+        $args = @("--install", "--name", $Name)
 
         if ($NoLaunch) {
             $args += "--no-launch"
@@ -148,28 +123,6 @@ Function Install-WSLDistribution {
 }
 
 Function Import-WSLDistribution {
-    <#
-    .SYNOPSIS
-    Imports a WSL distribution from a source path.
-
-    .PARAMETER Name
-    The name of the WSL distribution.
-
-    .PARAMETER SourcePath
-    The path to import the distribution from.
-
-    .PARAMETER InstallLocation
-    The location to install the distribution.
-
-    .PARAMETER Version
-    The WSL version to set for the distribution.
-
-    .PARAMETER IsVHD
-    If set, imports the distribution as a VHD.
-
-    .RETURNS
-    <Boolean> True if import succeeds; otherwise, False.
-    #>
     param(
         [string]$Name,
         [string]$SourcePath,
@@ -208,16 +161,6 @@ Function Import-WSLDistribution {
 }
 
 Function Remove-WSLDistribution {
-    <#
-    .SYNOPSIS
-    Removes a WSL distribution.
-
-    .PARAMETER Name
-    The name of the WSL distribution.
-
-    .RETURNS
-    <Boolean> True if removal succeeds; otherwise, False.
-    #>
     param([string]$Name)
 
     try {
@@ -251,47 +194,40 @@ try {
     $web_download = $module.Params.web_download
     $vhd = $module.Params.vhd
 
+    # Initialize result
     $module.Result.changed = $false
 
     # Check if the distribution exists
-    $exists = Assert-WSLDistributionExists -Name $name
+    $exists = Test-WSLDistributionExists -Name $name
 
-    if ($state -eq "present" -and -not $exists) {
-        Write-Verbose "WSL distribution '$name' does not exist. Proceeding to create."
+    if ($state -eq "install" -and -not $exists) {
+        Write-Verbose "WSL distribution '$name' does not exist. Proceeding to install."
 
-        if ($module.CheckMode) {
-            $module.Result.changed = $true
+        $success = Install-WSLDistribution -Name $name -NoLaunch $no_launch -WebDownload $web_download -Version $version
+        if (-not $success) {
+            # FIXME: Do I need to specify changed= = false if the module fails ?
+            $module.FailJson("Failed to install WSL distribution '$name'.")
         }
-        else {
-            if ($method -eq "install") {
-                $success = Install-WSLDistribution -Name $name -NoLaunch $no_launch -WebDownload $web_download -Version $version
-            }
-            elseif ($method -eq "import") {
-                $success = Import-WSLDistribution -Name $name -SourcePath $source_path -InstallLocation $install_location -Version $version -IsVHD $vhd
-            }
-            else {
-                $module.FailJson("Invalid method specified: $method. Allowed methods are 'install' and 'import'.")
-            }
-
-            if (-not $success) {
-                $module.FailJson("Failed to create WSL distribution '$name'.")
-            }
-            $module.Result.changed = $true
-        }
+        $module.Result.changed = $true
     }
-    elseif ($state -eq "absent" -and $exists) {
-        Write-Verbose "WSL distribution '$name' exists. Proceeding to remove."
+    elseif ($state -eq "import" -and -not $exists) {
+        Write-Verbose "WSL distribution '$name' does not exist. Proceeding to import."
 
-        if ($module.CheckMode) {
-            $module.Result.changed = $true
+        $success = Import-WSLDistribution -Name $name -SourcePath $source_path -InstallLocation $install_location -Version $version -IsVHD $vhd
+        if (-not $success) {
+            # FIXME: Do I need to specify changed= = false if the module fails ?
+            $module.FailJson("Failed to import WSL distribution '$name'.")
         }
-        else {
-            $success = Remove-WSLDistribution -Name $name
-            if (-not $success) {
-                $module.FailJson("Failed to remove WSL distribution '$name'.")
-            }
-            $module.Result.changed = $true
+        $module.Result.changed = $true
+    }
+    elseif ($state -eq "unregister" -and $exists) {
+        Write-Verbose "WSL distribution '$name' exists. Proceeding to unregister."
+
+        $success = Remove-WSLDistribution -Name $name
+        if (-not $success) {
+            $module.FailJson("Failed to unregister WSL distribution '$name'.")
         }
+        $module.Result.changed = $true
     }
     else {
         Write-Verbose "No changes required for WSL distribution '$name'. Desired state '$state' is already achieved."
