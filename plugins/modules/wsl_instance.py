@@ -55,8 +55,6 @@ options:
             - Specify if the source file is a VHD file (for import method).
         type: bool
         default: false
-author:
-    - Your Name (@github_handle)
 '''
 
 EXAMPLES = r'''
