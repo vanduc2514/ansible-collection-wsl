@@ -1,5 +1,5 @@
 #!powershell
-# AnsibleRequires -CSharpUtil Ansible.Basic
+#AnsibleRequires -CSharpUtil Ansible.Basic
 
 $spec = @{
     options = @{
@@ -7,44 +7,36 @@ $spec = @{
             type     = "str"
             required = $true
             aliases  = @("Name")
-            description = "Name of the WSL distribution."
         }
         state = @{
             type     = "str"
             default  = "install"
             choices  = @("install", "import", "unregister")
-            description = "Desired state of the WSL distribution."
         }
         source_path = @{
             type        = "path"
             required    = $false
-            description = "Path to the source for importing the WSL distribution."
         }
         install_location = @{
             type        = "path"
             required    = $false
-            description = "Path where the WSL distribution will be installed."
         }
         version = @{
             type     = "int"
             default  = 2
             choices  = @(1, 2)
-            description = "WSL version to set for the distribution."
         }
         no_launch = @{
             type        = "bool"
             default     = $false
-            description = "Do not launch the distribution after installation."
         }
         web_download = @{
             type        = "bool"
             default     = $false
-            description = "Use web download during installation."
         }
         vhd = @{
             type        = "bool"
             default     = $false
-            description = "Import the distribution as a virtual hard disk (VHD)."
         }
     }
     supports_check_mode = $true
@@ -61,13 +53,13 @@ Function Test-WSLDistributionExists {
     )
 
     try {
-        $wslOutput = wsl.exe --list --verbose 2>&1
+        $wslDistros = wsl.exe --list --quiet 2>&1
         if ($LASTEXITCODE -ne 0) {
-            Write-Verbose "Failed to list WSL distributions: $wslOutput"
+            Write-Verbose "Failed to list WSL distributions: $wslDistros"
             return $false
         }
 
-        $distributions = $wslOutput -split "`n" | Select-Object -Skip 1 | Where-Object { $_ -match "^\s*\S+\s+$Name\s+" }
+        $distributions = $wslDistros -split "`n" | Where-Object { $_.Trim() -eq $Name }
         return $distributions.Count -gt 0
     }
     catch {
@@ -85,7 +77,7 @@ Function Install-WSLDistribution {
     )
 
     try {
-        $args = @("--install", "--name", $Name)
+        $args = @("--install", $Name)
 
         if ($NoLaunch) {
             $args += "--no-launch"
