@@ -59,7 +59,7 @@ $spec = @{
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
 # FIXME: Method Naming and implementation does not match
-Function Get-WSLDistribution {
+Function Assert-WSLDistributionExists {
     <#
     .SYNOPSIS
     Checks if a WSL distribution exists.
@@ -254,7 +254,7 @@ try {
     $module.Result.changed = $false
 
     # Check if the distribution exists
-    $exists = Get-WSLDistribution -Name $name
+    $exists = Assert-WSLDistributionExists -Name $name
 
     if ($state -eq "present" -and -not $exists) {
         Write-Verbose "WSL distribution '$name' does not exist. Proceeding to create."
