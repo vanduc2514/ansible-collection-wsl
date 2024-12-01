@@ -15,12 +15,6 @@ $spec = @{
             choices  = @("install", "import", "unregister")
             description = "Desired state of the WSL distribution."
         }
-        method = @{
-            type     = "str"
-            default  = "install"
-            choices  = @("install", "import")
-            description = "Method to install the WSL distribution."
-        }
         source_path = @{
             type        = "path"
             required    = $false
@@ -186,7 +180,6 @@ try {
     # Retrieve and validate parameters
     $name = $module.Params.name
     $state = $module.Params.state
-    $method = $module.Params.method
     $source_path = $module.Params.source_path
     $install_location = $module.Params.install_location
     $version = $module.Params.version
