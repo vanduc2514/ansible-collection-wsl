@@ -1,9 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
-# Copyright: (c) 2024, Duc Nguyen Van <vanduc2514@gmail.com>
-# MIT License (see LICENSE)
-
 DOCUMENTATION = r'''
 ---
 module: wsl_instance
@@ -20,27 +16,22 @@ options:
     state:
         description:
             - Desired state of the WSL distribution.
-        type: str
-        default: present
-        choices: [ present, absent ]
-    method:
-        description:
-            - Method to use when creating the WSL distribution.
-            - Use 'install' for Microsoft Store installations.
-            - Use 'import' for importing existing distributions.
+            - Use 'install' to install a new distribution.
+            - Use 'import' to import an existing distribution.
+            - Use 'unregister' to remove a distribution.
         type: str
         default: install
-        choices: [ install, import ]
+        choices: [ install, import, unregister ]
     source_path:
         description:
             - Path to the source file when using import method.
-            - Required if method is 'import'.
+            - Required if state is 'import'.
         type: path
         required: false
     install_location:
         description:
             - Installation location when using import method.
-            - Required if method is 'import'.
+            - Required if state is 'import'.
         type: path
         required: false
     version:
@@ -73,16 +64,14 @@ EXAMPLES = r'''
 - name: Install Ubuntu WSL
   wsl_instance:
     name: Ubuntu
-    state: present
-    method: install
+    state: install
     version: 2
 
 # Import existing distribution from tar file
 - name: Import custom WSL distribution
   wsl_instance:
     name: CustomLinux
-    state: present
-    method: import
+    state: import
     source_path: C:\path\to\distribution.tar
     install_location: C:\WSL\CustomLinux
     version: 2
@@ -91,17 +80,16 @@ EXAMPLES = r'''
 - name: Import WSL from VHD
   wsl_instance:
     name: CustomLinux
-    state: present
-    method: import
+    state: import
     source_path: C:\path\to\distribution.vhdx
     install_location: C:\WSL\CustomLinux
     vhd: true
 
-# Remove WSL distribution
-- name: Remove WSL distribution
+# Unregister WSL distribution
+- name: Unregister WSL distribution
   wsl_instance:
     name: Ubuntu
-    state: absent
+    state: unregister
 '''
 
 RETURN = r'''
@@ -111,28 +99,3 @@ changed:
     returned: always
     sample: true
 '''
-
-from ansible.module_utils.basic import AnsibleModule
-
-def main():
-    # This is just a placeholder as the actual implementation
-    # is in the PowerShell script
-    module = AnsibleModule(
-        argument_spec=dict(
-            name=dict(type='str', required=True),
-            state=dict(type='str', default='present', choices=['present', 'absent']),
-            method=dict(type='str', default='install', choices=['install', 'import']),
-            source_path=dict(type='path', required=False),
-            install_location=dict(type='path', required=False),
-            version=dict(type='int', default=2, choices=[1, 2]),
-            no_launch=dict(type='bool', default=False),
-            web_download=dict(type='bool', default=False),
-            vhd=dict(type='bool', default=False),
-        ),
-        supports_check_mode=True
-    )
-
-    module.exit_json(changed=False)
-
-if __name__ == '__main__':
-    main()
