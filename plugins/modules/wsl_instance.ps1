@@ -68,44 +68,73 @@ Function Test-WSLDistributionExists {
     }
 }
 
-Function Install-WSLDistribution {
+function Install-WSLDistribution {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    [OutputType([hashtable])]
+
     param(
-        [string]$Name,
-        [bool]$NoLaunch,
-        [bool]$WebDownload,
-        [int]$Version
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory = $true)]
+        [bool]
+        $NoLaunch,
+
+        [Parameter(Mandatory = $true)]
+        [bool]
+        $WebDownload,
+
+        [Parameter(Mandatory = $false)]
+        [int]
+        $Version
     )
 
-    try {
-        $args = @("--install", $Name)
+    # Build installation extra arguments
+    $extraArgs = @() + $(
+        if ($NoLaunch) { '--no-launch' }
+        if ($WebDownload) { '--web-download' }
+    ) -join ' '
 
-        if ($NoLaunch) {
-            $args += "--no-launch"
-        }
-        if ($WebDownload) {
-            $args += "--web-download"
-        }
-
-        Write-Verbose "Executing: wsl.exe $($args -join ' ')"
-        $result = Start-Process -FilePath "wsl.exe" -ArgumentList $args -Wait -PassThru -NoNewWindow -ErrorAction Stop
-
-        if ($result.ExitCode -eq 0) {
-            if ($Version -eq 1) {
-                Write-Verbose "Setting WSL architecture version 1 for '$Name'."
-                wsl.exe --set-version $Name 1 | Out-Null
-            }
-            Write-Verbose "WSL distribution '$Name' installed successfully."
-            return $true
-        }
-        else {
-            Write-Error "wsl.exe exited with code $($result.ExitCode) during installation."
-            return $false
-        }
+    # Initialize return hashtable
+    $ret = @{
+        changed = $false
+        before = wsl.exe --list --verbose
+        after = $null
     }
-    catch {
-        Write-Error "Exception during installation of '$Name': $_"
-        return $false
+
+    # Install WSL distribution
+    if ($PSCmdlet.ShouldProcess($Name, 'Install WSL Distro')) {
+        $installCommand = "wsl.exe --install $Name $extraArgs"
+        # Hack for running interactive command in non-interactive shell
+        $null = Invoke-CimMethod Win32_Process -MethodName create -Arguments @{
+            CommandLine = $installCommand
+        }
+        $ret.changed = $true
     }
+
+    # Wait for distribution to run
+    $startTime = Get-Date
+    $timeout = New-TimeSpan -Minutes 15
+
+    do {
+        Start-Sleep -Seconds 2
+        $runningDistros = @(wsl --list --running --quiet) -split "`n" |
+                         Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+
+        if ((Get-Date) - $startTime -gt $timeout) {
+            throw "Timeout waiting for WSL distribution '$Name' to start"
+        }
+    } while ($runningDistros -notcontains $Name)
+
+    # Set WSL version if specified
+    if ($Version -and $PSCmdlet.ShouldProcess($Name, "Set WSL Architecture version to '$Version'")) {
+        $null = wsl.exe --set-version $Name $Version
+        $ret.changed = $true
+    }
+
+    $ret.after = wsl.exe --list --verbose
+    return $ret
 }
 
 Function Import-WSLDistribution {
@@ -188,12 +217,12 @@ try {
     if ($state -eq "install" -and -not $exists) {
         Write-Verbose "WSL distribution '$name' does not exist. Proceeding to install."
 
-        $success = Install-WSLDistribution -Name $name -NoLaunch $no_launch -WebDownload $web_download -Version $version
-        if (-not $success) {
+        $status = Install-WSLDistribution -Name $name -NoLaunch $no_launch -WebDownload $web_download -Version $version -WhatIf:$($module.CheckMode)
+        if (-not $status) {
             # FIXME: Do I need to specify changed= = false if the module fails ?
             $module.FailJson("Failed to install WSL distribution '$name'.")
         }
-        $module.Result.changed = $true
+        $module.Result.changed = $module.Result.changed -or $status.changed
     }
     elseif ($state -eq "import" -and -not $exists) {
         Write-Verbose "WSL distribution '$name' does not exist. Proceeding to import."
