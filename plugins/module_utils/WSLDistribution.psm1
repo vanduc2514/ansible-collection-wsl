@@ -1,22 +1,3 @@
-function Test-WSLDistributionExists {
-    [CmdletBinding()]
-
-    param(
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $Name
-    )
-
-    $wslDistros = wsl.exe --list --quiet 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        return $false
-    }
-
-    $distributions = $wslDistros -split "`n" | Where-Object { $_.Trim() -eq $Name }
-    return $distributions.Count -gt 0
-}
-
 function List-WSLDistribution {
     $wslDistros = wsl.exe --list --verbose
     if ($LASTEXITCODE -ne 0) {
@@ -36,9 +17,9 @@ function List-WSLDistribution {
 
         # Create a new object with the specified properties
         $distro = [PSCustomObject]@{
-            Name    = $parts[0]
-            State   = $parts[1]
-            Version = $parts[2]
+            Name    = $parts[0] -replace '\u0000', ''
+            State   = $parts[1] -replace '\u0000', ''
+            Version = $parts[2] -replace '\u0000', ''
         }
 
         # Add the object to the array
@@ -76,6 +57,6 @@ function Get-WSLDistribution {
 }
 
 $export_members = @{
-    Function = "Test-WSLDistributionExists", "List-WSLDistribution", "Get-WSLDistribution"
+    Function = "List-WSLDistribution", "Get-WSLDistribution"
 }
 Export-ModuleMember @export_members

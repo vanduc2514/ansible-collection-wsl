@@ -63,12 +63,16 @@ function Install-WSLDistribution {
     ) -join ' '
 
     # Initialize return hashtable
+    $before_value = (Get-WSLDistribution -Name $Name).Name
     $ret = @{
         changed = $false
-        before = wsl.exe --list --verbose
-        after = $null
+        before = $before_value
+        after = $Name
     }
 
+    if ($before_value -eq $Name) {
+        return $ret
+    }
     # Install WSL distribution
     if ($PSCmdlet.ShouldProcess($Name, 'Install WSL Distro')) {
         $installCommand = "wsl.exe --install $Name $extraArgs"
@@ -95,7 +99,6 @@ function Install-WSLDistribution {
         Stop-WSLDistribution -Name $Name
 
         $ret.changed = $true
-        $ret.after = wsl.exe --list --verbose
     }
 
     return $ret
@@ -132,17 +135,19 @@ function Import-WSLDistribution {
     ) -join ' '
 
     # Initialize return hashtable
+    $before_value = (Get-WSLDistribution -Name $Name).Name
     $ret = @{
         changed = $false
-        before = wsl.exe --list --verbose
-        after = $null
+        before = $before_value
+        after = $Name
     }
 
-    # Import WSL Distro using RootFS
-    if ($PSCmdlet.ShouldProcess($Name, 'Import WSL Distro')) {
-        wsl.exe --import $Name $InstallLocation $FSPath $extraArgs
-        $ret.changed = $true
-        $ret.after = wsl.exe --list --verbose
+    if ($before_value -ne $Name) {
+        # Import WSL Distro using RootFS
+        if ($PSCmdlet.ShouldProcess($Name, 'Import WSL Distro')) {
+            wsl.exe --import $Name $InstallLocation $FSPath $extraArgs
+            $ret.changed = $true
+        }
     }
 
     return $ret
@@ -160,17 +165,20 @@ function Delete-WSLDistribution {
     )
 
     # Initialize return hashtable
+    $before_value = Get-WSLDistribution -Name $Name
+    $after_value = $null
     $ret = @{
         changed = $false
-        before = wsl.exe --list --verbose
-        after = $null
+        before = $before_value
+        after = $after_value
     }
 
-    # Delete (Unregister) WSL Distro
-    if ($PSCmdlet.ShouldProcess($Name, 'Delete (Unregister) WSL Distro')) {
-        wsl.exe --unregister $Name
-        $ret.changed = $true
-        $ret.after = wsl.exe --list --verbose
+    if ($before_value -ne $after_value) {
+        # Delete (Unregister) WSL Distro
+        if ($PSCmdlet.ShouldProcess($Name, 'Delete (Unregister) WSL Distro')) {
+            wsl.exe --unregister $Name
+            $ret.changed = $true
+        }
     }
 
     return $ret
@@ -193,17 +201,19 @@ function SetVersion-WSLDistribution {
     )
 
     # Initialize return hashtable
+    $before_value = (Get-WSLDistribution -Name $Name).Version
     $ret = @{
         changed = $false
-        before = wsl.exe --list --verbose
-        after = $null
+        before = $before_value
+        after = $Version
     }
 
-    # Set WSL architecture version for the distro
-    if ($PSCmdlet.ShouldProcess($Name, "Set WSL Architecture version to '$Version'")) {
-        $null = wsl.exe --set-version $Name $Version
-        $ret.changed = $true
-        $ret.after = wsl.exe --list --verbose
+    if ($before_value -ne $Version) {
+        # Set WSL architecture version for the distro
+        if ($PSCmdlet.ShouldProcess($Name, "Set WSL Architecture version to '$Version'")) {
+            $null = wsl.exe --set-version $Name $Version
+            $ret.changed = $true
+        }
     }
 
     return $ret
@@ -221,17 +231,20 @@ function Stop-WSLDistribution {
     )
 
     # Initialize return hashtable
+    $before_value = (Get-WSLDistribution -Name $Name).State
+    $after_value = "Stopped"
     $ret = @{
         changed = $false
-        before = wsl.exe --list --verbose
-        after = $null
+        before = $before_value
+        after = $after_value
     }
 
-    # Stop (Terminate) WSL Distro
-    if ($PSCmdlet.ShouldProcess($Name, 'Stop (Terminate) WSL Distro')) {
-        wsl.exe --terminate $Name
-        $ret.changed = $true
-        $ret.after = wsl.exe --list --verbose
+    if ($before_value -ne $after_value) {
+        # Stop (Terminate) WSL Distro
+        if ($PSCmdlet.ShouldProcess($Name, 'Stop (Terminate) WSL Distro')) {
+            wsl.exe --terminate $Name
+            $ret.changed = $true
+        }
     }
 
     return $ret
@@ -251,35 +264,21 @@ $module.Result.changed = $false
 $status = $null
 
 try {
-    # Check if the distribution exists
-    $exists = Test-WSLDistributionExists -Name $name
-
-    # Handle 'absent' state first
     if ($state -eq 'absent') {
-        if ($exists) {
-            $status = Delete-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
-        }
+        $delete_status = Delete-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
     }
-    # Handle other states
     else {
-        # Install/Import if distribution doesn't exist
-        if (-not $exists) {
-            $status = if ($fs_path -and $install_dir) {
-                Import-WSLDistribution -Name $name -FSPath $fs_path -InstallLocation $install_dir -IsVHD $vhd -WhatIf:$($module.CheckMode)
-            }
-            else {
-                Install-WSLDistribution -Name $name -WebDownload $web_download -WhatIf:$($module.CheckMode)
-            }
+        $setup_status = if ($fs_path -and $install_dir) {
+            Import-WSLDistribution -Name $name -FSPath $fs_path -InstallLocation $install_dir -IsVHD $vhd -WhatIf:$($module.CheckMode)
         }
-
-        if ($version) {
-            $status = SetVersion-WSLDistribution -Name $name -Version $arch_version -WhatIf:$($module.CheckMode)
+        else {
+            Install-WSLDistribution -Name $name -WebDownload $web_download -WhatIf:$($module.CheckMode)
         }
+        $version_status = SetVersion-WSLDistribution -Name $name -Version $arch_version -WhatIf:$($module.CheckMode)
 
-        # Handle state-specific operations
         switch ($state) {
             'stop' {
-                $status = Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
+                $state_status = Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
             }
         }
     }
@@ -292,7 +291,7 @@ try {
         $module.Diff.after = $status.after
     }
 
-    $module.Result.changed = $module.Result.changed -or $status.changed
+    $module.Result.changed = $delete_status.changed -or $setup_status.changed -or $version_status.changed -or $state_status.changed
 
     $module.Result.before_value = $status.before
     $module.Result.value = $status.after
