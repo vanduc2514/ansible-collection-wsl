@@ -21,7 +21,7 @@ $spec = @{
             type        = "path"
             required    = $false
         }
-        version = @{
+        arch_version = @{
             type     = "int"
             default  = 2
             choices  = @(1, 2)
@@ -116,6 +116,9 @@ function Install-WSLDistribution {
             throw "Timeout waiting for WSL distribution '$Name' to start"
         }
     } while ($runningDistros -notcontains $Name)
+
+    # Wait for distro auto terminate
+    Start-Sleep -Seconds 4
 
     # Set WSL version if specified
     if ($Version -and $PSCmdlet.ShouldProcess($Name, "Set WSL Architecture version to '$Version'")) {
@@ -280,10 +283,10 @@ try {
 
     # Set the changed state only once, based on the last operation performed
     if ($status.before) {
-        $module.Diff.before.$distros_state = $status.before
+        $module.Diff.before = $status.before
     }
     if ($status.after) {
-        $module.Diff.after.$distros_state = $status.after
+        $module.Diff.after = $status.after
     }
 
     $module.Result.changed = $module.Result.changed -or $status.changed
