@@ -1,5 +1,6 @@
 #!powershell
 #AnsibleRequires -CSharpUtil Ansible.Basic
+#AnsibleRequires -PowerShell ..module_utils.WSLDistribution
 
 $spec = @{
     options = @{
@@ -40,24 +41,6 @@ $spec = @{
 }
 
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
-
-function Test-WSLDistributionExists {
-
-    param(
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $Name
-    )
-
-    $wslDistros = wsl.exe --list --quiet 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        return $false
-    }
-
-    $distributions = $wslDistros -split "`n" | Where-Object { $_.Trim() -eq $Name }
-    return $distributions.Count -gt 0
-}
 
 function Install-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -100,13 +83,13 @@ function Install-WSLDistribution {
 
         do {
             Start-Sleep -Seconds 2
-            $runningDistros = @(wsl --list --running --quiet) -split "`n" |
-                            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            $distro = Get-WSLDistribution -Name $Name
 
             if ((Get-Date) - $startTime -gt $timeout) {
-                throw "Timeout waiting for WSL distribution '$Name' to start"
+                throw "Timeout waiting for WSL distribution '$Name' to finish install"
             }
-        } while ($runningDistros -notcontains $Name)
+            # Continue waiting if the state is "Installing"
+        } while ($distro.State -eq "Installing")
 
         # Stop distro after installed
         Stop-WSLDistribution -Name $Name -WhatIf:$($PSCmdlet.WhatIfPreference)

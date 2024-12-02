@@ -23,7 +23,7 @@ options:
         type: str
         default: run
         choices: [ run, stop, absent ]
-    rootfs_path:
+    fs_path:
         description:
             - Path to the root filesystem file when importing a distribution.
             - Required when importing a custom distribution.
@@ -67,7 +67,7 @@ EXAMPLES = r'''
 - name: Import custom WSL distribution
   wsl_instance:
     name: CustomLinux
-    rootfs_path: C:\path\to\distribution.tar
+    fs_path: C:\path\to\distribution.tar
     install_dir: C:\WSL\CustomLinux
     arch_version: 2
     state: run
@@ -76,7 +76,7 @@ EXAMPLES = r'''
 - name: Import WSL from VHD
   wsl_instance:
     name: CustomLinux
-    rootfs_path: C:\path\to\distribution.vhdx
+    fs_path: C:\path\to\distribution.vhdx
     install_dir: C:\WSL\CustomLinux
     vhd: true
     state: run

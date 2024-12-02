@@ -1,5 +1,5 @@
-namespace: wsl_automation
-name: wsl
+namespace: ducnguyen
+name: wsl_automation
 version: 1.0.0
 readme: README.md
 authors:
@@ -26,3 +26,5 @@ build_ignore:
   - .yamllint
   - '*.tar.gz'
   - '*.zip'
+  - ansible.cfg
+  - __pycache__
