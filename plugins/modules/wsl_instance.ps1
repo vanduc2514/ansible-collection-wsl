@@ -92,7 +92,7 @@ function Install-WSLDistribution {
         } while ($distro.State -eq "Installing")
 
         # Stop distro after installed
-        Stop-WSLDistribution -Name $Name -WhatIf:$($PSCmdlet.WhatIfPreference)
+        Stop-WSLDistribution -Name $Name
 
         $ret.changed = $true
         $ret.after = wsl.exe --list --verbose
@@ -231,9 +231,9 @@ function Stop-WSLDistribution {
     if ($PSCmdlet.ShouldProcess($Name, 'Stop (Terminate) WSL Distro')) {
         wsl.exe --terminate $Name
         $ret.changed = $true
+        $ret.after = wsl.exe --list --verbose
     }
 
-    $ret.after = wsl.exe --list --verbose
     return $ret
 }
 
