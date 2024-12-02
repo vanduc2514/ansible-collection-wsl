@@ -13,7 +13,7 @@ $spec = @{
             default  = "run"
             choices  = @("run", "stop", "absent")
         }
-        rootfs_path = @{
+        fs_path = @{
             type        = "path"
             required    = $false
         }
@@ -35,6 +35,7 @@ $spec = @{
             default     = $false
         }
     }
+    # TODO: Refine spec with more validation rules
     supports_check_mode = $true
 }
 
@@ -48,19 +49,13 @@ function Test-WSLDistributionExists {
         [string]$Name
     )
 
-    try {
-        $wslDistros = wsl.exe --list --quiet 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            return $false
-        }
-
-        $distributions = $wslDistros -split "`n" | Where-Object { $_.Trim() -eq $Name }
-        return $distributions.Count -gt 0
-    }
-    catch {
-        Write-Error "Error checking WSL distribution existence: $_"
+    $wslDistros = wsl.exe --list --quiet 2>&1
+    if ($LASTEXITCODE -ne 0) {
         return $false
     }
+
+    $distributions = $wslDistros -split "`n" | Where-Object { $_.Trim() -eq $Name }
+    return $distributions.Count -gt 0
 }
 
 function Install-WSLDistribution {
@@ -74,11 +69,7 @@ function Install-WSLDistribution {
 
         [Parameter(Mandatory = $false)]
         [bool]
-        $WebDownload,
-
-        [Parameter(Mandatory = $false)]
-        [int]
-        $Version
+        $WebDownload
     )
 
     # Build installation extra arguments
@@ -100,33 +91,28 @@ function Install-WSLDistribution {
         $null = Invoke-CimMethod Win32_Process -MethodName create -Arguments @{
             CommandLine = $installCommand
         }
+
+        # Wait for distribution finish installing
+        $startTime = Get-Date
+        $timeout = New-TimeSpan -Minutes 15
+
+        do {
+            Start-Sleep -Seconds 2
+            $runningDistros = @(wsl --list --running --quiet) -split "`n" |
+                            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+
+            if ((Get-Date) - $startTime -gt $timeout) {
+                throw "Timeout waiting for WSL distribution '$Name' to start"
+            }
+        } while ($runningDistros -notcontains $Name)
+
+        # Stop distro after installed
+        Stop-WSLDistribution -Name $Name -WhatIf:$($PSCmdlet.WhatIfPreference)
+
         $ret.changed = $true
+        $ret.after = wsl.exe --list --verbose
     }
 
-    # Wait for distribution finish installing
-    $startTime = Get-Date
-    $timeout = New-TimeSpan -Minutes 15
-
-    do {
-        Start-Sleep -Seconds 2
-        $runningDistros = @(wsl --list --running --quiet) -split "`n" |
-                         Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-
-        if ((Get-Date) - $startTime -gt $timeout) {
-            throw "Timeout waiting for WSL distribution '$Name' to start"
-        }
-    } while ($runningDistros -notcontains $Name)
-
-    # Wait for distro auto terminate
-    Start-Sleep -Seconds 4
-
-    # Set WSL version if specified
-    if ($Version -and $PSCmdlet.ShouldProcess($Name, "Set WSL Architecture version to '$Version'")) {
-        $null = wsl.exe --set-version $Name $Version
-        $ret.changed = $true
-    }
-
-    $ret.after = wsl.exe --list --verbose
     return $ret
 }
 
@@ -141,15 +127,11 @@ function Import-WSLDistribution {
 
         [Parameter(Mandatory = $true)]
         [string]
-        $RootFSPath,
+        $FSPath,
 
         [Parameter(Mandatory = $true)]
         [string]
         $InstallLocation,
-
-        [Parameter(Mandatory = $false)]
-        [int]
-        $Version,
 
         [Parameter(Mandatory = $false)]
         [bool]
@@ -170,17 +152,11 @@ function Import-WSLDistribution {
 
     # Import WSL Distro using RootFS
     if ($PSCmdlet.ShouldProcess($Name, 'Import WSL Distro')) {
-        wsl.exe --import $Name $InstallLocation $RootFSPath $extraArgs
+        wsl.exe --import $Name $InstallLocation $FSPath $extraArgs
         $ret.changed = $true
+        $ret.after = wsl.exe --list --verbose
     }
 
-    # Set WSL version if specified
-    if ($Version -and $PSCmdlet.ShouldProcess($Name, "Set WSL Architecture version to '$Version'")) {
-        $null = wsl.exe --set-version $Name $Version
-        $ret.changed = $true
-    }
-
-    $ret.after = wsl.exe --list --verbose
     return $ret
 }
 
@@ -205,9 +181,40 @@ function Delete-WSLDistribution {
     if ($PSCmdlet.ShouldProcess($Name, 'Delete (Unregister) WSL Distro')) {
         wsl.exe --unregister $Name
         $ret.changed = $true
+        $ret.after = wsl.exe --list --verbose
     }
 
-    $ret.after = wsl.exe --list --verbose
+    return $ret
+}
+
+function SetVersion-WSLDistribution {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    [OutputType([hashtable])]
+
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory = $true)]
+        [int]
+        $Version
+    )
+
+    # Initialize return hashtable
+    $ret = @{
+        changed = $false
+        before = wsl.exe --list --verbose
+        after = $null
+    }
+
+    # Set WSL architecture version for the distro
+    if ($PSCmdlet.ShouldProcess($Name, "Set WSL Architecture version to '$Version'")) {
+        $null = wsl.exe --set-version $Name $Version
+        $ret.changed = $true
+        $ret.after = wsl.exe --list --verbose
+    }
+
     return $ret
 }
 
@@ -241,7 +248,7 @@ function Stop-WSLDistribution {
 # Retrieve and validate parameters
 $name = $module.Params.name
 $state = $module.Params.state
-$rootfs_path = $module.Params.rootfs_path
+$fs_path = $module.Params.fs_path
 $install_dir = $module.Params.install_dir
 $arch_version = $module.Params.arch_version
 $web_download = $module.Params.web_download
@@ -265,12 +272,16 @@ try {
     else {
         # Install/Import if distribution doesn't exist
         if (-not $exists) {
-            $status = if ($rootfs_path -and $install_dir) {
-                Import-WSLDistribution -Name $name -RootFSPath $rootfs_path -InstallLocation $install_dir -Version $arch_version -IsVHD $vhd -WhatIf:$($module.CheckMode)
+            $status = if ($fs_path -and $install_dir) {
+                Import-WSLDistribution -Name $name -FSPath $fs_path -InstallLocation $install_dir -IsVHD $vhd -WhatIf:$($module.CheckMode)
             }
             else {
-                Install-WSLDistribution -Name $name -WebDownload $web_download -Version $arch_version -WhatIf:$($module.CheckMode)
+                Install-WSLDistribution -Name $name -WebDownload $web_download -WhatIf:$($module.CheckMode)
             }
+        }
+
+        if ($version) {
+            $status = SetVersion-WSLDistribution -Name $name -Version $arch_version -WhatIf:$($module.CheckMode)
         }
 
         # Handle state-specific operations
