@@ -46,7 +46,8 @@ function Test-WSLDistributionExists {
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
-        [string]$Name
+        [string]
+        $Name
     )
 
     $wslDistros = wsl.exe --list --quiet 2>&1
@@ -64,6 +65,7 @@ function Install-WSLDistribution {
 
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]
         $Name,
 
@@ -122,14 +124,17 @@ function Import-WSLDistribution {
 
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]
         $Name,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]
         $FSPath,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]
         $InstallLocation,
 
@@ -166,6 +171,7 @@ function Delete-WSLDistribution {
 
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]
         $Name
     )
@@ -193,10 +199,12 @@ function SetVersion-WSLDistribution {
 
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]
         $Name,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [int]
         $Version
     )
@@ -224,6 +232,7 @@ function Stop-WSLDistribution {
 
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]
         $Name
     )
