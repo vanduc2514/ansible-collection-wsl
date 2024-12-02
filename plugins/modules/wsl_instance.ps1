@@ -10,8 +10,8 @@ $spec = @{
         }
         state = @{
             type     = "str"
-            default  = "install"
-            choices  = @("install", "import", "unregister")
+            default  = "run"
+            choices  = @("run", "stop", "absent")
         }
         source_path = @{
             type        = "path"
@@ -214,37 +214,33 @@ try {
     # Check if the distribution exists
     $exists = Test-WSLDistributionExists -Name $name
 
-    if ($state -eq "install" -and -not $exists) {
-        Write-Verbose "WSL distribution '$name' does not exist. Proceeding to install."
+    if (-not $exists) {
+        if ($source_path -and $install_location) {
+            # Use import when both source_path and install_location are provided
+            Write-Verbose "WSL distribution '$name' does not exist. Proceeding to import."
 
-        $status = Install-WSLDistribution -Name $name -NoLaunch $no_launch -WebDownload $web_download -Version $version -WhatIf:$($module.CheckMode)
-        if (-not $status) {
-            # FIXME: Do I need to specify changed= = false if the module fails ?
-            $module.FailJson("Failed to install WSL distribution '$name'.")
+            $success = Import-WSLDistribution -Name $name -SourcePath $source_path -InstallLocation $install_location -Version $version -IsVHD $vhd
+            if (-not $success) {
+                $module.FailJson("Failed to import WSL distribution '$name'.")
+            }
+            $module.Result.changed = $true
         }
-        $module.Result.changed = $module.Result.changed -or $status.changed
-    }
-    elseif ($state -eq "import" -and -not $exists) {
-        Write-Verbose "WSL distribution '$name' does not exist. Proceeding to import."
+        else {
+            # Use install in all other cases
+            Write-Verbose "WSL distribution '$name' does not exist. Proceeding to install."
 
-        $success = Import-WSLDistribution -Name $name -SourcePath $source_path -InstallLocation $install_location -Version $version -IsVHD $vhd
-        if (-not $success) {
-            # FIXME: Do I need to specify changed= = false if the module fails ?
-            $module.FailJson("Failed to import WSL distribution '$name'.")
+            $status = Install-WSLDistribution -Name $name -NoLaunch $no_launch -WebDownload $web_download -Version $version -WhatIf:$($module.CheckMode)
+            if (-not $status) {
+                $module.FailJson("Failed to install WSL distribution '$name'.")
+            }
+            $module.Result.changed = $module.Result.changed -or $status.changed
         }
-        $module.Result.changed = $true
-    }
-    elseif ($state -eq "unregister" -and $exists) {
-        Write-Verbose "WSL distribution '$name' exists. Proceeding to unregister."
-
-        $success = Remove-WSLDistribution -Name $name
-        if (-not $success) {
-            $module.FailJson("Failed to unregister WSL distribution '$name'.")
-        }
-        $module.Result.changed = $true
     }
     else {
-        Write-Verbose "No changes required for WSL distribution '$name'. Desired state '$state' is already achieved."
+        if ($state -eq "absent") {
+            $status = Remove-WSLDistribution -Name $name
+            $module.Result.changed = $status
+        }
     }
 
     $module.ExitJson()
