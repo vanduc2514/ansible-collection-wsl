@@ -13,11 +13,11 @@ $spec = @{
             default  = "run"
             choices  = @("run", "stop", "absent")
         }
-        source_path = @{
+        rootfs_path = @{
             type        = "path"
             required    = $false
         }
-        install_location = @{
+        install_dir = @{
             type        = "path"
             required    = $false
         }
@@ -25,10 +25,6 @@ $spec = @{
             type     = "int"
             default  = 2
             choices  = @(1, 2)
-        }
-        no_launch = @{
-            type        = "bool"
-            default     = $false
         }
         web_download = @{
             type        = "bool"
@@ -44,7 +40,7 @@ $spec = @{
 
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
-Function Test-WSLDistributionExists {
+function Test-WSLDistributionExists {
 
     param(
         [Parameter(Mandatory = $true)]
@@ -55,7 +51,6 @@ Function Test-WSLDistributionExists {
     try {
         $wslDistros = wsl.exe --list --quiet 2>&1
         if ($LASTEXITCODE -ne 0) {
-            Write-Verbose "Failed to list WSL distributions: $wslDistros"
             return $false
         }
 
@@ -77,11 +72,7 @@ function Install-WSLDistribution {
         [string]
         $Name,
 
-        [Parameter(Mandatory = $true)]
-        [bool]
-        $NoLaunch,
-
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [bool]
         $WebDownload,
 
@@ -92,7 +83,6 @@ function Install-WSLDistribution {
 
     # Build installation extra arguments
     $extraArgs = @() + $(
-        if ($NoLaunch) { '--no-launch' }
         if ($WebDownload) { '--web-download' }
     ) -join ' '
 
@@ -113,7 +103,7 @@ function Install-WSLDistribution {
         $ret.changed = $true
     }
 
-    # Wait for distribution to run
+    # Wait for distribution finish installing
     $startTime = Get-Date
     $timeout = New-TimeSpan -Minutes 15
 
@@ -137,111 +127,169 @@ function Install-WSLDistribution {
     return $ret
 }
 
-Function Import-WSLDistribution {
+function Import-WSLDistribution {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    [OutputType([hashtable])]
+
     param(
-        [string]$Name,
-        [string]$SourcePath,
-        [string]$InstallLocation,
-        [int]$Version,
-        [bool]$IsVHD
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $RootFSPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $InstallLocation,
+
+        [Parameter(Mandatory = $false)]
+        [int]
+        $Version,
+
+        [Parameter(Mandatory = $false)]
+        [bool]
+        $IsVHD
     )
 
-    try {
-        $args = @("--import", $Name, $InstallLocation, $SourcePath)
+    # Build installation extra arguments
+    $extraArgs = @() + $(
+        if ($IsVHD) { '--vhd' }
+    ) -join ' '
 
-        if ($IsVHD) {
-            $args += "--vhd"
-        }
-
-        Write-Verbose "Executing: wsl.exe $($args -join ' ')"
-        $result = Start-Process -FilePath "wsl.exe" -ArgumentList $args -Wait -PassThru -NoNewWindow -ErrorAction Stop
-
-        if ($result.ExitCode -eq 0) {
-            if ($Version -eq 1) {
-                Write-Verbose "Setting WSL version for '$Name' to 1."
-                wsl.exe --set-version $Name 1 | Out-Null
-            }
-            Write-Verbose "WSL distribution '$Name' imported successfully."
-            return $true
-        }
-        else {
-            Write-Error "wsl.exe exited with code $($result.ExitCode) during import."
-            return $false
-        }
+    # Initialize return hashtable
+    $ret = @{
+        changed = $false
+        before = wsl.exe --list --verbose
+        after = $null
     }
-    catch {
-        Write-Error "Exception during import of '$Name': $_"
-        return $false
+
+    # Import WSL Distro using RootFS
+    if ($PSCmdlet.ShouldProcess($Name, 'Import WSL Distro')) {
+        wsl.exe --import $Name $InstallLocation $RootFSPath $extraArgs
+        $ret.changed = $true
     }
+
+    # Set WSL version if specified
+    if ($Version -and $PSCmdlet.ShouldProcess($Name, "Set WSL Architecture version to '$Version'")) {
+        $null = wsl.exe --set-version $Name $Version
+        $ret.changed = $true
+    }
+
+    $ret.after = wsl.exe --list --verbose
+    return $ret
 }
 
-Function Remove-WSLDistribution {
-    param([string]$Name)
+function Delete-WSLDistribution {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    [OutputType([hashtable])]
 
-    try {
-        Write-Verbose "Executing: wsl.exe --unregister $Name"
-        $result = Start-Process -FilePath "wsl.exe" -ArgumentList @("--unregister", $Name) -Wait -PassThru -NoNewWindow -ErrorAction Stop
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name
+    )
 
-        if ($result.ExitCode -eq 0) {
-            Write-Verbose "WSL distribution '$Name' removed successfully."
-            return $true
-        }
-        else {
-            Write-Error "wsl.exe exited with code $($result.ExitCode) during removal."
-            return $false
-        }
+    # Initialize return hashtable
+    $ret = @{
+        changed = $false
+        before = wsl.exe --list --verbose
+        after = $null
     }
-    catch {
-        Write-Error "Exception during removal of '$Name': $_"
-        return $false
+
+    # Delete (Unregister) WSL Distro
+    if ($PSCmdlet.ShouldProcess($Name, 'Delete (Unregister) WSL Distro')) {
+        wsl.exe --unregister $Name
+        $ret.changed = $true
     }
+
+    $ret.after = wsl.exe --list --verbose
+    return $ret
 }
+
+function Stop-WSLDistribution {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    [OutputType([hashtable])]
+
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name
+    )
+
+    # Initialize return hashtable
+    $ret = @{
+        changed = $false
+        before = wsl.exe --list --verbose
+        after = $null
+    }
+
+    # Stop (Terminate) WSL Distro
+    if ($PSCmdlet.ShouldProcess($Name, 'Stop (Terminate) WSL Distro')) {
+        wsl.exe --terminate $Name
+        $ret.changed = $true
+    }
+
+    $ret.after = wsl.exe --list --verbose
+    return $ret
+}
+
+# Retrieve and validate parameters
+$name = $module.Params.name
+$state = $module.Params.state
+$rootfs_path = $module.Params.rootfs_path
+$install_dir = $module.Params.install_dir
+$arch_version = $module.Params.arch_version
+$web_download = $module.Params.web_download
+$vhd = $module.Params.vhd
+
+# Initialize result
+$module.Result.changed = $false
+$status = $null
 
 try {
-    # Retrieve and validate parameters
-    $name = $module.Params.name
-    $state = $module.Params.state
-    $source_path = $module.Params.source_path
-    $install_location = $module.Params.install_location
-    $version = $module.Params.version
-    $no_launch = $module.Params.no_launch
-    $web_download = $module.Params.web_download
-    $vhd = $module.Params.vhd
-
-    # Initialize result
-    $module.Result.changed = $false
-
     # Check if the distribution exists
     $exists = Test-WSLDistributionExists -Name $name
 
-    if (-not $exists) {
-        if ($source_path -and $install_location) {
-            # Use import when both source_path and install_location are provided
-            Write-Verbose "WSL distribution '$name' does not exist. Proceeding to import."
-
-            $success = Import-WSLDistribution -Name $name -SourcePath $source_path -InstallLocation $install_location -Version $version -IsVHD $vhd
-            if (-not $success) {
-                $module.FailJson("Failed to import WSL distribution '$name'.")
-            }
-            $module.Result.changed = $true
-        }
-        else {
-            # Use install in all other cases
-            Write-Verbose "WSL distribution '$name' does not exist. Proceeding to install."
-
-            $status = Install-WSLDistribution -Name $name -NoLaunch $no_launch -WebDownload $web_download -Version $version -WhatIf:$($module.CheckMode)
-            if (-not $status) {
-                $module.FailJson("Failed to install WSL distribution '$name'.")
-            }
-            $module.Result.changed = $module.Result.changed -or $status.changed
+    # Handle 'absent' state first
+    if ($state -eq 'absent') {
+        if ($exists) {
+            $status = Delete-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
         }
     }
+    # Handle other states
     else {
-        if ($state -eq "absent") {
-            $status = Remove-WSLDistribution -Name $name
-            $module.Result.changed = $status
+        # Install/Import if distribution doesn't exist
+        if (-not $exists) {
+            $status = if ($rootfs_path -and $install_dir) {
+                Import-WSLDistribution -Name $name -RootFSPath $rootfs_path -InstallLocation $install_dir -Version $arch_version -IsVHD $vhd -WhatIf:$($module.CheckMode)
+            }
+            else {
+                Install-WSLDistribution -Name $name -WebDownload $web_download -Version $arch_version -WhatIf:$($module.CheckMode)
+            }
+        }
+
+        # Handle state-specific operations
+        switch ($state) {
+            'stop' {
+                $status = Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
+            }
         }
     }
+
+    # Set the changed state only once, based on the last operation performed
+    if ($status.before) {
+        $module.Diff.before.$distros_state = $status.before
+    }
+    if ($status.after) {
+        $module.Diff.after.$distros_state = $status.after
+    }
+
+    $module.Result.changed = $module.Result.changed -or $status.changed
+
+    $module.Result.before_value = $status.before
+    $module.Result.value = $status.after
 
     $module.ExitJson()
 }
