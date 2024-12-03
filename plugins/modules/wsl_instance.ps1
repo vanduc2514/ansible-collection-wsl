@@ -17,11 +17,9 @@ $spec = @{
         }
         fs_path = @{
             type        = "path"
-            required    = $false
         }
-        install_dir = @{
+        install_dir_path = @{
             type        = "path"
-            required    = $false
         }
         arch_version = @{
             type     = "int"
@@ -35,6 +33,27 @@ $spec = @{
         vhd = @{
             type        = "bool"
             default     = $false
+        }
+        checksum = @{
+            type     = "str"
+        }
+        checksum_algorithm = @{
+            type     = "str"
+            choices  = @("md5", "sha1", "sha256", "sha384", "sha512")
+            default  = "sha1"
+        }
+        delete_fs_download = @{
+            type     = "bool"
+            default  = $false
+        }
+        is_bundle = @{
+            type     = "bool"
+            default  = $false
+        }
+        fs_download_path = @{
+            type     = "path"
+            required = $false
+            # Default to temporary directory
         }
     }
     # TODO: Refine spec with more validation rules
@@ -140,10 +159,6 @@ function Import-WSLDistribution {
         $IsBundle
     )
 
-    # TODO: Move this to spec instead
-    if (-not $FSDownloadPath) {
-        $FSDownloadPath = Join-Path -Path $Module.Tmpdir -ChildPath "WSLDownloadFS"
-    }
     if (-not (Test-Path -Path $FSDownloadPath)) {
         New-Item -ItemType Directory -Path $FSDownloadPath -Force | Out-Null
     }
@@ -153,6 +168,7 @@ function Import-WSLDistribution {
     ) -join ' '
     $fs_path = $FSPath
 
+    # If the path is an URL, download it first
     if ($FSPath.StartsWith('http', [System.StringComparison]::InvariantCultureIgnoreCase)) {
         $rootfs_download_dest = $null
         $download_script = {
@@ -186,20 +202,21 @@ function Import-WSLDistribution {
             $Module.FailJson("Failed to dowload rootfs from '$FSPath': $($_.Exception.Message)", $_)
         }
 
+        # If the URL points to a Appx bundle, extract it and get the rootfs inside
         if ($ISBundle) {
             $base_name = [System.IO.Path]::GetFileNameWithoutExtension($rootfs_download_dest)
-            $extract_dir = Join-Path -Path $FSDownloadPath -ChildPath $base_name
-            New-Item -ItemType Directory -Path $extract_dir -Force | Out-Null
+            $rootfs_extract_dir = Join-Path -Path $FSDownloadPath -ChildPath $base_name
+            New-Item -ItemType Directory -Path $rootfs_extract_dir -Force | Out-Null
 
             try {
-                Expand-Archive -Path $rootfs_download_dest -DestinationPath $extract_dir -Force
+                Expand-Archive -Path $rootfs_download_dest -DestinationPath $rootfs_extract_dir -Force
             }
             catch {
                 $Module.FailJson("Failed to extract rootfs bundle from '$rootfs_download_dest': $($_.Exception.Message)", $_)
             }
 
-            $rootfs_extracted = Get-ChildItem -Path $extract_dir -Recurse |
-                Where-Object { $_.Name -match 'install\.tar(\.gz)?$' } |
+            $rootfs_extracted = Get-ChildItem -Path $rootfs_extract_dir -Recurse |
+                Where-Object { $_.Name -match 'install\.tar(\.gz)?$' } | # rootfs can be install.tar.gz or install.tar
                 Select-Object -First 1
             if (-not $rootfs_extracted) {
                 $Module.FailJson("Failed to find rootfs file in the extracted bundle")
@@ -229,17 +246,17 @@ function Import-WSLDistribution {
                 $Module.Result.rootfs_download_cleaned = $true
             }
             catch {
-                $Module.Warn("Failed to cleanup downloaded file '$rootfs_download_dest': $($_.Exception.Message)", $_)
+                $Module.Warn("Failed to delete downloaded file '$rootfs_download_dest': $($_.Exception.Message)", $_)
             }
         }
 
-        if ($ISBundle -and $extract_dir -and (Test-Path -Path $extract_dir)) {
+        if ($ISBundle -and $rootfs_extract_dir -and (Test-Path -Path $rootfs_extract_dir)) {
             try {
-                Remove-Item -Path $extract_dir -Recurse -Force
+                Remove-Item -Path $rootfs_extract_dir -Recurse -Force
                 $Module.Result.rootfs_bundle_extracted_cleaned = $true
             }
             catch {
-                $Module.Warn("Failed to cleanup extracted directory '$extract_dir': $($_.Exception.Message)", $_)
+                $Module.Warn("Failed to delete extracted directory '$rootfs_extract_dir': $($_.Exception.Message)", $_)
             }
         }
     }
@@ -295,36 +312,77 @@ function Delete-WSLDistribution {
     }
 }
 
-# Retrieve and validate parameters
 $name = $module.Params.name
 $state = $module.Params.state
 $fs_path = $module.Params.fs_path
-$install_dir = $module.Params.install_dir
+$install_dir_path = $module.Params.install_dir_path
 $arch_version = $module.Params.arch_version
 $web_download = $module.Params.web_download
 $vhd = $module.Params.vhd
+$checksum = $module.Params.checksum
+$checksum_algorithm = $module.Params.checksum_algorithm
+$delete_fs_download = $module.Params.delete_fs_download
+$is_bundle = $module.Params.is_bundle
 
-# Initialize result
-$module.Result.changed = $false
-$status = $null
+$fs_download_path = if ($module.Params.fs_download_path) {
+    $module.Params.fs_download_path
+} else {
+    Join-Path -Path $module.Tmpdir -ChildPath "WSLDownloadFS"
+}
 
-if ($state -eq 'absent') {
-    $delete_status = Delete-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
+$module.Result.Diff.before = @{ wsl_distribution = @{} }
+$module.Result.Diff.after = @{ wsl_distribution = @{} }
+
+if ($wsl_distribution_before -and $state -eq 'absent') {
+    Delete-WSLDistribution -Module $module -Name $name -WhatIf:$($module.CheckMode)
 }
 else {
-    $setup_status = if ($fs_path -and $install_dir) {
-        Import-WSLDistribution -Name $name -FSPath $fs_path -InstallDirectoryPath $install_dir -IsVHD $vhd -WhatIf:$($module.CheckMode)
-    }
-    else {
-        Install-WSLDistribution -Name $name -WebDownload $web_download -WhatIf:$($module.CheckMode)
-    }
-    $version_status = SetVersion-WSLDistribution -Name $name -Version $arch_version -WhatIf:$($module.CheckMode)
-
-    switch ($state) {
-        'stop' {
-            $state_status = Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
+    if (-not $wsl_distribution_before) {
+        if ($fs_path -and $install_dir_path) {
+            $import_params = @{
+                Module = $module
+                Name = $name
+                FSPath = $fs_path
+                InstallDirectoryPath = $install_dir_path
+                IsVHD = $vhd
+                Checksum = $checksum
+                ChecksumAlgorithm = $checksum_algorithm
+                ShouldDeleteFSDownload = $delete_fs_download
+                IsBundle = $is_bundle
+                FSDownloadPath = $fs_download_path
+                WhatIf = $module.CheckMode
+            }
+            Import-WSLDistribution @import_params
+        }
+        else {
+            $install_params = @{
+                Module = $module
+                Name = $name
+                WebDownload = $web_download
+                WhatIf = $module.CheckMode
+            }
+            Install-WSLDistribution $installparams
         }
     }
+
+    if (-not $wsl_distribution_before -or $arch_version -ne $wsl_distribution_before.Version) {
+        $set_version_params = @{
+            Module = $module
+            Name = $name
+            Version = $arch_version
+            WhatIf = $module.CheckMode
+        }
+        SetVersion-WSLDistribution $set_version_params
+    }
+
+    if (-not $wsl_distribution_before -or ($state -eq 'stop' -and 'Stopped' -ne $wsl_distribution_before.State)) {
+        $module.Result.changed = Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
+    }
+}
+
+$wsl_distribution_after = Get-WSLDistribution -Name $name
+if ($wsl_distribution_after -and $module.Result.changed) {
+    Set-DistributionDiffInfo -Distribution $wsl_distribution_after -DiffTarget $module.Result.Diff.after
 }
 
 $module.Exception()

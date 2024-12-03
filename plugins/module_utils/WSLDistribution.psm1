@@ -72,7 +72,27 @@ function Stop-WSLDistribution {
     }
 }
 
+function Set-DistributionDiffInfo {
+    param (
+        [Parameter(Mandatory)]
+        [Object]
+        $Distribution,
+
+        [Parameter(Mandatory)]
+        [Hashtable]
+        $DiffTarget
+    )
+
+    if ($Distribution) {
+        $DiffTarget.wsl_distribution = @{
+            name = $Distribution.Name
+            arch_version = $Distribution.Version
+            state = $Distribution.State
+        }
+    }
+}
+
 $export_members = @{
-    Function = "List-WSLDistribution", "Get-WSLDistribution", "Stop-WSLDistribution"
+    Function = "List-WSLDistribution", "Get-WSLDistribution", "Stop-WSLDistribution", "Set-DistributionDiffInfo"
 }
 Export-ModuleMember @export_members
