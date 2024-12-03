@@ -1,6 +1,7 @@
 #!powershell
 #AnsibleRequires -CSharpUtil Ansible.Basic
 #AnsibleRequires -PowerShell ..module_utils.WSLDistribution
+#AnsibleRequires -PowerShell ..module_utils.WebRequest
 
 $spec = @{
     options = @{
@@ -44,8 +45,11 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
 function Install-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
-    [OutputType([hashtable])]
     param(
+        [Parameter(Mandatory = $true)]
+        [Ansible.Basic.AnsibleModule]
+        $Module,
+
         [Parameter(Mandatory = $true)]
         [string]
         $Name,
@@ -59,18 +63,14 @@ function Install-WSLDistribution {
         if ($WebDownload) { '--web-download' }
     ) -join ' '
 
-    $ret = @{
-        changed = $false
-    }
-
-    if ((Get-WSLDistribution -Name $Name).Name -eq $Name) {
-        return $ret
-    }
-    if ($PSCmdlet.ShouldProcess($Name, 'Install WSL Distro')) {
-        $installCommand = "wsl.exe --install $Name $extraArgs"
+    if ($PSCmdlet.ShouldProcess($Name, 'Install WSL distribution')) {
+        $installCommand = "wsl --install $Name $extraArgs"
         # Hack for running interactive command in non-interactive shell
-        $null = Invoke-CimMethod Win32_Process -MethodName create -Arguments @{
+        $proc = Invoke-CimMethod Win32_Process -MethodName create -Arguments @{
             CommandLine = $installCommand
+        }
+        if ($proc.ReturnValue -ne 0) {
+            $Module.FailJson("Failed to install WSL distribution '$Name'.")
         }
 
         # Wait for distribution installed
@@ -81,21 +81,28 @@ function Install-WSLDistribution {
             $distro = Get-WSLDistribution -Name $Name
 
             if ((Get-Date) - $startTime -gt $timeout) {
-                throw "Timeout waiting for WSL distribution '$Name' to finish install"
+                $Module.FailJson("Timeout waiting for WSL distribution '$Name' to finish install.")
             }
         } while ($distro.State -eq "Installing")
+        Stop-WSLDistribution -Name $Name -Module $Module
 
-        Stop-WSLDistribution -Name $Name
-        $ret.changed = $true
+        try {
+            $query = "Select * from Win32_Process where ProcessId = '$($proc.ProcessId)'"
+            Remove-CimInstance -Query $query
+        } catch {
+            $Module.Warn("Failed to remove wsl installation process: $($_.Exception.Message)", $_)
+        }
+        $Module.Result.changed = $true
     }
-
-    return $ret
 }
 
 function Import-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
-    [OutputType([hashtable])]
     param(
+        [Parameter(Mandatory = $true)]
+        [Ansible.Basic.AnsibleModule]
+        $Module,
+
         [Parameter(Mandatory = $true)]
         [string]
         $Name,
@@ -106,56 +113,145 @@ function Import-WSLDistribution {
 
         [Parameter(Mandatory = $true)]
         [string]
-        $InstallLocation,
+        $InstallDirectoryPath,
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $FSDownloadPath,
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $ChecksumAlgorithm
+
+        [Parameter(Mandatory = $false)]
+        [string]
+        $Checksum
+
+        [Parameter(Mandatory = $false)]
+        [bool]
+        $ShouldDeleteFSDownload
 
         [Parameter(Mandatory = $false)]
         [bool]
         $IsVHD
+
+        [Parameter(Mandatory = $false)]
+        [bool]
+        $IsBundle
     )
+
+    # TODO: Move this to spec instead
+    if (-not $FSDownloadPath) {
+        $FSDownloadPath = Join-Path -Path $Module.Tmpdir -ChildPath "WSLDownloadFS"
+    }
+    if (-not (Test-Path -Path $FSDownloadPath)) {
+        New-Item -ItemType Directory -Path $FSDownloadPath -Force | Out-Null
+    }
 
     $extraArgs = @() + $(
         if ($IsVHD) { '--vhd' }
     ) -join ' '
+    $fs_path = $FSPath
 
-    $ret = @{
-        changed = $false
-    }
+    if ($FSPath.StartsWith('http', [System.StringComparison]::InvariantCultureIgnoreCase)) {
+        $rootfs_download_dest = $null
+        $download_script = {
+            param($Response, $Stream)
 
-    if ((Get-WSLDistribution -Name $Name).Name -ne $Name) {
-        if ($PSCmdlet.ShouldProcess($Name, 'Import WSL Distro')) {
-            wsl.exe --import $Name $InstallLocation $FSPath $extraArgs
-            $ret.changed = $true
+            $random_zip_path = [System.IO.Path]::ChangeExtension([System.IO.Path]::GetRandomFileName(), "zip")
+            $rootfs_download_dest = Join-Path -Path $FSDownloadPath -ChildPath $random_zip_path
+            $rootfs = [System.IO.File]::Create($rootfs_download_dest)
+            try {
+                $Stream.CopyTo($rootfs)
+                $rootfs.Flush()
+            }
+            finally {
+                $rootfs.Dispose()
+            }
+
+            if ($Checksum -and $Checksum -ne $tmp_checksum) {
+                $tmp_checksum = Get-Checksum -Path $rootfs_download_dest -Algorithm $ChecksumAlgorithm
+                $Module.FailJson("Failed checksum for download rootfs, '$tmp_checksum' did not match '$Checksum'")
+            }
+
+            $Module.Result.rootfs_download_path = $rootfs_download_dest
+            $Module.Result.rootfs_download_checksum = $tmp_checksum
+        }
+        $web_request = Get-AnsibleWindowsWebRequest -Uri $FSPath -Module $Module
+
+        try {
+            Invoke-AnsibleWindowsWebRequest -Module $Module -Request $web_request -Script $download_script
+        }
+        catch {
+            $Module.FailJson("Failed to dowload rootfs from '$FSPath': $($_.Exception.Message)", $_)
+        }
+
+        if ($ISBundle) {
+            $base_name = [System.IO.Path]::GetFileNameWithoutExtension($rootfs_download_dest)
+            $extract_dir = Join-Path -Path $FSDownloadPath -ChildPath $base_name
+            New-Item -ItemType Directory -Path $extract_dir -Force | Out-Null
+
+            try {
+                Expand-Archive -Path $rootfs_download_dest -DestinationPath $extract_dir -Force
+            }
+            catch {
+                $Module.FailJson("Failed to extract rootfs bundle from '$rootfs_download_dest': $($_.Exception.Message)", $_)
+            }
+
+            $rootfs_extracted = Get-ChildItem -Path $extract_dir -Recurse |
+                Where-Object { $_.Name -match 'install\.tar(\.gz)?$' } |
+                Select-Object -First 1
+            if (-not $rootfs_extracted) {
+                $Module.FailJson("Failed to find rootfs file in the extracted bundle")
+            }
+
+            $fs_path = $rootfs_extracted.FullName
+            $Module.Result.rootfs_bundle_extracted_path = $fs_path
+        }
+        else {
+            $fs_path = $rootfs_download_dest
         }
     }
 
-    return $ret
-}
-
-function Delete-WSLDistribution {
-    [CmdletBinding(SupportsShouldProcess = $true)]
-    [OutputType([hashtable])]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]
-        $Name
-    )
-
-    $ret = @{
-        changed = $false
+    if ($PSCmdlet.ShouldProcess($Name, 'Import WSL distribution')) {
+        try {
+            wsl --import $Name $InstallDirectoryPath $fs_path $extraArgs
+            $Module.Result.changed = $true
+        } catch {
+            $Module.FailJson("Failed to import WSL distribution '$Name': $($_.Exception.Message)", $_)
+        }
     }
 
-    if ($PSCmdlet.ShouldProcess($Name, 'Delete (Unregister) WSL Distro')) {
-        wsl.exe --unregister $Name
-        $ret.changed = $true
-    }
+    if ($ShouldDeleteFSDownload) {
+        if ($rootfs_download_dest -and (Test-Path -Path $rootfs_download_dest)) {
+            try {
+                Remove-Item -Path $rootfs_download_dest -Force
+                $Module.Result.rootfs_download_cleaned = $true
+            }
+            catch {
+                $Module.Warn("Failed to cleanup downloaded file '$rootfs_download_dest': $($_.Exception.Message)", $_)
+            }
+        }
 
-    return $ret
+        if ($ISBundle -and $extract_dir -and (Test-Path -Path $extract_dir)) {
+            try {
+                Remove-Item -Path $extract_dir -Recurse -Force
+                $Module.Result.rootfs_bundle_extracted_cleaned = $true
+            }
+            catch {
+                $Module.Warn("Failed to cleanup extracted directory '$extract_dir': $($_.Exception.Message)", $_)
+            }
+        }
+    }
 }
 
 function SetVersion-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
-    [OutputType([hashtable])]
     param(
+        [Parameter(Mandatory = $true)]
+        [Ansible.Basic.AnsibleModule]
+        $Module,
+
         [Parameter(Mandatory = $true)]
         [string]
         $Name,
@@ -165,37 +261,38 @@ function SetVersion-WSLDistribution {
         $Version
     )
 
-    $ret = @{
-        changed = $false
-    }
-
-    if ($PSCmdlet.ShouldProcess($Name, "Set WSL Architecture version to '$Version'")) {
-        $null = wsl.exe --set-version $Name $Version
-        $ret.changed = $true
+    if ($PSCmdlet.ShouldProcess($Name, "Set architecture version '$Version' for WSL distribution '$Name'")) {
+        try {
+            wsl --set-version $Name $Version
+            $Module.Result.changed = $true
+        } catch {
+            $Module.FailJson("Failed to set architecture version '$Version' for WSL distribution '$Name': $($_.Exception.Message)", $_)
+        }
     }
 
     return $ret
 }
 
-function Stop-WSLDistribution {
+function Delete-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
-    [OutputType([hashtable])]
     param(
+        [Parameter(Mandatory = $true)]
+        [Ansible.Basic.AnsibleModule]
+        $Module,
+
         [Parameter(Mandatory = $true)]
         [string]
         $Name
     )
 
-    $ret = @{
-        changed = $false
+    if ($PSCmdlet.ShouldProcess($Name, 'Delete (Unregister) WSL distribution')) {
+        try {
+            wsl --unregister $Name
+            $Module.Result.changed = $true
+        } catch {
+            $Module.FailJson("Failed to delete (unregister) WSL distribution '$Name'.")
+        }
     }
-
-    if ($PSCmdlet.ShouldProcess($Name, 'Stop (Terminate) WSL Distro')) {
-        wsl.exe --terminate $Name
-        $ret.changed = $true
-    }
-
-    return $ret
 }
 
 # Retrieve and validate parameters
@@ -211,41 +308,23 @@ $vhd = $module.Params.vhd
 $module.Result.changed = $false
 $status = $null
 
-try {
-    if ($state -eq 'absent') {
-        $delete_status = Delete-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
+if ($state -eq 'absent') {
+    $delete_status = Delete-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
+}
+else {
+    $setup_status = if ($fs_path -and $install_dir) {
+        Import-WSLDistribution -Name $name -FSPath $fs_path -InstallDirectoryPath $install_dir -IsVHD $vhd -WhatIf:$($module.CheckMode)
     }
     else {
-        $setup_status = if ($fs_path -and $install_dir) {
-            Import-WSLDistribution -Name $name -FSPath $fs_path -InstallLocation $install_dir -IsVHD $vhd -WhatIf:$($module.CheckMode)
-        }
-        else {
-            Install-WSLDistribution -Name $name -WebDownload $web_download -WhatIf:$($module.CheckMode)
-        }
-        $version_status = SetVersion-WSLDistribution -Name $name -Version $arch_version -WhatIf:$($module.CheckMode)
+        Install-WSLDistribution -Name $name -WebDownload $web_download -WhatIf:$($module.CheckMode)
+    }
+    $version_status = SetVersion-WSLDistribution -Name $name -Version $arch_version -WhatIf:$($module.CheckMode)
 
-        switch ($state) {
-            'stop' {
-                $state_status = Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
-            }
+    switch ($state) {
+        'stop' {
+            $state_status = Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
         }
     }
-
-    # Set the changed state only once, based on the last operation performed
-    if ($status.before) {
-        $module.Diff.before = $status.before
-    }
-    if ($status.after) {
-        $module.Diff.after = $status.after
-    }
-
-    $module.Result.changed = $delete_status.changed -or $setup_status.changed -or $version_status.changed -or $state_status.changed
-
-    $module.Result.before_value = $status.before
-    $module.Result.value = $status.after
-
-    $module.ExitJson()
 }
-catch {
-    $module.FailJson("An unexpected error occurred: $($_.Exception.Message)", $_)
-}
+
+$module.Exception()

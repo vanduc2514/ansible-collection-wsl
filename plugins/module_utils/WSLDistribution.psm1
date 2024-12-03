@@ -31,7 +31,6 @@ function List-WSLDistribution {
 
 function Get-WSLDistribution {
     [CmdletBinding()]
-
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -56,7 +55,24 @@ function Get-WSLDistribution {
     return $null
 }
 
+function Stop-WSLDistribution {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name
+    )
+
+    try {
+        wsl --terminate $Name
+        return $true
+    } catch {
+        return $false
+    }
+}
+
 $export_members = @{
-    Function = "List-WSLDistribution", "Get-WSLDistribution"
+    Function = "List-WSLDistribution", "Get-WSLDistribution", "Stop-WSLDistribution"
 }
 Export-ModuleMember @export_members
