@@ -45,7 +45,6 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 function Install-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([hashtable])]
-
     param(
         [Parameter(Mandatory = $true)]
         [string]
@@ -56,23 +55,17 @@ function Install-WSLDistribution {
         $WebDownload
     )
 
-    # Build installation extra arguments
     $extraArgs = @() + $(
         if ($WebDownload) { '--web-download' }
     ) -join ' '
 
-    # Initialize return hashtable
-    $before_value = (Get-WSLDistribution -Name $Name).Name
     $ret = @{
         changed = $false
-        before = $before_value
-        after = $Name
     }
 
-    if ($before_value -eq $Name) {
+    if ((Get-WSLDistribution -Name $Name).Name -eq $Name) {
         return $ret
     }
-    # Install WSL distribution
     if ($PSCmdlet.ShouldProcess($Name, 'Install WSL Distro')) {
         $installCommand = "wsl.exe --install $Name $extraArgs"
         # Hack for running interactive command in non-interactive shell
@@ -80,10 +73,9 @@ function Install-WSLDistribution {
             CommandLine = $installCommand
         }
 
-        # Wait for distribution finish installing
+        # Wait for distribution installed
         $startTime = Get-Date
         $timeout = New-TimeSpan -Minutes 15
-
         do {
             Start-Sleep -Seconds 2
             $distro = Get-WSLDistribution -Name $Name
@@ -91,12 +83,9 @@ function Install-WSLDistribution {
             if ((Get-Date) - $startTime -gt $timeout) {
                 throw "Timeout waiting for WSL distribution '$Name' to finish install"
             }
-            # Continue waiting if the state is "Installing"
         } while ($distro.State -eq "Installing")
 
-        # Stop distro after installed
         Stop-WSLDistribution -Name $Name
-
         $ret.changed = $true
     }
 
@@ -106,7 +95,6 @@ function Install-WSLDistribution {
 function Import-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([hashtable])]
-
     param(
         [Parameter(Mandatory = $true)]
         [string]
@@ -125,21 +113,15 @@ function Import-WSLDistribution {
         $IsVHD
     )
 
-    # Build installation extra arguments
     $extraArgs = @() + $(
         if ($IsVHD) { '--vhd' }
     ) -join ' '
 
-    # Initialize return hashtable
-    $before_value = (Get-WSLDistribution -Name $Name).Name
     $ret = @{
         changed = $false
-        before = $before_value
-        after = $Name
     }
 
-    if ($before_value -ne $Name) {
-        # Import WSL Distro using RootFS
+    if ((Get-WSLDistribution -Name $Name).Name -ne $Name) {
         if ($PSCmdlet.ShouldProcess($Name, 'Import WSL Distro')) {
             wsl.exe --import $Name $InstallLocation $FSPath $extraArgs
             $ret.changed = $true
@@ -152,28 +134,19 @@ function Import-WSLDistribution {
 function Delete-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([hashtable])]
-
     param(
         [Parameter(Mandatory = $true)]
         [string]
         $Name
     )
 
-    # Initialize return hashtable
-    $before_value = Get-WSLDistribution -Name $Name
-    $after_value = $null
     $ret = @{
         changed = $false
-        before = $before_value
-        after = $after_value
     }
 
-    if ($before_value -ne $after_value) {
-        # Delete (Unregister) WSL Distro
-        if ($PSCmdlet.ShouldProcess($Name, 'Delete (Unregister) WSL Distro')) {
-            wsl.exe --unregister $Name
-            $ret.changed = $true
-        }
+    if ($PSCmdlet.ShouldProcess($Name, 'Delete (Unregister) WSL Distro')) {
+        wsl.exe --unregister $Name
+        $ret.changed = $true
     }
 
     return $ret
@@ -182,7 +155,6 @@ function Delete-WSLDistribution {
 function SetVersion-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([hashtable])]
-
     param(
         [Parameter(Mandatory = $true)]
         [string]
@@ -193,20 +165,13 @@ function SetVersion-WSLDistribution {
         $Version
     )
 
-    # Initialize return hashtable
-    $before_value = (Get-WSLDistribution -Name $Name).Version
     $ret = @{
         changed = $false
-        before = $before_value
-        after = $Version
     }
 
-    if ($before_value -ne $Version) {
-        # Set WSL architecture version for the distro
-        if ($PSCmdlet.ShouldProcess($Name, "Set WSL Architecture version to '$Version'")) {
-            $null = wsl.exe --set-version $Name $Version
-            $ret.changed = $true
-        }
+    if ($PSCmdlet.ShouldProcess($Name, "Set WSL Architecture version to '$Version'")) {
+        $null = wsl.exe --set-version $Name $Version
+        $ret.changed = $true
     }
 
     return $ret
@@ -215,28 +180,19 @@ function SetVersion-WSLDistribution {
 function Stop-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([hashtable])]
-
     param(
         [Parameter(Mandatory = $true)]
         [string]
         $Name
     )
 
-    # Initialize return hashtable
-    $before_value = (Get-WSLDistribution -Name $Name).State
-    $after_value = "Stopped"
     $ret = @{
         changed = $false
-        before = $before_value
-        after = $after_value
     }
 
-    if ($before_value -ne $after_value) {
-        # Stop (Terminate) WSL Distro
-        if ($PSCmdlet.ShouldProcess($Name, 'Stop (Terminate) WSL Distro')) {
-            wsl.exe --terminate $Name
-            $ret.changed = $true
-        }
+    if ($PSCmdlet.ShouldProcess($Name, 'Stop (Terminate) WSL Distro')) {
+        wsl.exe --terminate $Name
+        $ret.changed = $true
     }
 
     return $ret
