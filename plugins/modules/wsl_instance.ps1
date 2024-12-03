@@ -327,7 +327,7 @@ $is_bundle = $module.Params.is_bundle
 $fs_download_path = if ($module.Params.fs_download_path) {
     $module.Params.fs_download_path
 } else {
-    Join-Path -Path $module.Tmpdir -ChildPath "WSLDownloadFS"
+    $module.Tmpdir
 }
 
 $module.Result.Diff.before = @{ wsl_distribution = @{} }
