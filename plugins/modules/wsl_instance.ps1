@@ -333,6 +333,10 @@ $fs_download_path = if ($module.Params.fs_download_path) {
 $module.Result.Diff.before = @{ wsl_distribution = @{} }
 $module.Result.Diff.after = @{ wsl_distribution = @{} }
 
+if ($wsl_distribution_before) {
+    Set-DistributionDiffInfo -Distribution $wsl_distribution_before -DiffTarget $module.Result.Diff.before
+}
+
 if ($wsl_distribution_before -and $state -eq 'absent') {
     Delete-WSLDistribution -Module $module -Name $name -WhatIf:$($module.CheckMode)
 }
