@@ -109,7 +109,7 @@ function Install-WSLDistribution {
             $query = "Select * from Win32_Process where ProcessId = '$($proc.ProcessId)'"
             Remove-CimInstance -Query $query
         } catch {
-            $Module.Warn("Failed to remove wsl installation process: $($_.Exception.Message)", $_)
+            $Module.Warn("Failed to remove wsl installation process ($($proc.ProcessId)): $($_.Exception.Message)", $_)
         }
         $Module.Result.changed = $true
     }
