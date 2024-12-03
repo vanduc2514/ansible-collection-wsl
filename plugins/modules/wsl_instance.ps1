@@ -382,6 +382,7 @@ else {
     if (-not $wsl_distribution_before -or ($state -eq 'stop' -and 'Stopped' -ne $wsl_distribution_before.State)) {
         $module.Result.changed = Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
     }
+    # TODO: Implement start distro
 }
 
 $wsl_distribution_after = Get-WSLDistribution -Name $name
@@ -389,4 +390,4 @@ if ($wsl_distribution_after -and $module.Result.changed) {
     Set-DistributionDiffInfo -Distribution $wsl_distribution_after -DiffTarget $module.Result.Diff.after
 }
 
-$module.Exception()
+$module.ExitJson()
