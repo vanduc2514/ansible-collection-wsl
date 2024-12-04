@@ -62,6 +62,8 @@ $spec = @{
 
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
+# TODO: Add wsl configuration function
+
 function Install-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -233,31 +235,31 @@ function Import-WSLDistribution {
     if ($PSCmdlet.ShouldProcess($Name, 'Import WSL distribution')) {
         try {
             wsl --import $Name $InstallDirectoryPath $fs_path $extraArgs
-            $Module.Result.changed = $true
         } catch {
             $Module.FailJson("Failed to import WSL distribution '$Name': $($_.Exception.Message)", $_)
         }
+        $Module.Result.changed = $true
     }
 
     if ($ShouldDeleteFSDownload) {
         if ($rootfs_download_dest -and (Test-Path -Path $rootfs_download_dest)) {
             try {
                 Remove-Item -Path $rootfs_download_dest -Force
-                $Module.Result.rootfs_download_cleaned = $true
             }
             catch {
                 $Module.Warn("Failed to delete downloaded file '$rootfs_download_dest': $($_.Exception.Message)", $_)
             }
+            $Module.Result.rootfs_download_cleaned = $true
         }
 
         if ($ISBundle -and $rootfs_extract_dir -and (Test-Path -Path $rootfs_extract_dir)) {
             try {
                 Remove-Item -Path $rootfs_extract_dir -Recurse -Force
-                $Module.Result.rootfs_bundle_extracted_cleaned = $true
             }
             catch {
                 $Module.Warn("Failed to delete extracted directory '$rootfs_extract_dir': $($_.Exception.Message)", $_)
             }
+            $Module.Result.rootfs_bundle_extracted_cleaned = $true
         }
     }
 }
@@ -281,13 +283,11 @@ function SetVersion-WSLDistribution {
     if ($PSCmdlet.ShouldProcess($Name, "Set architecture version '$Version' for WSL distribution '$Name'")) {
         try {
             wsl --set-version $Name $Version
-            $Module.Result.changed = $true
         } catch {
             $Module.FailJson("Failed to set architecture version '$Version' for WSL distribution '$Name': $($_.Exception.Message)", $_)
         }
     }
-
-    return $ret
+    $Module.Result.changed = $true
 }
 
 function Delete-WSLDistribution {
@@ -305,11 +305,11 @@ function Delete-WSLDistribution {
     if ($PSCmdlet.ShouldProcess($Name, 'Delete (Unregister) WSL distribution')) {
         try {
             wsl --unregister $Name
-            $Module.Result.changed = $true
         } catch {
             $Module.FailJson("Failed to delete (unregister) WSL distribution '$Name'.")
         }
     }
+    $Module.Result.changed = $true
 }
 
 $name = $module.Params.name
