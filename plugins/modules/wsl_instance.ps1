@@ -367,7 +367,7 @@ else {
                 FSDownloadPath = $fs_download_path
                 WhatIf = $module.CheckMode
             }
-            Import-WSLDistribution @import_params
+            Import-WSLDistribution $import_params
         }
         else {
             $install_params = @{
