@@ -92,7 +92,26 @@ function Set-DistributionDiffInfo {
     }
 }
 
+function Get-HashFromURL {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Url
+    )
+
+    $stringToHash = $Url.ToLowerInvariant()  # Normalize URL
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($stringToHash))
+        return [System.BitConverter]::ToString($hash).Replace("-", "").ToLower()
+    }
+    finally {
+        $sha.Dispose()
+    }
+}
+
 $export_members = @{
-    Function = "List-WSLDistribution", "Get-WSLDistribution", "Stop-WSLDistribution", "Set-DistributionDiffInfo"
+    Function = "List-WSLDistribution", "Get-WSLDistribution", "Stop-WSLDistribution", "Set-DistributionDiffInfo", "Get-HashFromURL"
 }
 Export-ModuleMember @export_members

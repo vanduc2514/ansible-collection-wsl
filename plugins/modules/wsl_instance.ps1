@@ -142,19 +142,19 @@ function Import-WSLDistribution {
 
         [Parameter(Mandatory = $false)]
         [string]
-        $ChecksumAlgorithm
+        $ChecksumAlgorithm,
 
         [Parameter(Mandatory = $false)]
         [string]
-        $Checksum
+        $Checksum,
 
         [Parameter(Mandatory = $false)]
         [bool]
-        $ShouldDeleteFSDownload
+        $ShouldDeleteFSDownload,
 
         [Parameter(Mandatory = $false)]
         [bool]
-        $IsVHD
+        $IsVHD,
 
         [Parameter(Mandatory = $false)]
         [bool]
@@ -170,15 +170,16 @@ function Import-WSLDistribution {
     ) -join ' '
     $fs_path = $FSPath
 
-    # If the path is an URL, download it first
+    # If the path is an URL, handle download
     if ($FSPath.StartsWith('http', [System.StringComparison]::InvariantCultureIgnoreCase)) {
-        $rootfs_download_dest = $null
-        $download_script = {
+        $rootfs_download_urlhash = Get-HashFromURL -Url $FSPath
+        $rootfs_download_filename = [System.IO.Path]::ChangeExtension($rootfs_download_urlhash, "zip")
+        $rootfs_download_path = Join-Path -Path $FSDownloadPath -ChildPath $rootfs_download_filename
+
+        $rootfs_download_script = {
             param($Response, $Stream)
 
-            $random_zip_path = [System.IO.Path]::ChangeExtension([System.IO.Path]::GetRandomFileName(), "zip")
-            $rootfs_download_dest = Join-Path -Path $FSDownloadPath -ChildPath $random_zip_path
-            $rootfs = [System.IO.File]::Create($rootfs_download_dest)
+            $rootfs = [System.IO.File]::Create($rootfs_download_path)
             try {
                 $Stream.CopyTo($rootfs)
                 $rootfs.Flush()
@@ -187,34 +188,44 @@ function Import-WSLDistribution {
                 $rootfs.Dispose()
             }
 
-            if ($Checksum -and $Checksum -ne $tmp_checksum) {
-                $tmp_checksum = Get-Checksum -Path $rootfs_download_dest -Algorithm $ChecksumAlgorithm
-                $Module.FailJson("Failed checksum for download rootfs, '$tmp_checksum' did not match '$Checksum'")
+            if ($Checksum) {
+                $tmp_checksum = Get-Checksum -Path $rootfs_download_path -Algorithm $ChecksumAlgorithm
+                if ($tmp_checksum -ne $Checksum) {
+                    Remove-Item -Path $rootfs_download_path -Force
+                    $Module.FailJson("Failed checksum for download rootfs, '$tmp_checksum' did not match '$Checksum'")
+                }
             }
 
-            $Module.Result.rootfs_download_path = $rootfs_download_dest
+            $Module.Result.rootfs_download_path = $rootfs_download_path
             $Module.Result.rootfs_download_checksum = $tmp_checksum
         }
-        $web_request = Get-AnsibleWindowsWebRequest -Uri $FSPath -Module $Module
 
-        try {
-            Invoke-AnsibleWindowsWebRequest -Module $Module -Request $web_request -Script $download_script
+        if (Test-Path -Path $rootfs_download_path) {
+            $Module.Result.cached = $true
+            $Module.Result.rootfs_download_skip = $true
         }
-        catch {
-            $Module.FailJson("Failed to dowload rootfs from '$FSPath': $($_.Exception.Message)", $_)
+        else {
+            $web_request = Get-AnsibleWindowsWebRequest -Uri $FSPath -Module $Module
+
+            try {
+                Invoke-AnsibleWindowsWebRequest -Module $Module -Request $web_request -Script $rootfs_download_script
+            }
+            catch {
+                $Module.FailJson("Failed to download rootfs from '$FSPath': $($_.Exception.Message)", $_)
+            }
         }
 
         # If the URL points to a Appx bundle, extract it and get the rootfs inside
-        if ($ISBundle) {
-            $base_name = [System.IO.Path]::GetFileNameWithoutExtension($rootfs_download_dest)
+        if ($IsBundle) {
+            $base_name = [System.IO.Path]::GetFileNameWithoutExtension($rootfs_download_path)
             $rootfs_extract_dir = Join-Path -Path $FSDownloadPath -ChildPath $base_name
             New-Item -ItemType Directory -Path $rootfs_extract_dir -Force | Out-Null
 
             try {
-                Expand-Archive -Path $rootfs_download_dest -DestinationPath $rootfs_extract_dir -Force
+                Expand-Archive -Path $rootfs_download_path -DestinationPath $rootfs_extract_dir -Force
             }
             catch {
-                $Module.FailJson("Failed to extract rootfs bundle from '$rootfs_download_dest': $($_.Exception.Message)", $_)
+                $Module.FailJson("Failed to extract rootfs bundle from '$rootfs_download_path': $($_.Exception.Message)", $_)
             }
 
             $rootfs_extracted = Get-ChildItem -Path $rootfs_extract_dir -Recurse |
@@ -228,31 +239,32 @@ function Import-WSLDistribution {
             $Module.Result.rootfs_bundle_extracted_path = $fs_path
         }
         else {
-            $fs_path = $rootfs_download_dest
+            $fs_path = $rootfs_download_path
         }
     }
 
     if ($PSCmdlet.ShouldProcess($Name, 'Import WSL distribution')) {
         try {
             wsl --import $Name $InstallDirectoryPath $fs_path $extraArgs
-        } catch {
+        }
+        catch {
             $Module.FailJson("Failed to import WSL distribution '$Name': $($_.Exception.Message)", $_)
         }
         $Module.Result.changed = $true
     }
 
     if ($ShouldDeleteFSDownload) {
-        if ($rootfs_download_dest -and (Test-Path -Path $rootfs_download_dest)) {
+        if ($rootfs_download_path -and Test-Path -Path $rootfs_download_path) {
             try {
-                Remove-Item -Path $rootfs_download_dest -Force
+                Remove-Item -Path $rootfs_download_path -Force
             }
             catch {
-                $Module.Warn("Failed to delete downloaded file '$rootfs_download_dest': $($_.Exception.Message)", $_)
+                $Module.Warn("Failed to delete downloaded file '$rootfs_download_path': $($_.Exception.Message)", $_)
             }
             $Module.Result.rootfs_download_cleaned = $true
         }
 
-        if ($ISBundle -and $rootfs_extract_dir -and (Test-Path -Path $rootfs_extract_dir)) {
+        if ($IsBundle -and $rootfs_extract_dir -and Test-Path -Path $rootfs_extract_dir) {
             try {
                 Remove-Item -Path $rootfs_extract_dir -Recurse -Force
             }
