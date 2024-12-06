@@ -72,6 +72,93 @@ function Stop-WSLDistribution {
     }
 }
 
+function Write-IniConfig {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $Config
+    )
+
+    foreach ($section in $$Config.Keys) {
+        $section += "[$section]"
+        $fields = $$Config[$section]
+
+        foreach ($key in $fields.Keys) {
+            $value = $fields[$key]
+            if ($value -is [bool]) {
+                $value = $value.ToString().ToLower()
+            }
+            $section += "$key = $value"
+        }
+
+        $section += ""
+    }
+
+    return $section -join "`n"
+}
+
+function Read-IniConfig {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $ConfigContent
+    )
+
+    $config = @{}
+    $current_section = $null
+
+    $$ConfigContent -split "`n" | ForEach-Object {
+        $line = $_.Trim()
+        if ($line -match '^\[(.+)\]$') {
+            $current_section = $matches[1]
+            $config[$current_section] = @{}
+        }
+        elseif ($line -match '^([^=]+?)\s*=\s*(.+)$' -and $current_section) {
+            $key = $matches[1].Trim()
+            $value = $matches[2].Trim()
+
+            # Convert string boolean values to actual boolean
+            if ($value -match '^(true|false)$') {
+                $value = [System.Convert]::ToBoolean($value)
+            }
+
+            $config[$current_section][$key] = $value
+        }
+    }
+
+    return $config
+}
+
+function Test-Config-Change {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $CurrentConfig,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $DesiredConfig
+    )
+
+    foreach ($section in $DesiredConfig.Keys) {
+        # Check if section exists in current config
+        if (-not $CurrentConfig.ContainsKey($section)) {
+            return $true
+        }
+
+        # Check each key in the section
+        foreach ($key in $DesiredConfig[$section].Keys) {
+            if (-not $CurrentConfig[$section].ContainsKey($key) -or
+                $CurrentConfig[$section][$key] -ne $DesiredConfig[$section][$key]) {
+                return $true
+            }
+        }
+    }
+
+    return $false
+}
+
+
 function Set-DistributionDiffInfo {
     param (
         [Parameter(Mandatory)]
@@ -112,6 +199,15 @@ function Get-HashFromURL {
 }
 
 $export_members = @{
-    Function = "List-WSLDistribution", "Get-WSLDistribution", "Stop-WSLDistribution", "Set-DistributionDiffInfo", "Get-HashFromURL"
+    Function = @(
+        'List-WSLDistribution',
+        'Get-WSLDistribution',
+        'Stop-WSLDistribution',
+        'Set-DistributionDiffInfo',
+        'Get-HashFromURL',
+        'Write-IniConfig',
+        'Read-IniConfig',
+        'Test-Config-Change'
+    )
 }
 Export-ModuleMember @export_members

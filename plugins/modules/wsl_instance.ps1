@@ -55,14 +55,16 @@ $spec = @{
             required = $false
             # Default to temporary directory
         }
+        config = @{
+            type = "dict"
+            default = @{}
+        }
     }
     # TODO: Refine spec with more validation rules
     supports_check_mode = $true
 }
 
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
-
-# TODO: Add wsl configuration function
 
 function Install-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -302,6 +304,54 @@ function SetVersion-WSLDistribution {
     $Module.Result.changed = $true
 }
 
+function GetConfig-WSLDistribution {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name
+    )
+
+    try {
+        $ConfigContent = wsl -d $Name -u root bash -c 'cat /etc/wsl.conf 2>/dev/null || true'
+        if (-not $ConfigContent) {
+            return @{}
+        }
+
+        return Read-IniConfig -ConfigContent $ConfigContent
+    }
+    catch {
+        return @{}
+    }
+}
+
+function SetConfig-WSLDistribution {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [Parameter(Mandatory = $true)]
+        [Ansible.Basic.AnsibleModule]
+        $Module,
+
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]
+        $WSLDistributionConfig
+    )
+
+    # Create ini file based on config
+    $ini_content = Write-IniConfig -Config $WSLDistributionConfig
+
+    # Apply ini content to /etc/wsl.conf in WSL Distribution
+    try {
+        $ini_content | wsl -d $Name -u root bash -c 'cat > /etc/wsl.conf'
+        $Module.Result.changed = $true
+    } catch {
+        $Module.FailJson("Failed to write wsl.conf to WSL Distribution '$Name': $($_.Exception.Message)", $_)
+    }
+}
+
 function Delete-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -335,6 +385,7 @@ $checksum = $module.Params.checksum
 $checksum_algorithm = $module.Params.checksum_algorithm
 $delete_fs_download = $module.Params.delete_fs_download
 $is_bundle = $module.Params.is_bundle
+$config = $module.Params.config
 
 $fs_download_path = if ($module.Params.fs_download_path) {
     $module.Params.fs_download_path
@@ -353,6 +404,7 @@ if ($wsl_distribution_before -and $state -eq 'absent') {
 }
 else {
     if (-not $wsl_distribution_before) {
+        # Install or import if not existeed
         if ($fs_path -and $install_dir_path) {
             $import_params = @{
                 Module = $module
@@ -367,7 +419,7 @@ else {
                 FSDownloadPath = $fs_download_path
                 WhatIf = $module.CheckMode
             }
-            Import-WSLDistribution $import_params
+            Import-WSLDistribution @import_params
         }
         else {
             $install_params = @{
@@ -376,10 +428,11 @@ else {
                 WebDownload = $web_download
                 WhatIf = $module.CheckMode
             }
-            Install-WSLDistribution $installparams
+            Install-WSLDistribution @installparams
         }
     }
 
+    # Set WSL arhitecture version
     if (-not $wsl_distribution_before -or $arch_version -ne $wsl_distribution_before.Version) {
         $set_version_params = @{
             Module = $module
@@ -387,7 +440,35 @@ else {
             Version = $arch_version
             WhatIf = $module.CheckMode
         }
-        SetVersion-WSLDistribution $set_version_params
+        SetVersion-WSLDistribution @set_version_params
+    }
+
+    # Configure the WSL Distro
+    if ($config -and $config.Count -gt 0) {
+        $config_before = GetConfig-WSLDistribution -Name $name
+        $module.Result.Diff.before.wsl_distribution['config'] = $config_before
+
+        # Compare the configurations
+        $config_different = Test-Config-Change -CurrentConfig $config_before -DesiredConfig $config
+
+        if ($config_different) {
+            $configure_params = @{
+                Module = $module
+                Name = $name
+                WSLDistributionConfig = $config
+                WhatIf = $module.CheckMode
+            }
+            Configure-WSLDistribution @configure_params
+
+            if ($wsl_distribution_before.State -eq 'Running') {
+                # Restart WSL Distribution
+                Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
+                # TODO: Start WSLDistribution
+            }
+
+            $config_after = GetConfig-WSLDistribution -Name $name
+            $module.Result.Diff.after.wsl_distribution['config'] = $config_after
+        }
     }
 
     if (-not $wsl_distribution_before -or ($state -eq 'stop' -and 'Stopped' -ne $wsl_distribution_before.State)) {
