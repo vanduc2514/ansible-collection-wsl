@@ -1,9 +1,9 @@
-namespace: ducnguyen
+namespace: vanduc2514
 name: wsl_automation
 version: 1.0.0
 readme: README.md
 authors:
-  - Duc Nguyen Van <vanduc2514@gmail.com>
+  - vanduc2514 <vanduc2514@gmail.com>
 description: Install WSL and provision WSL Instances
 license_file: LICENSE
 tags:
@@ -16,10 +16,10 @@ tags:
 dependencies:
   "ansible.windows": ">=1.14.0"
   "community.general": ">=9.0.0"
-repository: https://git.vanduc2514.io.vn/vanduc2514/wsl-ansible-collection.git
+repository: https://github.com/vanduc2514/wsl-ansible-collection.git
 documentation: ""
 homepage: ""
-issues: https://git.vanduc2514.io.vn/vanduc2514/wsl-ansible-collection/issues
+issues: https://github.com/vanduc2514/wsl-ansible-collection/issues
 build_ignore:
   - .gitignore
   - .github

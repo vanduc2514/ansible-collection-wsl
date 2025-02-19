@@ -19,4 +19,4 @@ MIT
 
 ## Author
 
-* [Duc Nguyen Van](https://github.com/vanduc2514)
+* [vanduc2514](https://github.com/vanduc2514)
