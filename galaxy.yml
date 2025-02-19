@@ -28,3 +28,8 @@ build_ignore:
   - '*.zip'
   - ansible.cfg
   - __pycache__
+  - .qodo
+  - .vscode
+  - docs
+  - changelogs
+  - .ansible
