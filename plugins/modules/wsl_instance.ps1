@@ -461,7 +461,7 @@ else {
             Configure-WSLDistribution @configure_params
 
             if ($wsl_distribution_before.State -eq 'Running') {
-                # Restart WSL Distribution
+                #TODO: Restart WSL Distribution
                 Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
                 # TODO: Start WSLDistribution
             }
