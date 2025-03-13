@@ -10,11 +10,6 @@ $spec = @{
             type     = "str"
             required = $true
         }
-        state = @{
-            type     = "str"
-            default  = "stop"
-            choices  = @("run", "stop", "absent")
-        }
         web_download = @{
             type        = "bool"
             default     = $false
@@ -22,42 +17,46 @@ $spec = @{
         rootfs_path = @{
             type        = "str"
         }
+        rootfs_download_path = @{
+            type     = "path"
+        }
         rootfs_download_checksum = @{
             type     = "str"
         }
         rootfs_download_checksum_algorithm = @{
             type     = "str"
             choices  = @("md5", "sha1", "sha256", "sha384", "sha512")
-            default  = "sha1"
+            default  = "md5"
         }
-        rootfs_download_path = @{
-            type     = "path"
-        }
-        install_dir_path = @{
+        import_dir_path = @{
             type        = "path"
         }
-        is_bundle = @{
+        import_bundle = @{
             type     = "bool"
             default  = $false
         }
-        vhd = @{
+        import_vhd = @{
             type        = "bool"
             default     = $false
         }
         arch_version = @{
             type     = "int"
-            default  = 2
             choices  = @(1, 2)
+            default  = 2
         }
-        config_ini = @{
+        config = @{
             type = "str"
+        }
+        state = @{
+            type     = "str"
+            choices  = @("run", "stop", "absent")
+            default  = "stop"
         }
     }
     supports_check_mode = $true
-    # FIXME: enable this make argument parser fails
-    # mutually_exclusive = @(
-    #     @("rootfs_path", "web_download")
-    # )
+    mutually_exclusive = @(
+        , @("web_download", "rootfs_path")
+    )
 }
 
 
@@ -66,8 +65,8 @@ function Get-WSLDistribution {
         [string]
         $DistributionName,
 
-        [switch]
-        $FetchConfig = $false
+        [string]
+        $ConfigPath
     )
 
     # Get all available distributions
@@ -80,11 +79,16 @@ function Get-WSLDistribution {
     foreach ($distro in $distributions) {
         # If the distro found in distributions
         if ($distro.name -eq $DistributionName) {
-            if ($FetchConfig) {
+            if ($ConfigPath) {
+                $getConfigArguments = @{
+                    DistributionName = $DistributionName
+                    ConfigPath = $ConfigPath
+                    Stop = $('Stopped' -eq $distro.state)
+                }
                 $member = @{
                     MemberType = 'NoteProperty'
-                    Name = 'config_ini'
-                    Value = Get-WSLDistributionConfig -DistributionName $DistributionName -Stop $('Stopped' -eq $distro.state)
+                    Name = 'config'
+                    Value = Get-WSLDistributionConfig @getConfigArguments
                 }
                 $distro | Add-Member @member
             }
@@ -101,13 +105,16 @@ function Get-WSLDistributionConfig {
         [string]
         $DistributionName,
 
+        [string]
+        $ConfigPath,
+
         # Whether to stop after fetch configuration
+        [bool]
         $Stop = $false
     )
 
     try {
-        $linuxCommand = "cat /etc/wsl.conf 2>/dev/null || true"
-        $wslConfig = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $linuxCommand
+        $wslConfig = Get-WSLFileContent -DistributionName $DistributionName -Path $ConfigPath
     } catch {
         throw "Failed to get config of WSL distribution '$DistributionName': $($_.Exception.Message)"
     }
@@ -186,7 +193,7 @@ function Import-WSLDistribution {
         $DistributionName,
 
         [string]
-        $InstallDirectoryPath,
+        $ImportDirectoryPath,
 
         [string]
         $RootFSPath,
@@ -201,23 +208,23 @@ function Import-WSLDistribution {
         $RootFSDownloadChecksumAlgorithm,
 
         [bool]
-        $IsVHD,
+        $ImportVHD,
 
         [bool]
-        $IsBundle
+        $ImportBundle
     )
 
     $rootfsPath = $RootFSPath
 
     $extraArgument = @() + $(
-        if ($IsVHD) { '--vhd' }
+        if ($ImportVHD) { '--vhd' }
     ) -join ' '
 
     # If the path is an URL, handle download
     if ($rootfsPath.StartsWith('http') -and $PSCmdlet.ShouldProcess($DistributionName, 'Download WSL distribution')) {
         $rootfsUrlHash = Get-HashFromURL -Url $rootfsPath
         $rootfsDownloadExtension = ".tar.gz"
-        if ($IsBundle) {
+        if ($ImportBundle) {
             $rootfsDownloadExtension = ".zip"
         }
         $rootfsDownloadFileName = $rootfsUrlHash + $rootfsDownloadExtension
@@ -260,7 +267,7 @@ function Import-WSLDistribution {
         }
 
         # If the URL points to a Appx bundle, extract it and get the rootfs inside
-        if ($IsBundle -and $PSCmdlet.ShouldProcess($DistributionName, 'Extract WSL distribution bundle')) {
+        if ($ImportBundle -and $PSCmdlet.ShouldProcess($DistributionName, 'Extract WSL distribution bundle')) {
             $baseName = [System.IO.Path]::GetFileNameWithoutExtension($rootfsDownloadPath)
             $rootfsDownloadPathParent = Split-Path -Path $rootfsDownloadPath -Parent
             $rootfsExtractDir = Join-Path -Path $rootfsDownloadPathParent -ChildPath $baseName
@@ -290,7 +297,7 @@ function Import-WSLDistribution {
         try {
             $wslArguments = @(
                 "--import", $DistributionName,
-                $InstallDirectoryPath, $rootfsPath
+                $ImportDirectoryPath, $rootfsPath
                 $extraArgument
             )
             Invoke-WSLCommand -Arguments $wslArguments | Out-Null
@@ -308,13 +315,20 @@ function Set-WSLDistributionConfig {
         $DistributionName,
 
         [string]
-        $ConfigINI
+        $ConfigPath,
+
+        [string]
+        $Config
     )
 
     if ($PSCmdlet.ShouldProcess($DistributionName, 'Configure WSL distribution')) {
         try {
-            $linuxCommand = "cat > /etc/wsl.conf"
-            $ConfigINI | Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $linuxCommand | Out-Null
+            $setWSLFileContentArguments = @{
+                DistributionName = $DistributionName
+                Path = $ConfigPath
+                Content = $Config
+            }
+            Set-WSLFileContent @setWSLFileContentArguments | Out-Null
         } catch {
             throw "Failed to configure WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
@@ -431,15 +445,17 @@ $rootfs_path = $module.Params.rootfs_path
 $rootfs_download_checksum = $module.Params.rootfs_download_checksum
 $rootfs_download_checksum_algorithm = $module.Params.rootfs_download_checksum_algorithm
 $rootfs_download_path = $module.Params.rootfs_download_path
-$install_dir_path = $module.Params.install_dir_path
-$is_bundle = $module.Params.is_bundle
-$vhd = $module.Params.vhd
+$import_dir_path = $module.Params.import_dir_path
+$import_bundle = $module.Params.import_bundle
+$import_vhd = $module.Params.import_vhd
 $arch_version = $module.Params.arch_version
-$config_ini = $module.Params.config_ini
+$config = $module.Params.config
 $state = $module.Params.state
 $check_mode = $module.CheckMode
 
-$before = Get-WSLDistribution -DistributionName $name -FetchConfig
+$config_path = "/etc/wsl.conf"
+
+$before = Get-WSLDistribution -DistributionName $name -ConfigPath $config_path
 $module.Diff.before = $before
 
 try {
@@ -456,8 +472,8 @@ try {
     if (-not $module.Diff.before) {
         # Install or import if not existed
         if ($rootfs_path) {
-            if (-not $install_dir_path) {
-                $install_dir_path = "$env:ProgramData\WSLDistributions\$name"
+            if (-not $import_dir_path) {
+                $import_dir_path = "$env:ProgramData\WSLDistributions\$name"
             }
             if (-not $rootfs_download_path) {
                 $rootfs_download_path = "$([System.IO.Path]::GetTempPath())\WSLRootFSDownloaded"
@@ -469,9 +485,9 @@ try {
                 RootFSDownloadChecksum = $rootfs_download_checksum
                 RootFSDownloadChecksumAlgorithm = $rootfs_download_checksum_algorithm
                 RootFSDownloadPath = $rootfs_download_path
-                IsBundle = $is_bundle
-                IsVHD = $vhd
-                InstallDirectoryPath = $install_dir_path
+                ImportBundle = $import_bundle
+                ImportVHD = $import_vhd
+                ImportDirectoryPath = $import_dir_path
                 WhatIf = $check_mode
             }
             Import-WSLDistribution @import_params
@@ -488,12 +504,13 @@ try {
         Set-ModuleChanged -Module $module
     }
 
-    $distro = Get-WSLDistribution -DistributionName $name -FetchConfig
+    $distro = Get-WSLDistribution -DistributionName $name -ConfigPath $config_path
 
-    if ($config_ini -and ($distro.config_ini -replace '\s+', '') -ne ($config_ini -replace '\s+', '')) {
+    if ($config -and ($distro.config -replace '\s+', '') -ne ($config -replace '\s+', '')) {
         $config_params = @{
             DistributionName = $name
-            ConfigINI = $config_ini
+            ConfigPath = $config_path
+            Config = $config
             WhatIf = $check_mode
         }
         Set-WSLDistributionConfig @config_params
@@ -532,7 +549,7 @@ try {
     }
 
     if ($module.Result.changed) {
-        $module.Diff.after = Get-WSLDistribution -DistributionName $name -FetchConfig
+        $module.Diff.after = Get-WSLDistribution -DistributionName $name -ConfigPath $config_path
     }
 
 } catch {

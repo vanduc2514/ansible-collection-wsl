@@ -123,7 +123,7 @@
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_minimum_import_bundled_distro }}"
         rootfs_path: "{{ wsl_instance_minimum_import_bundled_rootfs_path }}"
-        is_bundle: true
+        import_bundle: true
       check_mode: true
       register: wsl_instance_actual
 
@@ -136,7 +136,7 @@
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_minimum_import_bundled_distro }}"
         rootfs_path: "{{ wsl_instance_minimum_import_bundled_rootfs_path }}"
-        is_bundle: true
+        import_bundle: true
       register: wsl_instance_actual
 
     - name: Assert operation changed
@@ -148,7 +148,7 @@
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_minimum_import_bundled_distro }}"
         rootfs_path: "{{ wsl_instance_minimum_import_bundled_rootfs_path }}"
-        is_bundle: true
+        import_bundle: true
       register: wsl_instance_actual
 
     - name: Assert operation is idempotent

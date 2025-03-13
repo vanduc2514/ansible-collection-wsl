@@ -1,17 +1,52 @@
 #AnsibleRequires -PowerShell Common
 
-function Test-CommandOutput {
+function Get-WSLFileContent {
+    [OutputType([string])]
     param(
-        [Parameter(ValueFromPipeline = $true)]
         [string]
-        $CommandOutput
+        $DistributionName,
+
+        [string]
+        $DistributionUser = "root",
+
+        [string]
+        $Path
     )
 
-    if ($CommandOutput -match 'Error Code') {
-        throw $CommandOutput
+    $linuxCommand = "cat $Path 2>/dev/null || true"
+    $invokeLinuxCommandArguments = @{
+        DistributionName = $DistributionName
+        DistributionUser = $DistributionUser
+        LinuxCommand = $linuxCommand
     }
 
-    return $CommandOutput
+    return Invoke-LinuxCommand @invokeLinuxCommandArguments
+}
+
+function Set-WSLFileContent {
+    [OutputType([string])]
+    param(
+        [string]
+        $DistributionName,
+
+        [string]
+        $DistributionUser = "root",
+
+        [string]
+        $Path,
+
+        [string]
+        $Content
+    )
+
+    $linuxCommand = "cat > $Path"
+    $invokeLinuxCommandArguments = @{
+        DistributionName = $DistributionName
+        DistributionUser = $DistributionUser
+        LinuxCommand = $linuxCommand
+    }
+
+    return $Content | Invoke-LinuxCommand @invokeLinuxCommandArguments
 }
 
 function Invoke-WSLCommand {
@@ -98,13 +133,29 @@ function Invoke-LinuxCommandInBackground {
     return Invoke-WSLCommandInBackground -Argument $wslArgument
 }
 
+function Test-CommandOutput {
+    param(
+        [Parameter(ValueFromPipeline = $true)]
+        [string]
+        $CommandOutput
+    )
+
+    if ($CommandOutput -match 'Error Code') {
+        throw $CommandOutput
+    }
+
+    return $CommandOutput
+}
+
 $export_members = @{
     Function = @(
-        'Test-CommandOutput',
+        'Get-WSLFileContent',
+        'Set-WSLFileContent'
         'Invoke-WSLCommand',
         'Invoke-WSLCommandInBackground',
         'Invoke-LinuxCommand',
-        'Invoke-LinuxCommandInBackground'
+        'Invoke-LinuxCommandInBackground',
+        'Test-CommandOutput'
     )
 }
 Export-ModuleMember @export_members

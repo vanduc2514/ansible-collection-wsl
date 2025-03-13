@@ -3,7 +3,7 @@
     - name: Test installation from MS Store in check_mode
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_store_distro }}"
-        config_ini: |
+        config: |
           [boot]
           command = sleep infinity
       check_mode: true
@@ -17,7 +17,7 @@
     - name: Test installation from MS Store
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_store_distro }}"
-        config_ini: |
+        config: |
           [boot]
           command = sleep infinity
       register: wsl_instance_actual
@@ -30,7 +30,7 @@
     - name: Test idempotency of installation from MS Store
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_store_distro }}"
-        config_ini: |
+        config: |
           [boot]
           command = sleep infinity
       register: wsl_instance_actual
@@ -47,10 +47,10 @@
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_import_bundled_distro }}"
         rootfs_path: "{{ wsl_instance_minimum_import_rootfs_path }}"
-        is_bundle: true
+        import_bundle: true
         rootfs_download_checksum: "{{ wsl_instance_import_bundled_checksum }}"
         rootfs_download_checksum_algorithm: "{{ wsl_instance_import_bundled_checksum_algorithm }}"
-        config_ini: |
+        config: |
           [boot]
           command = sleep infinity
       check_mode: true
@@ -65,10 +65,10 @@
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_import_bundled_distro }}"
         rootfs_path: "{{ wsl_instance_import_bundled_rootfs_path }}"
-        is_bundle: true
+        import_bundle: true
         rootfs_download_checksum: "{{ wsl_instance_import_bundled_checksum }}"
         rootfs_download_checksum_algorithm: "{{ wsl_instance_import_bundled_checksum_algorithm }}"
-        config_ini: |
+        config: |
           [boot]
           command = sleep infinity
       register: wsl_instance_actual
@@ -82,10 +82,10 @@
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_import_bundled_distro }}"
         rootfs_path: "{{ wsl_instance_import_bundled_rootfs_path }}"
-        is_bundle: true
+        import_bundle: true
         rootfs_download_checksum: "{{ wsl_instance_import_bundled_checksum }}"
         rootfs_download_checksum_algorithm: "{{ wsl_instance_import_bundled_checksum_algorithm }}"
-        config_ini: |
+        config: |
           [boot]
           command = sleep infinity
       register: wsl_instance_actual
@@ -102,7 +102,7 @@
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_store_distro }}"
         arch_version: 1
-        config_ini: |
+        config: |
           [boot]
           command = ""
       check_mode: true
@@ -117,7 +117,7 @@
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_store_distro }}"
         arch_version: 1
-        config_ini: |
+        config: |
           [boot]
           command = ""
       register: wsl_instance_actual
@@ -131,7 +131,7 @@
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_store_distro }}"
         arch_version: 1
-        config_ini: |
+        config: |
           [boot]
           command = ""
       register: wsl_instance_actual
@@ -153,7 +153,7 @@
     - name: Test modification MS Store installation when run in check_mode
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_store_distro }}"
-        config_ini: |
+        config: |
           [boot]
           command = sleep infinity
       check_mode: true
@@ -167,7 +167,7 @@
     - name: Test modification MS Store installation when run
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_store_distro }}"
-        config_ini: |
+        config: |
           [boot]
           command = sleep infinity
       register: wsl_instance_actual
@@ -181,7 +181,7 @@
     - name: Test idempotency of modification MS Store installation when run
       vanduc2514.wsl_automation.wsl_instance:
         name: "{{ wsl_instance_store_distro }}"
-        config_ini: |
+        config: |
           [boot]
           command = sleep infinity
       register: wsl_instance_actual
