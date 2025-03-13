@@ -1,187 +1,232 @@
 #!powershell
 #AnsibleRequires -CSharpUtil Ansible.Basic
-#AnsibleRequires -PowerShell ..module_utils.WSLDistribution
-#AnsibleRequires -PowerShell ..module_utils.WebRequest
+#AnsibleRequires -PowerShell ..module_utils.Common
+#AnsibleRequires -PowerShell ..module_utils.WSL
+#AnsibleRequires -PowerShell ansible_collections.ansible.windows.plugins.module_utils.WebRequest
 
 $spec = @{
     options = @{
         name = @{
             type     = "str"
             required = $true
-            aliases  = @("Name")
         }
         state = @{
             type     = "str"
-            default  = "run"
+            default  = "stop"
             choices  = @("run", "stop", "absent")
         }
-        fs_path = @{
-            type        = "path"
+        web_download = @{
+            type        = "bool"
+            default     = $false
+        }
+        rootfs_path = @{
+            type        = "str"
+        }
+        rootfs_download_checksum = @{
+            type     = "str"
+        }
+        rootfs_download_checksum_algorithm = @{
+            type     = "str"
+            choices  = @("md5", "sha1", "sha256", "sha384", "sha512")
+            default  = "sha1"
+        }
+        rootfs_download_path = @{
+            type     = "path"
         }
         install_dir_path = @{
             type        = "path"
+        }
+        is_bundle = @{
+            type     = "bool"
+            default  = $false
+        }
+        vhd = @{
+            type        = "bool"
+            default     = $false
         }
         arch_version = @{
             type     = "int"
             default  = 2
             choices  = @(1, 2)
         }
-        web_download = @{
-            type        = "bool"
-            default     = $false
-        }
-        vhd = @{
-            type        = "bool"
-            default     = $false
-        }
-        checksum = @{
-            type     = "str"
-        }
-        checksum_algorithm = @{
-            type     = "str"
-            choices  = @("md5", "sha1", "sha256", "sha384", "sha512")
-            default  = "sha1"
-        }
-        delete_fs_download = @{
-            type     = "bool"
-            default  = $false
-        }
-        is_bundle = @{
-            type     = "bool"
-            default  = $false
-        }
-        fs_download_path = @{
-            type     = "path"
-            required = $false
-            # Default to temporary directory
-        }
-        config = @{
-            type = "dict"
-            default = @{}
+        config_ini = @{
+            type = "str"
         }
     }
-    # TODO: Refine spec with more validation rules
     supports_check_mode = $true
+    # FIXME: enable this make argument parser fails
+    # mutually_exclusive = @(
+    #     @("rootfs_path", "web_download")
+    # )
 }
 
-$module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
+
+function Get-WSLDistribution {
+    param(
+        [string]
+        $DistributionName,
+
+        [switch]
+        $FetchConfig = $false
+    )
+
+    # Get all available distributions
+    $distributions = List-WSLDistribution
+
+    if (-not $distributions) {
+        return $null
+    }
+
+    foreach ($distro in $distributions) {
+        # If the distro found in distributions
+        if ($distro.name -eq $DistributionName) {
+            if ($FetchConfig) {
+                $member = @{
+                    MemberType = 'NoteProperty'
+                    Name = 'config_ini'
+                    Value = Get-WSLDistributionConfig -DistributionName $DistributionName -Stop $('Stopped' -eq $distro.state)
+                }
+                $distro | Add-Member @member
+            }
+            return $distro
+        }
+    }
+
+    return $null
+}
+
+
+function Get-WSLDistributionConfig {
+    param(
+        [string]
+        $DistributionName,
+
+        # Whether to stop after fetch configuration
+        $Stop = $false
+    )
+
+    try {
+        $linuxCommand = "cat /etc/wsl.conf 2>/dev/null || true"
+        $wslConfig = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $linuxCommand
+    } catch {
+        throw "Failed to get config of WSL distribution '$DistributionName': $($_.Exception.Message)"
+    }
+
+    if ($Stop) {
+        Stop-WSLDistribution -DistributionName $DistributionName
+    }
+
+    return $wslConfig
+}
+
+
+function List-WSLDistribution {
+    $wslDistros = Invoke-WSLCommand -Arguments @("--list", "--verbose")
+
+    # Split the output into lines and remove empty lines
+    # Skip the header line and process the remaining lines
+    $lines = $wslDistros -split "\r\n" | Where-Object { $_ -ne '' } | Select-Object -Skip 1
+
+    # Create an array to store the distribution objects
+    $distributions = @()
+
+    foreach ($line in $lines) {
+        # Split on multiple spaces and remove empty elements and asterisk
+        $parts = $line -split '\s+' | Where-Object { $_ -ne '' -and $_ -ne '*' }
+
+        if ($parts -and $parts.Count -gt 0) {
+            $distro = [PSCustomObject]@{
+                name    = $parts[0]
+                state   = $parts[1]
+                arch_version = $parts[2]
+            }
+        }
+
+        $distributions += $distro
+    }
+
+    return $distributions
+}
+
 
 function Install-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory = $true)]
-        [Ansible.Basic.AnsibleModule]
-        $Module,
-
-        [Parameter(Mandatory = $true)]
         [string]
-        $Name,
+        $DistributionName,
 
-        [Parameter(Mandatory = $false)]
         [bool]
         $WebDownload
     )
 
-    $extraArgs = @() + $(
+    $extraArgument = @() + $(
         if ($WebDownload) { '--web-download' }
     ) -join ' '
 
-    if ($PSCmdlet.ShouldProcess($Name, 'Install WSL distribution')) {
-        $installCommand = "wsl --install $Name $extraArgs"
-        # Hack for running interactive command in non-interactive shell
-        $proc = Invoke-CimMethod Win32_Process -MethodName create -Arguments @{
-            CommandLine = $installCommand
-        }
-        if ($proc.ReturnValue -ne 0) {
-            $Module.FailJson("Failed to install WSL distribution '$Name'.")
-        }
+    # TODO: List online distros and test if contains $DistributionName
 
-        # Wait for distribution installed
-        $startTime = Get-Date
-        $timeout = New-TimeSpan -Minutes 15
-        do {
-            Start-Sleep -Seconds 2
-            $distro = Get-WSLDistribution -Name $Name
+    if ($PSCmdlet.ShouldProcess($DistributionName, 'Install WSL distribution')) {
+        $wslArgument = "--install $DistributionName $extraArgument"
+        Invoke-WSLCommandInBackground -Argument $wslArgument
 
-            if ((Get-Date) - $startTime -gt $timeout) {
-                $Module.FailJson("Timeout waiting for WSL distribution '$Name' to finish install.")
-            }
-        } while ($distro.State -eq "Installing")
-        Stop-WSLDistribution -Name $Name -Module $Module
-
-        try {
-            $query = "Select * from Win32_Process where ProcessId = '$($proc.ProcessId)'"
-            Remove-CimInstance -Query $query
-        } catch {
-            $Module.Warn("Failed to remove wsl installation process ($($proc.ProcessId)): $($_.Exception.Message)", $_)
-        }
-        $Module.Result.changed = $true
+        WaitFor-WSLDistributionState -DistributionName $DistributionName -TimeoutSeconds 600
+        Stop-WSLDistribution -DistributionName $DistributionName
     }
+
 }
+
 
 function Import-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory = $true)]
         [Ansible.Basic.AnsibleModule]
         $Module,
 
-        [Parameter(Mandatory = $true)]
         [string]
-        $Name,
+        $DistributionName,
 
-        [Parameter(Mandatory = $true)]
-        [string]
-        $FSPath,
-
-        [Parameter(Mandatory = $true)]
         [string]
         $InstallDirectoryPath,
 
-        [Parameter(Mandatory = $false)]
         [string]
-        $FSDownloadPath,
+        $RootFSPath,
 
-        [Parameter(Mandatory = $false)]
         [string]
-        $ChecksumAlgorithm,
+        $RootFSDownloadPath,
 
-        [Parameter(Mandatory = $false)]
         [string]
-        $Checksum,
+        $RootFSDownloadChecksum,
 
-        [Parameter(Mandatory = $false)]
-        [bool]
-        $ShouldDeleteFSDownload,
+        [string]
+        $RootFSDownloadChecksumAlgorithm,
 
-        [Parameter(Mandatory = $false)]
         [bool]
         $IsVHD,
 
-        [Parameter(Mandatory = $false)]
         [bool]
         $IsBundle
     )
 
-    if (-not (Test-Path -Path $FSDownloadPath)) {
-        New-Item -ItemType Directory -Path $FSDownloadPath -Force | Out-Null
-    }
+    $rootfsPath = $RootFSPath
 
-    $extraArgs = @() + $(
+    $extraArgument = @() + $(
         if ($IsVHD) { '--vhd' }
     ) -join ' '
-    $fs_path = $FSPath
 
     # If the path is an URL, handle download
-    if ($FSPath.StartsWith('http', [System.StringComparison]::InvariantCultureIgnoreCase)) {
-        $rootfs_download_urlhash = Get-HashFromURL -Url $FSPath
-        $rootfs_download_filename = [System.IO.Path]::ChangeExtension($rootfs_download_urlhash, "zip")
-        $rootfs_download_path = Join-Path -Path $FSDownloadPath -ChildPath $rootfs_download_filename
+    if ($rootfsPath.StartsWith('http') -and $PSCmdlet.ShouldProcess($DistributionName, 'Download WSL distribution')) {
+        $rootfsUrlHash = Get-HashFromURL -Url $rootfsPath
+        $rootfsDownloadExtension = ".tar.gz"
+        if ($IsBundle) {
+            $rootfsDownloadExtension = ".zip"
+        }
+        $rootfsDownloadFileName = $rootfsUrlHash + $rootfsDownloadExtension
+        $rootfsDownloadPath = Join-Path -Path $RootFSDownloadPath -ChildPath $rootfsDownloadFileName
 
-        $rootfs_download_script = {
+        $rootfsDownloadScript = {
             param($Response, $Stream)
 
-            $rootfs = [System.IO.File]::Create($rootfs_download_path)
+            $rootfs = [System.IO.File]::Create($rootfsDownloadPath)
             try {
                 $Stream.CopyTo($rootfs)
                 $rootfs.Flush()
@@ -190,296 +235,308 @@ function Import-WSLDistribution {
                 $rootfs.Dispose()
             }
 
-            if ($Checksum) {
-                $tmp_checksum = Get-Checksum -Path $rootfs_download_path -Algorithm $ChecksumAlgorithm
-                if ($tmp_checksum -ne $Checksum) {
-                    Remove-Item -Path $rootfs_download_path -Force
-                    $Module.FailJson("Failed checksum for download rootfs, '$tmp_checksum' did not match '$Checksum'")
+            if ($RootFSDownloadChecksum) {
+                $getFileHashArgument = @(
+                    Path = $rootfsDownloadPath
+                    Algorithm = $RootFSDownloadChecksumAlgorithm
+                )
+                $downloadedChecksum = (Get-FileHash @getFileHashArgument).Hash.toLower()
+                if ($downloadedChecksum -ne $RootFSDownloadChecksum) {
+                    Remove-Item -Path $rootfsDownloadPath -Force | Out-Null
+                    throw "Failed Checksum ($RootFSDownloadChecksumAlgorithm) Check for download rootfs, '$downloadedChecksum' did not match '$RootFSDownloadChecksum'"
                 }
             }
-
-            $Module.Result.rootfs_download_path = $rootfs_download_path
-            $Module.Result.rootfs_download_checksum = $tmp_checksum
         }
 
-        if (Test-Path -Path $rootfs_download_path) {
-            $Module.Result.cached = $true
-            $Module.Result.rootfs_download_skip = $true
-        }
-        else {
-            $web_request = Get-AnsibleWindowsWebRequest -Uri $FSPath -Module $Module
+        if (-not $(Test-Path -Path $rootfsDownloadPath)) {
+            $webRequest = Get-AnsibleWindowsWebRequest -Uri $rootfsPath
 
             try {
-                Invoke-AnsibleWindowsWebRequest -Module $Module -Request $web_request -Script $rootfs_download_script
+                Invoke-AnsibleWindowsWebRequest -Module $Module -Request $webRequest -Script $rootfsDownloadScript
             }
             catch {
-                $Module.FailJson("Failed to download rootfs from '$FSPath': $($_.Exception.Message)", $_)
+                throw "Failed to download rootfs from '$rootfsPath': $($_.Exception.Message)"
             }
         }
 
         # If the URL points to a Appx bundle, extract it and get the rootfs inside
-        if ($IsBundle) {
-            $base_name = [System.IO.Path]::GetFileNameWithoutExtension($rootfs_download_path)
-            $rootfs_extract_dir = Join-Path -Path $FSDownloadPath -ChildPath $base_name
-            New-Item -ItemType Directory -Path $rootfs_extract_dir -Force | Out-Null
+        if ($IsBundle -and $PSCmdlet.ShouldProcess($DistributionName, 'Extract WSL distribution bundle')) {
+            $baseName = [System.IO.Path]::GetFileNameWithoutExtension($rootfsDownloadPath)
+            $rootfsDownloadPathParent = Split-Path -Path $rootfsDownloadPath -Parent
+            $rootfsExtractDir = Join-Path -Path $rootfsDownloadPathParent -ChildPath $baseName
 
             try {
-                Expand-Archive -Path $rootfs_download_path -DestinationPath $rootfs_extract_dir -Force
+                Expand-Archive -Path $rootfsDownloadPath -DestinationPath $rootfsExtractDir -Force | Out-Null
             }
             catch {
-                $Module.FailJson("Failed to extract rootfs bundle from '$rootfs_download_path': $($_.Exception.Message)", $_)
+                throw "Failed to extract rootfs bundle from '$rootfsDownloadPath': $($_.Exception.Message)"
             }
 
-            $rootfs_extracted = Get-ChildItem -Path $rootfs_extract_dir -Recurse |
-                Where-Object { $_.Name -match 'install\.tar(\.gz)?$' } | # rootfs can be install.tar.gz or install.tar
+            $rootfsExtracted = Get-ChildItem -Path $rootfsExtractDir -Recurse |
+                Where-Object { $_.Name -match '\.tar(\.gz)?$' } |
                 Select-Object -First 1
-            if (-not $rootfs_extracted) {
-                $Module.FailJson("Failed to find rootfs file in the extracted bundle")
+            if (-not $rootfsExtracted) {
+                throw "Failed to find rootfs file in the extracted bundle for WSL distribution: $DistributionName"
             }
 
-            $fs_path = $rootfs_extracted.FullName
-            $Module.Result.rootfs_bundle_extracted_path = $fs_path
+            $rootfsPath = $rootfsExtracted.FullName
         }
         else {
-            $fs_path = $rootfs_download_path
+            $rootfsPath = $rootfsDownloadPath
         }
     }
 
-    if ($PSCmdlet.ShouldProcess($Name, 'Import WSL distribution')) {
+    if ($PSCmdlet.ShouldProcess($DistributionName, 'Import WSL distribution')) {
         try {
-            wsl --import $Name $InstallDirectoryPath $fs_path $extraArgs
-        }
-        catch {
-            $Module.FailJson("Failed to import WSL distribution '$Name': $($_.Exception.Message)", $_)
-        }
-        $Module.Result.changed = $true
-    }
-
-    if ($ShouldDeleteFSDownload) {
-        if ($rootfs_download_path -and Test-Path -Path $rootfs_download_path) {
-            try {
-                Remove-Item -Path $rootfs_download_path -Force
-            }
-            catch {
-                $Module.Warn("Failed to delete downloaded file '$rootfs_download_path': $($_.Exception.Message)", $_)
-            }
-            $Module.Result.rootfs_download_cleaned = $true
-        }
-
-        if ($IsBundle -and $rootfs_extract_dir -and Test-Path -Path $rootfs_extract_dir) {
-            try {
-                Remove-Item -Path $rootfs_extract_dir -Recurse -Force
-            }
-            catch {
-                $Module.Warn("Failed to delete extracted directory '$rootfs_extract_dir': $($_.Exception.Message)", $_)
-            }
-            $Module.Result.rootfs_bundle_extracted_cleaned = $true
+            $wslArguments = @(
+                "--import", $DistributionName,
+                $InstallDirectoryPath, $rootfsPath
+                $extraArgument
+            )
+            Invoke-WSLCommand -Arguments $wslArguments | Out-Null
+        } catch {
+            throw "Failed to import WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
     }
 }
 
-function SetVersion-WSLDistribution {
+
+function Set-WSLDistributionConfig {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory = $true)]
-        [Ansible.Basic.AnsibleModule]
-        $Module,
-
-        [Parameter(Mandatory = $true)]
         [string]
-        $Name,
+        $DistributionName,
 
-        [Parameter(Mandatory = $true)]
+        [string]
+        $ConfigINI
+    )
+
+    if ($PSCmdlet.ShouldProcess($DistributionName, 'Configure WSL distribution')) {
+        try {
+            $linuxCommand = "cat > /etc/wsl.conf"
+            $ConfigINI | Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $linuxCommand | Out-Null
+        } catch {
+            throw "Failed to configure WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
+    }
+}
+
+
+function Set-WSLDistributionArchVersion {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [string]
+        $DistributionName,
+
         [int]
         $Version
     )
 
-    if ($PSCmdlet.ShouldProcess($Name, "Set architecture version '$Version' for WSL distribution '$Name'")) {
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Set architecture version '$Version' for WSL distribution '$DistributionName'")) {
         try {
-            wsl --set-version $Name $Version
+            $wslArguments = @("--set-version", $DistributionName, $Version)
+            Invoke-WSLCommand -Arguments $wslArguments | Out-Null
         } catch {
-            $Module.FailJson("Failed to set architecture version '$Version' for WSL distribution '$Name': $($_.Exception.Message)", $_)
+            throw "Failed to set architecture of WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
     }
-    $Module.Result.changed = $true
 }
 
-function GetConfig-WSLDistribution {
+
+function Start-WSLDistribution {
+    [CmdletBinding(SupportsShouldProcess)]
     param(
-        [Parameter(Mandatory = $true)]
         [string]
-        $Name
+        $DistributionName
     )
 
-    try {
-        $ConfigContent = wsl -d $Name -u root bash -c 'cat /etc/wsl.conf 2>/dev/null || true'
-        if (-not $ConfigContent) {
-            return @{}
-        }
-
-        return Read-IniConfig -ConfigContent $ConfigContent
-    }
-    catch {
-        return @{}
+    if ($PSCmdlet.ShouldProcess($DistributionName, 'Start WSL distribution')) {
+        $linuxCommand = "sleep infinity"
+        Invoke-LinuxCommandInBackground -DistributionName $DistributionName -LinuxCommand $linuxCommand
+        WaitFor-WSLDistributionState -DistributionName $DistributionName
     }
 }
 
-function SetConfig-WSLDistribution {
+
+function Stop-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory = $true)]
-        [Ansible.Basic.AnsibleModule]
-        $Module,
-
-        [Parameter(Mandatory = $true)]
         [string]
-        $Name,
-
-        [Parameter(Mandatory = $true)]
-        [hashtable]
-        $WSLDistributionConfig
+        $DistributionName
     )
 
-    # Create ini file based on config
-    $ini_content = Write-IniConfig -Config $WSLDistributionConfig
-
-    # Apply ini content to /etc/wsl.conf in WSL Distribution
-    try {
-        $ini_content | wsl -d $Name -u root bash -c 'cat > /etc/wsl.conf'
-        $Module.Result.changed = $true
-    } catch {
-        $Module.FailJson("Failed to write wsl.conf to WSL Distribution '$Name': $($_.Exception.Message)", $_)
+    if ($PSCmdlet.ShouldProcess($DistributionName, 'Stop WSL distribution')) {
+        try {
+            $wslArguments = @("--terminate", $DistributionName) # also remove Win32 running process
+            Invoke-WSLCommand -Arguments $wslArguments | Out-Null
+        } catch {
+            throw "Failed to stop WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
     }
 }
+
+
+function WaitFor-WSLDistributionState {
+    param(
+        [string]
+        $DistributionName,
+
+        [int]
+        # Default to 5 minutes (300 seconds)
+        $TimeoutSeconds = 300,
+
+        [string]
+        $State = 'Running'
+    )
+
+    $startTime = Get-Date
+    $timeout = New-TimeSpan -Seconds $TimeoutSeconds
+
+    do {
+        Start-Sleep -Seconds 2
+        $distro = Get-WSLDistribution -DistributionName $DistributionName
+        if ((Get-Date) - $startTime -gt $timeout) {
+            throw "Timeout waiting for WSL distribution '$DistributionName' to have state '$State'."
+        }
+    } while ($distro.state -ne $State)
+}
+
 
 function Delete-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory = $true)]
-        [Ansible.Basic.AnsibleModule]
-        $Module,
-
-        [Parameter(Mandatory = $true)]
         [string]
-        $Name
+        $DistributionName
     )
 
-    if ($PSCmdlet.ShouldProcess($Name, 'Delete (Unregister) WSL distribution')) {
+    if ($PSCmdlet.ShouldProcess($DistributionName, 'Delete (Unregister) WSL distribution')) {
         try {
-            wsl --unregister $Name
+            $wslArguments = @("--unregister", $DistributionName)
+            Invoke-WSLCommand -Arguments $wslArguments | Out-Null
         } catch {
-            $Module.FailJson("Failed to delete (unregister) WSL distribution '$Name'.")
+            throw "Failed to delete (unregister) WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
     }
-    $Module.Result.changed = $true
 }
+
+
+######################################### Main ##########################################
+
+
+$module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
 $name = $module.Params.name
-$state = $module.Params.state
-$fs_path = $module.Params.fs_path
-$install_dir_path = $module.Params.install_dir_path
-$arch_version = $module.Params.arch_version
 $web_download = $module.Params.web_download
-$vhd = $module.Params.vhd
-$checksum = $module.Params.checksum
-$checksum_algorithm = $module.Params.checksum_algorithm
-$delete_fs_download = $module.Params.delete_fs_download
+$rootfs_path = $module.Params.rootfs_path
+$rootfs_download_checksum = $module.Params.rootfs_download_checksum
+$rootfs_download_checksum_algorithm = $module.Params.rootfs_download_checksum_algorithm
+$rootfs_download_path = $module.Params.rootfs_download_path
+$install_dir_path = $module.Params.install_dir_path
 $is_bundle = $module.Params.is_bundle
-$config = $module.Params.config
+$vhd = $module.Params.vhd
+$arch_version = $module.Params.arch_version
+$config_ini = $module.Params.config_ini
+$state = $module.Params.state
+$check_mode = $module.CheckMode
 
-$fs_download_path = if ($module.Params.fs_download_path) {
-    $module.Params.fs_download_path
-} else {
-    $module.Tmpdir
-}
+$before = Get-WSLDistribution -DistributionName $name -FetchConfig
+$module.Diff.before = $before
 
-$module.Result.Diff.before = @{ wsl_distribution = @{} }
-$module.Result.Diff.after = @{ wsl_distribution = @{} }
+try {
+    if ($module.Diff.before -and $state -eq 'absent') {
+        Delete-WSLDistribution -DistributionName $name -WhatIf:$check_mode
+        Set-ModuleChanged -Module $module
+        $module.ExitJson()
+    }
 
-$wsl_distribution_before = Get-WSLDistribution -Name $name
-Set-DistributionDiffInfo -Distribution $wsl_distribution_before -DiffTarget $module.Result.Diff.before
+    if (-not $module.Diff.before -and $state -eq 'absent') {
+        $module.ExitJson()
+    }
 
-if ($wsl_distribution_before -and $state -eq 'absent') {
-    Delete-WSLDistribution -Module $module -Name $name -WhatIf:$($module.CheckMode)
-}
-else {
-    if (-not $wsl_distribution_before) {
-        # Install or import if not existeed
-        if ($fs_path -and $install_dir_path) {
+    if (-not $module.Diff.before) {
+        # Install or import if not existed
+        if ($rootfs_path) {
+            if (-not $install_dir_path) {
+                $install_dir_path = "$env:ProgramData\WSLDistributions\$name"
+            }
+            if (-not $rootfs_download_path) {
+                $rootfs_download_path = "$([System.IO.Path]::GetTempPath())\WSLRootFSDownloaded"
+            }
             $import_params = @{
                 Module = $module
-                Name = $name
-                FSPath = $fs_path
-                InstallDirectoryPath = $install_dir_path
-                IsVHD = $vhd
-                Checksum = $checksum
-                ChecksumAlgorithm = $checksum_algorithm
-                ShouldDeleteFSDownload = $delete_fs_download
+                DistributionName = $name
+                RootFSPath = $rootfs_path
+                RootFSDownloadChecksum = $rootfs_download_checksum
+                RootFSDownloadChecksumAlgorithm = $rootfs_download_checksum_algorithm
+                RootFSDownloadPath = $rootfs_download_path
                 IsBundle = $is_bundle
-                FSDownloadPath = $fs_download_path
-                WhatIf = $module.CheckMode
+                IsVHD = $vhd
+                InstallDirectoryPath = $install_dir_path
+                WhatIf = $check_mode
             }
             Import-WSLDistribution @import_params
         }
         else {
             $install_params = @{
-                Module = $module
-                Name = $name
+                DistributionName = $name
                 WebDownload = $web_download
-                WhatIf = $module.CheckMode
+                WhatIf = $check_mode
             }
-            Install-WSLDistribution @installparams
+            Install-WSLDistribution @install_params
         }
+
+        Set-ModuleChanged -Module $module
     }
 
-    # Set WSL arhitecture version
-    if (-not $wsl_distribution_before -or $arch_version -ne $wsl_distribution_before.Version) {
+    $distro = Get-WSLDistribution -DistributionName $name -FetchConfig
+
+    if ($config_ini -and ($distro.config_ini -replace '\s+', '') -ne ($config_ini -replace '\s+', '')) {
+        $config_params = @{
+            DistributionName = $name
+            ConfigINI = $config_ini
+            WhatIf = $check_mode
+        }
+        Set-WSLDistributionConfig @config_params
+
+        if ($distro.state -eq 'Running') {
+            Stop-WSLDistribution -DistributionName $name -WhatIf:$check_mode
+            Start-WSLDistribution -DistributionName $name -WhatIf:$check_mode
+            if (-not $check_mode) {
+                $module.Result.restarted = $true
+            }
+        } else {
+            Stop-WSLDistribution -DistributionName $name -WhatIf:$check_mode
+        }
+
+        Set-ModuleChanged -Module $module
+    }
+
+    if ($arch_version -ne $distro.arch_version) {
         $set_version_params = @{
-            Module = $module
-            Name = $name
+            DistributionName = $name
             Version = $arch_version
-            WhatIf = $module.CheckMode
+            WhatIf = $check_mode
         }
-        SetVersion-WSLDistribution @set_version_params
+        Set-WSLDistributionArchVersion @set_version_params
+        Set-ModuleChanged -Module $module
     }
 
-    # Configure the WSL Distro
-    if ($config -and $config.Count -gt 0) {
-        $config_before = GetConfig-WSLDistribution -Name $name
-        $module.Result.Diff.before.wsl_distribution['config'] = $config_before
-
-        # Compare the configurations
-        $config_different = Test-Config-Change -CurrentConfig $config_before -DesiredConfig $config
-
-        if ($config_different) {
-            $configure_params = @{
-                Module = $module
-                Name = $name
-                WSLDistributionConfig = $config
-                WhatIf = $module.CheckMode
-            }
-            Configure-WSLDistribution @configure_params
-
-            if ($wsl_distribution_before.State -eq 'Running') {
-                #TODO: Restart WSL Distribution
-                Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
-                # TODO: Start WSLDistribution
-            }
-
-            $config_after = GetConfig-WSLDistribution -Name $name
-            $module.Result.Diff.after.wsl_distribution['config'] = $config_after
-        }
+    if ($state -eq 'stop' -and ('Stopped' -ne $before.state)) {
+        Stop-WSLDistribution -DistributionName $name -WhatIf:$check_mode
+        Set-ModuleChanged -Module $module
     }
 
-    if (-not $wsl_distribution_before -or ($state -eq 'stop' -and 'Stopped' -ne $wsl_distribution_before.State)) {
-        $module.Result.changed = Stop-WSLDistribution -Name $name -WhatIf:$($module.CheckMode)
+    if ($state -eq 'run' -and ('Running' -ne $before.state)) {
+        Start-WSLDistribution -DistributionName $name -WhatIf:$check_mode
+        Set-ModuleChanged -Module $module
     }
-    # TODO: Implement start distro
-}
 
-if ($module.Result.changed) {
-    $wsl_distribution_after = Get-WSLDistribution -Name $name
-    Set-DistributionDiffInfo -Distribution $wsl_distribution_after -DiffTarget $module.Result.Diff.after
+    if ($module.Result.changed) {
+        $module.Diff.after = Get-WSLDistribution -DistributionName $name -FetchConfig
+    }
+
+} catch {
+    $module.FailJson("An error occurred: $($_.Exception.Message)", $_)
 }
 
 $module.ExitJson()
