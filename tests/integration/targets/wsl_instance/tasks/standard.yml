@@ -1,0 +1,205 @@
+- name: Test installation from MS Store scenario
+  block:
+    - name: Test installation from MS Store in check_mode
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_store_distro }}"
+        config_ini: |
+          [boot]
+          command = sleep infinity
+      check_mode: true
+      register: wsl_instance_actual
+
+    - name: Assert operation is not changed
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test installation from MS Store
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_store_distro }}"
+        config_ini: |
+          [boot]
+          command = sleep infinity
+      register: wsl_instance_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_instance_actual is changed
+
+    - name: Test idempotency of installation from MS Store
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_store_distro }}"
+        config_ini: |
+          [boot]
+          command = sleep infinity
+      register: wsl_instance_actual
+
+    - name: Assert operation is not changed
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+
+- name: Test import rootfs bundled scenario
+  block:
+    - name: Test import rootfs bundled in check_mode
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_import_bundled_distro }}"
+        rootfs_path: "{{ wsl_instance_minimum_import_rootfs_path }}"
+        is_bundle: true
+        rootfs_download_checksum: "{{ wsl_instance_import_bundled_checksum }}"
+        rootfs_download_checksum_algorithm: "{{ wsl_instance_import_bundled_checksum_algorithm }}"
+        config_ini: |
+          [boot]
+          command = sleep infinity
+      check_mode: true
+      register: wsl_instance_actual
+
+    - name: Assert operation is not changed
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test import rootfs bundled
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_import_bundled_distro }}"
+        rootfs_path: "{{ wsl_instance_import_bundled_rootfs_path }}"
+        is_bundle: true
+        rootfs_download_checksum: "{{ wsl_instance_import_bundled_checksum }}"
+        rootfs_download_checksum_algorithm: "{{ wsl_instance_import_bundled_checksum_algorithm }}"
+        config_ini: |
+          [boot]
+          command = sleep infinity
+      register: wsl_instance_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_instance_actual is changed
+
+    - name: Test idempotency of import rootfs bundled
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_import_bundled_distro }}"
+        rootfs_path: "{{ wsl_instance_import_bundled_rootfs_path }}"
+        is_bundle: true
+        rootfs_download_checksum: "{{ wsl_instance_import_bundled_checksum }}"
+        rootfs_download_checksum_algorithm: "{{ wsl_instance_import_bundled_checksum_algorithm }}"
+        config_ini: |
+          [boot]
+          command = sleep infinity
+      register: wsl_instance_actual
+
+    - name: Assert operation is not changed
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+
+- name: Test modification MS Store installation when stop scenario
+  block:
+    - name: Test modification MS Store installation when stop in check_mode
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_store_distro }}"
+        arch_version: 1
+        config_ini: |
+          [boot]
+          command = ""
+      check_mode: true
+      register: wsl_instance_actual
+
+    - name: Assert operation is not changed
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test modification MS Store installation when stop
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_store_distro }}"
+        arch_version: 1
+        config_ini: |
+          [boot]
+          command = ""
+      register: wsl_instance_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_instance_actual is changed
+
+    - name: Test idempotency of modification MS Store installation when stop
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_store_distro }}"
+        arch_version: 1
+        config_ini: |
+          [boot]
+          command = ""
+      register: wsl_instance_actual
+
+    - name: Assert operation is not changed
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+
+- name: Test modification MS Store installation when run scenario
+  block:
+    - name: Run MS Store installation
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_store_distro }}"
+        state: run
+      register: wsl_instance_actual
+
+    - name: Test modification MS Store installation when run in check_mode
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_store_distro }}"
+        config_ini: |
+          [boot]
+          command = sleep infinity
+      check_mode: true
+      register: wsl_instance_actual
+
+    - name: Assert operation is not changed
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test modification MS Store installation when run
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_store_distro }}"
+        config_ini: |
+          [boot]
+          command = sleep infinity
+      register: wsl_instance_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_instance_actual is changed
+          - wsl_instance_actual.restarted
+
+    - name: Test idempotency of modification MS Store installation when run
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_store_distro }}"
+        config_ini: |
+          [boot]
+          command = sleep infinity
+      register: wsl_instance_actual
+
+    - name: Assert operation is not changed
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+
+- name: Delete MS Store installation
+  vanduc2514.wsl_automation.wsl_instance:
+    name: "{{ wsl_instance_store_distro }}"
+    state: absent
+  register: wsl_instance_actual
+
+- name: Delete import rootfs bundled installation
+  vanduc2514.wsl_automation.wsl_instance:
+    name: "{{ wsl_instance_import_bundled_distro }}"
+    state: absent
+  register: wsl_instance_actual

@@ -1,0 +1,289 @@
+- name: Test minimum installation from MS Store scenario
+  block:
+    - name: Test minimum installation from MS Store in check_mode
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+      check_mode: true
+      register: wsl_instance_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test minimum installation from MS Store
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+      register: wsl_instance_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_instance_actual is changed
+
+    - name: Test idempotency of minimum installation from MS Store
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+      register: wsl_instance_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+
+- name: Test minimum installation from web scenario
+  block:
+    - name: Test minimum installation from web in check_mode
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_web_distro }}"
+        web_download: true
+      check_mode: true
+      register: wsl_instance_actual
+
+    - name: Assert operation is not changed
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test minimum installation from web
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_web_distro }}"
+        web_download: true
+      register: wsl_instance_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_instance_actual is changed
+
+    - name: Test idempotency of minimum installation from web
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_web_distro }}"
+        web_download: true
+      register: wsl_instance_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test web installation for existing distribution
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+        web_download: true
+      register: wsl_instance_actual
+
+    - name: Assert operation is not changed
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+
+- name: Test minimum import rootfs scenario
+  block:
+    - name: Test minimum import rootfs in check_mode
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_import_distro }}"
+        rootfs_path: "{{ wsl_instance_minimum_import_rootfs_path }}"
+      check_mode: true
+      register: wsl_instance_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test minimum import rootfs
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_import_distro }}"
+        rootfs_path: "{{ wsl_instance_minimum_import_rootfs_path }}"
+      register: wsl_instance_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_instance_actual is changed
+
+    - name: Test idempotency of minimum import rootfs
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_import_distro }}"
+        rootfs_path: "{{ wsl_instance_minimum_import_rootfs_path }}"
+      register: wsl_instance_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+
+- name: Test minimum import rootfs bundled scenario
+  block:
+    - name: Test minimum import rootfs bundled in check_mode
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_import_bundled_distro }}"
+        rootfs_path: "{{ wsl_instance_minimum_import_bundled_rootfs_path }}"
+        is_bundle: true
+      check_mode: true
+      register: wsl_instance_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test minimum import rootfs bundled
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_import_bundled_distro }}"
+        rootfs_path: "{{ wsl_instance_minimum_import_bundled_rootfs_path }}"
+        is_bundle: true
+      register: wsl_instance_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_instance_actual is changed
+
+    - name: Test idempotency of minimum import rootfs bundled
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_import_bundled_distro }}"
+        rootfs_path: "{{ wsl_instance_minimum_import_bundled_rootfs_path }}"
+        is_bundle: true
+      register: wsl_instance_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+
+- name: Test run MS Store minimum installation scenario
+  block:
+    - name: Test run MS Store minimum installation in check_mode
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+        state: run
+      check_mode: true
+      register: wsl_instance_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test run MS Store minimum installation
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+        state: run
+      register: wsl_instance_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_instance_actual is changed
+
+    # WSL Distribution should run in the background and avoid 8 seconds rule
+    # See https://learn.microsoft.com/en-us/windows/wsl/wsl-config#the-8-second-rule-for-configuration-changes
+    - name: Make sure MS Store minimum installation run after 8 seconds
+      ansible.builtin.pause:
+        seconds: 8
+
+    - name: Test idempotency of run MS Store minimum installation
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+        state: run
+      register: wsl_instance_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+
+- name: Test stop MS Store minimum installation scenario
+  block:
+    - name: Test stop MS Store minimum installation in check_mode
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+        state: stop
+      check_mode: true
+      register: wsl_instance_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test stop MS Store minimum installation
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+        state: stop
+      register: wsl_instance_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_instance_actual is changed
+
+    - name: Test idempotency of stop MS Store minimum installation
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+        state: stop
+      register: wsl_instance_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+
+- name: Test delete MS Store minimum installation scenario
+  block:
+    - name: Test delete MS Store minimum installation in check_mode
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+        state: absent
+      check_mode: true
+      register: wsl_instance_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Test delete MS Store minimum installation
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+        state: absent
+      register: wsl_instance_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_instance_actual is changed
+
+    - name: Test idempotency of delete MS Store minimum installation
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_store_distro }}"
+        state: absent
+      register: wsl_instance_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_instance_actual is changed
+
+    - name: Delete web minimum installation
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_web_distro }}"
+        state: absent
+
+    - name: Delete import minimum installation
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_import_distro }}"
+        state: absent
+
+    - name: Delete import minimum installation
+      vanduc2514.wsl_automation.wsl_instance:
+        name: "{{ wsl_instance_minimum_import_bundled_distro }}"
+        state: absent
