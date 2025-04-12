@@ -31,13 +31,13 @@ $spec = @{
             type     = "str"
             no_log   = $true
         }
-        ssh_key = @{
+        authorized_key = @{
             type     = "str"
         }
-        ssh_key_file = @{
+        authorized_key_path = @{
             type     = "path"
         }
-        generate_ssh_key = @{
+        generate_host_keys = @{
             type     = "bool"
             default  = $false
         }
@@ -59,7 +59,7 @@ $spec = @{
     }
     supports_check_mode = $true
     mutually_exclusive = @(
-        ,@("ssh_key", "ssh_key_file")
+        ,@("authorized_key", "authorized_key_path")
     )
 }
 
@@ -81,10 +81,6 @@ function Get-UserInfo {
 
     # Parse the id command output
     $uidMatch = $result -match "uid=(\d+)"
-    $gidMatch = $result -match "gid=(\d+)\(([^)]+)\)"
-
-    $uid = if ($uidMatch) { [int]$Matches[1] } else { $null }
-    $gid = if ($gidMatch) { [int]$Matches[1] } else { $null }
 
     # Get home directory
     $homeCmd = "getent passwd $Username 2>/dev/null | cut -d: -f6 || echo ''"
@@ -98,18 +94,12 @@ function Get-UserInfo {
     $sudoCmd = "grep -q '^$Username\\s\\+ALL\\s*=' /etc/sudoers 2>/dev/null || [ -f /etc/sudoers.d/$Username ] && echo 'true' || echo 'false'"
     $sudo = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $sudoCmd).Trim() -eq "true"
 
-    # Check SSH authorized_keys if home directory exists
-    $sshKeyCmd = "test -f '$home/.ssh/authorized_keys' && cat '$home/.ssh/authorized_keys' || echo ''"
-    $sshKey = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $sshKeyCmd
-
     return @{
         name = $Username
         uid = $uid
-        gid = $gid
         home = $homePath
         shell = $shell
         sudo = $sudo
-        authorized_key = $sshKey
         exists = $true
     }
 }
@@ -122,9 +112,6 @@ function New-User {
 
         [string]
         $Username,
-
-        [string]
-        $Comment = "",
 
         [bool]
         $CreateHome = $true,
@@ -158,10 +145,6 @@ function New-User {
 
     if ($Shell) {
         $usercmd += " --shell '$Shell'"
-    }
-
-    if ($Comment) {
-        $usercmd += " --comment '$Comment'"
     }
 
     if ($Uid) {
@@ -199,9 +182,6 @@ function Update-User {
         $Username,
 
         [string]
-        $Comment,
-
-        [string]
         $UserHome,
 
         [string]
@@ -214,19 +194,14 @@ function Update-User {
         $Uid,
 
         [hashtable]
-        $CurrentUser
+        $user
     )
 
     # Build usermod command
     $usercmd = "usermod"
     $changes = $false
 
-    if ($Comment -and $Comment -ne $CurrentUser.comment) {
-        $usercmd += " --comment '$Comment'"
-        $changes = $true
-    }
-
-    if ($UserHome -and $UserHome -ne $CurrentUser.home) {
+    if ($UserHome -and $UserHome -ne $user.home) {
         $usercmd += " --home '$UserHome' --move-home"
         $changes = $true
 
@@ -237,12 +212,12 @@ function Update-User {
         }
     }
 
-    if ($Shell -and $Shell -ne $CurrentUser.shell) {
+    if ($Shell -and $Shell -ne $user.shell) {
         $usercmd += " --shell '$Shell'"
         $changes = $true
     }
 
-    if ($Uid -and $Uid -ne $CurrentUser.uid) {
+    if ($Uid -and $Uid -ne $user.uid) {
         $usercmd += " --uid $Uid"
         $changes = $true
     }
@@ -319,7 +294,7 @@ function Set-SudoAccess {
     return $false
 }
 
-function Set-SSHAuthorizedKey {
+function Set-AuthorizedKey {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]
@@ -329,13 +304,13 @@ function Set-SSHAuthorizedKey {
         $Username,
 
         [string]
-        $Key,
+        $AuthorizedKey,
 
         [string]
         $HomeDir
     )
 
-    if (-not $Key) {
+    if (-not $AuthorizedKey) {
         return $false
     }
 
@@ -353,7 +328,7 @@ function Set-SSHAuthorizedKey {
 
     # Compare to see if changes are needed
     $currentKeysNormalized = $currentKeys.Trim()
-    $keyNormalized = $Key.Trim()
+    $keyNormalized = $AuthorizedKey.Trim()
 
     if ($currentKeysNormalized -eq $keyNormalized) {
         return $false
@@ -383,7 +358,7 @@ function Set-SSHAuthorizedKey {
     return $false
 }
 
-function Generate-SSHKey {
+function Generate-HostKeys {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]
@@ -408,17 +383,17 @@ function Generate-SSHKey {
     }
 
     # Determine SSH key path
-    $sshKeyPath = if ($KeyPath) { $KeyPath } else { "$HomeDir/.ssh/id_rsa" }
+    $authorizedKeyPath = if ($KeyPath) { $KeyPath } else { "$HomeDir/.ssh/id_rsa" }
 
     # Check if key already exists
-    $checkKeyCmd = "test -f '$sshKeyPath' && echo 'EXISTS' || echo 'NOT_EXISTS'"
+    $checkKeyCmd = "test -f '$authorizedKeyPath' && echo 'EXISTS' || echo 'NOT_EXISTS'"
     $keyExists = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $checkKeyCmd).Trim() -eq "EXISTS"
 
     if ($keyExists) {
         return @{
             changed = $false
-            key_path = $sshKeyPath
-            public_key_path = "$sshKeyPath.pub"
+            key_path = $authorizedKeyPath
+            public_key_path = "$authorizedKeyPath.pub"
         }
     }
 
@@ -433,13 +408,13 @@ function Generate-SSHKey {
     }
 
     # Generate SSH key
-    $generateKeyCmd = "ssh-keygen -t rsa -b 4096 -f '$sshKeyPath' -N '' -C '$Username@wsl' && chmod 600 '$sshKeyPath' && chmod 644 '$sshKeyPath.pub' && chown -R ${Username}:${Username} '$HomeDir/.ssh'"
+    $generateKeyCmd = "ssh-keygen -t rsa -b 4096 -f '$authorizedKeyPath' -N '' -C '$Username@wsl' && chmod 600 '$authorizedKeyPath' && chmod 644 '$authorizedKeyPath.pub' && chown -R ${Username}:${Username} '$HomeDir/.ssh'"
     if ($PSCmdlet.ShouldProcess($DistributionName, "Generate SSH key for user: $Username")) {
         try {
             Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $generateKeyCmd | Out-Null
 
             # Add to authorized_keys if not already there
-            $pubKeyCmd = "cat '$sshKeyPath.pub'"
+            $pubKeyCmd = "cat '$authorizedKeyPath.pub'"
             $pubKey = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $pubKeyCmd
 
             # Get current authorized keys
@@ -454,8 +429,8 @@ function Generate-SSHKey {
 
             return @{
                 changed = $true
-                key_path = $sshKeyPath
-                public_key_path = "$sshKeyPath.pub"
+                key_path = $authorizedKeyPath
+                public_key_path = "$authorizedKeyPath.pub"
                 public_key = $pubKey
             }
         } catch {
@@ -468,7 +443,7 @@ function Generate-SSHKey {
     }
 }
 
-function Remove-WSLUser {
+function Remove-User {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]
@@ -505,143 +480,133 @@ function Remove-WSLUser {
 
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
-$name = $module.Params.name
 $distribution = $module.Params.distribution
-$comment = $module.Params.comment
-$create_home = $module.Params.create_home
-$userHome = $module.Params.home
-$shell = $module.Params.shell
-$password = $module.Params.password
-$ssh_key = $module.Params.ssh_key
-$ssh_key_file = $module.Params.ssh_key_file
-$generate_ssh_key = $module.Params.generate_ssh_key
-$ssh_key_path = $module.Params.ssh_key_path
+$name = $module.Params.name # TODO: Throw error if the user is root and exit
 $uid = $module.Params.uid
 $sudo = $module.Params.sudo
+$create_home = $module.Params.create_home # TODO: remove this option and always create home folder specified in home_path
+$home_path = $module.Params.home_path
+$remove_home = $module.Params.remove_home
+$shell = $module.Params.shell
+$password = $module.Params.password # TODO: if this option is specified, then always update password, this is non-idempotem
+$authorized_key = $module.Params.authorized_key # TODO: If specified, append this value to authroized_keys file of the user
+$authorized_key_path = $module.Params.authorized_key_path
+$generate_host_keys = $module.Params.generate_host_keys # TODO: remove this option
 $state = $module.Params.state
 $check_mode = $module.CheckMode
 
-# Read SSH key from file if specified
-if ($ssh_key_file) {
-    try {
-        $ssh_key = Get-Content -Path $ssh_key_file -Raw
-    } catch {
-        $module.FailJson("Failed to read SSH key file: $($_.Exception.Message)", $_)
-    }
-}
-
 try {
     # Get current user information
-    $currentUser = Get-UserInfo -DistributionName $distribution -Username $name
-    $module.Diff.before = $currentUser
+    $user = Get-UserInfo -DistributionName $distribution -Username $name
+    $module.Diff.before = $user
 
     # Handle user removal
     if ($state -eq "absent") {
-        if ($currentUser) {
-            if (-not $check_mode) {
-                # Use --remove option to remove home directory too
-                Remove-WSLUser -DistributionName $distribution -Username $name -RemoveHome $true
+        if ($user) {
+            $removeUserParams = {
+                DistributionName = $distribution
+                UserName = $name
+                RemoveHome = $remove_home
+                WhatIf = check_mode
             }
+            Remove-User @removeUserParams
             Set-ModuleChanged -Module $module
             $module.Diff.after = $null
         }
         $module.ExitJson()
     }
 
-    # Set default home directory path if not specified
-    if (-not $userHome -and $create_home) {
-        $userHome = "/home/$name"
-    }
-
-    # Create or update user
-    if (-not $currentUser) {
-        # Create new user
-        if (-not $check_mode) {
-            $newUserParams = @{
-                DistributionName = $distribution
-                Username = $name
-                Comment = $comment
-                CreateHome = $create_home
-                UserHome = $userHome
-                Shell = $shell
-                Password = $password
-                Uid = $uid
-            }
-            New-User @newUserParams
-
-            # Get updated user info for diff
-            $currentUser = Get-UserInfo -DistributionName $distribution -Username $name
-
-            # Handle sudo access
-            if ($sudo) {
-                Set-SudoAccess -DistributionName $distribution -Username $name -Sudo $sudo -CurrentSudo $false
-            }
-
-            # Handle SSH key
-            if ($ssh_key) {
-                Set-SSHAuthorizedKey -DistributionName $distribution -Username $name -Key $ssh_key -HomeDir $currentUser.home
-            }
-
-            # Generate SSH key if requested
-            if ($generate_ssh_key) {
-                $sshKeyResult = Generate-SSHKey -DistributionName $distribution -Username $name -HomeDir $currentUser.home -KeyPath $ssh_key_path
-                $module.Result.ssh_key_result = $sshKeyResult
-            }
-        }
-        Set-ModuleChanged -Module $module
+    $home_path = if ($home_path) {
+        $home_path
     } else {
-        # Update existing user
-        $changes = $false
+        "/home/$name"
+    }
+    # TODO: Check if $home_path exist, otherwise write a function to create it and set the module changed
 
-        if (-not $check_mode) {
-            # Update user properties
-            $updateParams = @{
-                DistributionName = $distribution
-                Username = $name
-                Comment = $comment
-                UserHome = $userHome
-                Shell = $shell
-                Password = $password
-                Uid = $uid
-                CurrentUser = $currentUser
-            }
-            $userChanged = Update-User @updateParams
+    $authorized_key_path = if ($authorized_key_path) {
+        $authorized_key_path
+    } else {
+        "$home_path/.ssh/authorized_keys"
+    }
+    # TODO: check if authorized_keys exist, otherwise create it and set module changed
 
-            # Update sudo access
-            $sudoChanged = Set-SudoAccess -DistributionName $distribution -Username $name -Sudo $sudo -CurrentSudo $currentUser.sudo
-
-            # Update SSH authorized key
-            $homeDir = if ($userHome) { $userHome } else { $currentUser.home }
-            $sshChanged = if ($ssh_key) {
-                Set-SSHAuthorizedKey -DistributionName $distribution -Username $name -Key $ssh_key -HomeDir $homeDir
-            } else {
-                $false
-            }
-
-            # Generate SSH key if requested
-            if ($generate_ssh_key) {
-                $homeDir = if ($userHome) { $userHome } else { $currentUser.home }
-                $sshKeyResult = Generate-SSHKey -DistributionName $distribution -Username $name -HomeDir $homeDir -KeyPath $ssh_key_path
-                $module.Result.ssh_key_result = $sshKeyResult
-                $sshKeyGenChanged = $sshKeyResult.changed
-            } else {
-                $sshKeyGenChanged = $false
-            }
-
-            $changes = $userChanged -or $sudoChanged -or $sshChanged -or $sshKeyGenChanged
+    if (-not $user) {
+        $newUserParams = @{
+            DistributionName = $distribution
+            Username = $name
+            CreateHome = $create_home
+            UserHome = $home_path
+            Shell = $shell
+            Password = $password
+            Uid = $uid
+            WhatIf = $check_mode
         }
-
+        New-User @newUserParams
+        $user = Get-UserInfo -DistributionName $distribution -Username $name
         Set-ModuleChanged -Module $module
     }
 
-    # Get final user info for diff
-    if ($module.Result.changed -and -not $check_mode) {
+    # TODO: check individual is difference like UserName, UserHome, Shell, Uid in main
+    # TODO: if it is difference from the $user then set and mark Module changed individually
+    # TODO: create separate function to update these
+    # $updateParams = @{
+    #     DistributionName = $distribution
+    #     Username = $name
+    #     UserHome = $home_path
+    #     Shell = $shell
+    #     Password = $password
+    #     Uid = $uid
+    #     user = $user
+    #     WhatIf = $check_mode
+    # }
+    # Update-User @updateParams
+    # Set-ModuleChanged -Module $module
+
+    if ($sudo -and $sudo -ne $user.sudo) {
+        $setSudoAccessParams = {
+            DistributionName = $name
+            UserName = $name
+            WhatIf = $check_mode
+        }
+        Set-SudoAccess @setSudoAccessParams
+        Set-ModuleChanged -Module $module
+    }
+
+    $testHavingAuthorizedKeyParams = {
+        DistributionName = $distribution
+        AuthorizedKey = $authorized_key
+        AuthorizedKeyPath = $authorized_key_path
+    }
+    $hasAuthorizedKey = Test-HavingAuthorizedKey @testHavingAuthorizedKeyParams # TODO: check if authorized_key file in the path contain authorized_key value
+
+    if ($authorized_key -and -not $hasAuthorizedKey) {
+        setAuthorizedKeyParams = {
+            DistributionName = $distribution
+            AuthorizedKey = $authorized_key
+            AuthorizedKeyPath = $authorized_key_path
+            WhatIf = $check_mode
+        }
+        Set-AuthorizedKey @setAuthorizedKeyParams # TODO: append value to the end of authorized_key
+        Set-ModuleChanged -Module $module
+    }
+
+    if ($generate_host_keys) { # TODO: Remove this option and related function
+        $generateHostKeysParams = {
+            DistributionName = $distribution
+            UserName = $name # TODO: Check if this is required
+            KeyPath = $generate_key_path # TODO: default to /etc/ssh/ssh_host_*
+            KeysBits = $generate_key_bits # TODO: default to 4096
+            KeyType = $generate_key_type # TODO: If this is empty then generate all possible keys
+            WhatIf = $check_mode
+        }
+        Generate-HostKeys @generateHostKeysParams
+        Set-ModuleChanged -Module $module
+    }
+
+    if ($module.Result.changed) {
         $module.Diff.after = Get-UserInfo -DistributionName $distribution -Username $name
-    } else {
-        $module.Diff.after = $currentUser
     }
 
-    # Set the user result
     $module.Result.user = $module.Diff.after
 
 } catch {
