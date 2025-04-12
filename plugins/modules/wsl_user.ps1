@@ -148,7 +148,7 @@ function New-User {
         $CreateHome = $true,
 
         [string]
-        $Home,
+        $UserHome,
 
         [string]
         $Shell,
@@ -165,11 +165,11 @@ function New-User {
 
     if (-not $CreateHome) {
         $usercmd += " --no-create-home"
-    } elseif ($Home) {
-        $usercmd += " --home-dir '$Home'"
+    } elseif ($UserHome) {
+        $usercmd += " --home-dir '$UserHome'"
         # Create the directory if it doesn't exist
-        $mkdirCmd = "mkdir -p '$Home'"
-        if ($PSCmdlet.ShouldProcess($DistributionName, "Create home directory: $Home")) {
+        $mkdirCmd = "mkdir -p '$UserHome'"
+        if ($PSCmdlet.ShouldProcess($DistributionName, "Create home directory: $UserHome")) {
             Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $mkdirCmd | Out-Null
         }
     }
@@ -220,7 +220,7 @@ function Update-User {
         $Comment,
 
         [string]
-        $Home,
+        $UserHome,
 
         [string]
         $Shell,
@@ -244,13 +244,13 @@ function Update-User {
         $changes = $true
     }
 
-    if ($Home -and $Home -ne $CurrentUser.home) {
-        $usercmd += " --home '$Home' --move-home"
+    if ($UserHome -and $UserHome -ne $CurrentUser.home) {
+        $usercmd += " --home '$UserHome' --move-home"
         $changes = $true
 
         # Create the directory if it doesn't exist
-        $mkdirCmd = "mkdir -p '$Home'"
-        if ($PSCmdlet.ShouldProcess($DistributionName, "Create home directory: $Home")) {
+        $mkdirCmd = "mkdir -p '$UserHome'"
+        if ($PSCmdlet.ShouldProcess($DistributionName, "Create home directory: $UserHome")) {
             Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $mkdirCmd | Out-Null
         }
     }
@@ -527,7 +527,7 @@ $name = $module.Params.name
 $distribution = $module.Params.distribution
 $comment = $module.Params.comment
 $create_home = $module.Params.create_home
-$home = $module.Params.home
+$userHome = $module.Params.home
 $shell = $module.Params.shell
 $password = $module.Params.password
 $ssh_key = $module.Params.ssh_key
@@ -549,31 +549,6 @@ if ($ssh_key_file) {
 }
 
 try {
-    # Check if the distribution exists
-    $distro = Get-WSLDistribution -DistributionName $distribution
-    if (-not $distro) {
-        $module.FailJson("WSL distribution '$distribution' not found")
-    }
-
-    # Check if distribution is running, if not, start it
-    if ($distro.state -ne "Running") {
-        if (-not $check_mode) {
-            $linuxCommand = "sleep infinity"
-            Invoke-LinuxCommandInBackground -DistributionName $distribution -LinuxCommand $linuxCommand
-
-            # Wait for distribution to start
-            $startTime = Get-Date
-            $timeout = New-TimeSpan -Seconds 30
-            do {
-                Start-Sleep -Seconds 1
-                $distro = Get-WSLDistribution -DistributionName $distribution
-                if ((Get-Date) - $startTime -gt $timeout) {
-                    $module.FailJson("Timeout waiting for WSL distribution '$distribution' to start")
-                }
-            } while ($distro.state -ne "Running")
-        }
-    }
-
     # Get current user information
     $currentUser = Get-UserInfo -DistributionName $distribution -Username $name
     $module.Diff.before = $currentUser
@@ -585,15 +560,15 @@ try {
                 # Use --remove option to remove home directory too
                 Remove-WSLUser -DistributionName $distribution -Username $name -RemoveHome $true
             }
-            $module.Result.changed = $true
+            Set-ModuleChanged -Module $module
             $module.Diff.after = $null
         }
         $module.ExitJson()
     }
 
     # Set default home directory path if not specified
-    if (-not $home -and $create_home) {
-        $home = "/home/$name"
+    if (-not $userHome -and $create_home) {
+        $userHome = "/home/$name"
     }
 
     # Create or update user
@@ -605,7 +580,7 @@ try {
                 Username = $name
                 Comment = $comment
                 CreateHome = $create_home
-                Home = $home
+                UserHome = $userHome
                 Shell = $shell
                 Password = $password
                 Uid = $uid
@@ -631,7 +606,7 @@ try {
                 $module.Result.ssh_key_result = $sshKeyResult
             }
         }
-        $module.Result.changed = $true
+        Set-ModuleChanged -Module $module
     } else {
         # Update existing user
         $changes = $false
@@ -642,7 +617,7 @@ try {
                 DistributionName = $distribution
                 Username = $name
                 Comment = $comment
-                Home = $home
+                UserHome = $userHome
                 Shell = $shell
                 Password = $password
                 Uid = $uid
@@ -654,7 +629,7 @@ try {
             $sudoChanged = Set-SudoAccess -DistributionName $distribution -Username $name -Sudo $sudo -CurrentSudo $currentUser.sudo
 
             # Update SSH authorized key
-            $homeDir = if ($home) { $home } else { $currentUser.home }
+            $homeDir = if ($userHome) { $userHome } else { $currentUser.home }
             $sshChanged = if ($ssh_key) {
                 Set-SSHAuthorizedKey -DistributionName $distribution -Username $name -Key $ssh_key -HomeDir $homeDir
             } else {
@@ -663,7 +638,7 @@ try {
 
             # Generate SSH key if requested
             if ($generate_ssh_key) {
-                $homeDir = if ($home) { $home } else { $currentUser.home }
+                $homeDir = if ($userHome) { $userHome } else { $currentUser.home }
                 $sshKeyResult = Generate-SSHKey -DistributionName $distribution -Username $name -HomeDir $homeDir -KeyPath $ssh_key_path
                 $module.Result.ssh_key_result = $sshKeyResult
                 $sshKeyGenChanged = $sshKeyResult.changed
@@ -674,7 +649,7 @@ try {
             $changes = $userChanged -or $sudoChanged -or $sshChanged -or $sshKeyGenChanged
         }
 
-        $module.Result.changed = $changes
+        Set-ModuleChanged -Module $module
     }
 
     # Get final user info for diff
