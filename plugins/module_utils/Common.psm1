@@ -71,6 +71,36 @@ function Get-FormattedText {
     return $Text -replace '\u0000', ''
 }
 
+function Get-ParentDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]
+        $Path
+    )
+
+    if ([string]::IsNullOrEmpty($Path)) {
+        return $null
+    }
+
+    $normalizedPath = $Path.Replace('\', '/')
+
+    if ($normalizedPath.EndsWith('/')) {
+        $normalizedPath = $normalizedPath.TrimEnd('/')
+    }
+
+    $lastSlashIndex = $normalizedPath.LastIndexOf('/')
+
+    if ($lastSlashIndex -eq -1) {
+        return ""
+    }
+
+    if ($lastSlashIndex -eq 0) {
+        return "/"
+    }
+
+    return $normalizedPath.Substring(0, $lastSlashIndex)
+}
+
 function Set-ModuleChanged {
     param(
         [Ansible.Basic.AnsibleModule]
@@ -88,6 +118,7 @@ $export_members = @{
         'Remove-Win32Process',
         'Get-HashFromURL',
         'Get-FormattedText',
+        'Get-ParentDirectory',
         'Set-ModuleChanged'
     )
 }
