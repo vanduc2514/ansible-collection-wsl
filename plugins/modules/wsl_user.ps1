@@ -194,7 +194,7 @@ function New-User {
 
             # Set password if specified
             if ($Password) {
-                $passwordCmd = "echo '$Username:$Password' | chpasswd"
+                $passwordCmd = "echo '${Username}:${Password}' | chpasswd"
                 Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $passwordCmd | Out-Null
             }
 
@@ -279,7 +279,7 @@ function Update-User {
     # Set password if specified
     if ($Password) {
         if ($PSCmdlet.ShouldProcess($DistributionName, "Set password for user: $Username")) {
-            $passwordCmd = "echo '$Username:$Password' | chpasswd"
+            $passwordCmd = "echo '${Username}:${Password}' | chpasswd"
             try {
                 Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $passwordCmd | Out-Null
                 $changes = $true
@@ -378,7 +378,7 @@ function Set-SSHAuthorizedKey {
     }
 
     # Ensure .ssh directory exists with proper permissions
-    $sshDirCmd = "mkdir -p '$HomeDir/.ssh' && chmod 700 '$HomeDir/.ssh' && chown $Username:$Username '$HomeDir/.ssh'"
+    $sshDirCmd = "mkdir -p '$HomeDir/.ssh' && chmod 700 '$HomeDir/.ssh' && chown ${Username}:${Username} '$HomeDir/.ssh'"
     if ($PSCmdlet.ShouldProcess($DistributionName, "Create SSH directory for user: $Username")) {
         try {
             Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $sshDirCmd | Out-Null
@@ -388,7 +388,7 @@ function Set-SSHAuthorizedKey {
     }
 
     # Write authorized keys
-    $authorizedKeysCmd = "echo '$keyNormalized' > '$HomeDir/.ssh/authorized_keys' && chmod 600 '$HomeDir/.ssh/authorized_keys' && chown $Username:$Username '$HomeDir/.ssh/authorized_keys'"
+    $authorizedKeysCmd = "echo '$keyNormalized' > '$HomeDir/.ssh/authorized_keys' && chmod 600 '$HomeDir/.ssh/authorized_keys' && chown ${Username}:${Username} '$HomeDir/.ssh/authorized_keys'"
     if ($PSCmdlet.ShouldProcess($DistributionName, "Set SSH authorized keys for user: $Username")) {
         try {
             Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $authorizedKeysCmd | Out-Null
@@ -441,7 +441,7 @@ function Generate-SSHKey {
     }
 
     # Ensure .ssh directory exists with proper permissions
-    $sshDirCmd = "mkdir -p '$HomeDir/.ssh' && chmod 700 '$HomeDir/.ssh' && chown $Username:$Username '$HomeDir/.ssh'"
+    $sshDirCmd = "mkdir -p '$HomeDir/.ssh' && chmod 700 '$HomeDir/.ssh' && chown ${Username}:${Username} '$HomeDir/.ssh'"
     if ($PSCmdlet.ShouldProcess($DistributionName, "Create SSH directory for user: $Username")) {
         try {
             Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $sshDirCmd | Out-Null
@@ -451,7 +451,7 @@ function Generate-SSHKey {
     }
 
     # Generate SSH key
-    $generateKeyCmd = "ssh-keygen -t rsa -b 4096 -f '$sshKeyPath' -N '' -C '$Username@wsl' && chmod 600 '$sshKeyPath' && chmod 644 '$sshKeyPath.pub' && chown -R $Username:$Username '$HomeDir/.ssh'"
+    $generateKeyCmd = "ssh-keygen -t rsa -b 4096 -f '$sshKeyPath' -N '' -C '$Username@wsl' && chmod 600 '$sshKeyPath' && chmod 644 '$sshKeyPath.pub' && chown -R ${Username}:${Username} '$HomeDir/.ssh'"
     if ($PSCmdlet.ShouldProcess($DistributionName, "Generate SSH key for user: $Username")) {
         try {
             Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $generateKeyCmd | Out-Null
@@ -466,7 +466,7 @@ function Generate-SSHKey {
 
             # Add key to authorized_keys if not already there
             if ($currentKeys -notmatch [regex]::Escape($pubKey)) {
-                $authorizedKeysCmd = "echo '$pubKey' >> '$HomeDir/.ssh/authorized_keys' && chmod 600 '$HomeDir/.ssh/authorized_keys' && chown $Username:$Username '$HomeDir/.ssh/authorized_keys'"
+                $authorizedKeysCmd = "echo '$pubKey' >> '$HomeDir/.ssh/authorized_keys' && chmod 600 '$HomeDir/.ssh/authorized_keys' && chown ${Username}:${Username} '$HomeDir/.ssh/authorized_keys'"
                 Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $authorizedKeysCmd | Out-Null
             }
 
@@ -654,15 +654,17 @@ try {
             $sudoChanged = Set-SudoAccess -DistributionName $distribution -Username $name -Sudo $sudo -CurrentSudo $currentUser.sudo
 
             # Update SSH authorized key
+            $homeDir = if ($home) { $home } else { $currentUser.home }
             $sshChanged = if ($ssh_key) {
-                Set-SSHAuthorizedKey -DistributionName $distribution -Username $name -Key $ssh_key -HomeDir ($home ?? $currentUser.home)
+                Set-SSHAuthorizedKey -DistributionName $distribution -Username $name -Key $ssh_key -HomeDir $homeDir
             } else {
                 $false
             }
 
             # Generate SSH key if requested
             if ($generate_ssh_key) {
-                $sshKeyResult = Generate-SSHKey -DistributionName $distribution -Username $name -HomeDir ($home ?? $currentUser.home) -KeyPath $ssh_key_path
+                $homeDir = if ($home) { $home } else { $currentUser.home }
+                $sshKeyResult = Generate-SSHKey -DistributionName $distribution -Username $name -HomeDir $homeDir -KeyPath $ssh_key_path
                 $module.Result.ssh_key_result = $sshKeyResult
                 $sshKeyGenChanged = $sshKeyResult.changed
             } else {
