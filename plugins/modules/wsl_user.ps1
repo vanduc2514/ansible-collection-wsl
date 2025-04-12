@@ -82,24 +82,13 @@ function Get-UserInfo {
     # Parse the id command output
     $uidMatch = $result -match "uid=(\d+)"
     $gidMatch = $result -match "gid=(\d+)\(([^)]+)\)"
-    $groupsMatch = $result -match "groups=([^$]*)"
 
     $uid = if ($uidMatch) { [int]$Matches[1] } else { $null }
     $gid = if ($gidMatch) { [int]$Matches[1] } else { $null }
-    $primaryGroup = if ($gidMatch) { $Matches[2] } else { $null }
-
-    $groups = @()
-    if ($groupsMatch) {
-        $groupsString = $Matches[1]
-        $groupMatches = [regex]::Matches($groupsString, "\d+\(([^)]+)\)")
-        foreach ($match in $groupMatches) {
-            $groups += $match.Groups[1].Value
-        }
-    }
 
     # Get home directory
     $homeCmd = "getent passwd $Username 2>/dev/null | cut -d: -f6 || echo ''"
-    $home = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $homeCmd
+    $homePath = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $homeCmd
 
     # Get shell
     $shellCmd = "getent passwd $Username 2>/dev/null | cut -d: -f7 || echo ''"
@@ -121,9 +110,7 @@ function Get-UserInfo {
         name = $Username
         uid = $uid
         gid = $gid
-        group = $primaryGroup
-        groups = $groups
-        home = $home
+        home = $homePath
         shell = $shell
         comment = $comment
         sudo = $sudo
