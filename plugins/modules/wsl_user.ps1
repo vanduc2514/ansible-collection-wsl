@@ -88,15 +88,11 @@ function Get-UserInfo {
 
     # Get home directory
     $homeCmd = "getent passwd $Username 2>/dev/null | cut -d: -f6 || echo ''"
-    $homePath = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $homeCmd
+    $homePath = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $homeCmd).Trim()
 
     # Get shell
     $shellCmd = "getent passwd $Username 2>/dev/null | cut -d: -f7 || echo ''"
-    $shell = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $shellCmd
-
-    # Get comment/gecos
-    $commentCmd = "getent passwd $Username 2>/dev/null | cut -d: -f5 || echo ''"
-    $comment = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $commentCmd
+    $shell = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $shellCmd).Trim()
 
     # Check sudo status
     $sudoCmd = "grep -q '^$Username\\s\\+ALL\\s*=' /etc/sudoers 2>/dev/null || [ -f /etc/sudoers.d/$Username ] && echo 'true' || echo 'false'"
@@ -112,7 +108,6 @@ function Get-UserInfo {
         gid = $gid
         home = $homePath
         shell = $shell
-        comment = $comment
         sudo = $sudo
         authorized_key = $sshKey
         exists = $true
