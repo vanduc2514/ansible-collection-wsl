@@ -25,7 +25,7 @@ options:
     description:
       - Comment/description for the user account.
     type: str
-    default: "" # TODO: Change this default to user name
+    default: ""
   create_home:
     description:
       - Whether to create the user's home directory.

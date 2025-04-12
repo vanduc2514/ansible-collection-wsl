@@ -1,0 +1,4 @@
+---
+# These variables should match those used in wsl_instance tests
+wsl_instance_minimum_store_distro: Ubuntu-20.04
+wsl_instance_store_distro: Ubuntu-22.04

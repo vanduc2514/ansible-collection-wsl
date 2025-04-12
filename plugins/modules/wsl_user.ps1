@@ -21,17 +21,6 @@ $spec = @{
             type     = "bool"
             default  = $true
         }
-        group = @{
-            type     = "str"
-        }
-        groups = @{
-            type     = "list"
-            elements = "str"
-        }
-        append = @{
-            type     = "bool"
-            default  = $false
-        }
         home = @{
             type     = "str"
         }
@@ -48,18 +37,17 @@ $spec = @{
         ssh_key_file = @{
             type     = "path"
         }
-        system = @{
+        generate_ssh_key = @{
             type     = "bool"
             default  = $false
+        }
+        ssh_key_path = @{
+            type     = "str"
         }
         uid = @{
             type     = "int"
         }
         sudo = @{
-            type     = "bool"
-            default  = $false
-        }
-        remove = @{
             type     = "bool"
             default  = $false
         }
@@ -160,12 +148,6 @@ function New-User {
         $CreateHome = $true,
 
         [string]
-        $Group,
-
-        [string[]]
-        $Groups,
-
-        [string]
         $Home,
 
         [string]
@@ -174,19 +156,12 @@ function New-User {
         [string]
         $Password,
 
-        [bool]
-        $System = $false,
-
         [int]
         $Uid
     )
 
     # Build useradd command
     $usercmd = "useradd"
-
-    if ($System) {
-        $usercmd += " --system"
-    }
 
     if (-not $CreateHome) {
         $usercmd += " --no-create-home"
@@ -205,15 +180,6 @@ function New-User {
 
     if ($Comment) {
         $usercmd += " --comment '$Comment'"
-    }
-
-    if ($Group) {
-        $usercmd += " --gid '$Group'"
-    }
-
-    if ($Groups) {
-        $groupsList = $Groups -join ","
-        $usercmd += " --groups '$groupsList'"
     }
 
     if ($Uid) {
@@ -254,15 +220,6 @@ function Update-User {
         $Comment,
 
         [string]
-        $Group,
-
-        [string[]]
-        $Groups,
-
-        [bool]
-        $Append = $false,
-
-        [string]
         $Home,
 
         [string]
@@ -285,41 +242,6 @@ function Update-User {
     if ($Comment -and $Comment -ne $CurrentUser.comment) {
         $usercmd += " --comment '$Comment'"
         $changes = $true
-    }
-
-    if ($Group -and $Group -ne $CurrentUser.group) {
-        $usercmd += " --gid '$Group'"
-        $changes = $true
-    }
-
-    if ($Groups) {
-        $groupsChanged = $false
-
-        if ($Append) {
-            # Check if any groups are not already assigned
-            foreach ($g in $Groups) {
-                if ($g -notin $CurrentUser.groups) {
-                    $groupsChanged = $true
-                    break
-                }
-            }
-
-            if ($groupsChanged) {
-                $groupsList = $Groups -join ","
-                $usercmd += " --append --groups '$groupsList'"
-                $changes = $true
-            }
-        } else {
-            # Compare full group lists
-            $sortedCurrentGroups = $CurrentUser.groups | Sort-Object
-            $sortedNewGroups = $Groups | Sort-Object
-
-            if (($sortedCurrentGroups -join ",") -ne ($sortedNewGroups -join ",")) {
-                $groupsList = $Groups -join ","
-                $usercmd += " --groups '$groupsList'"
-                $changes = $true
-            }
-        }
     }
 
     if ($Home -and $Home -ne $CurrentUser.home) {
@@ -479,6 +401,91 @@ function Set-SSHAuthorizedKey {
     return $false
 }
 
+function Generate-SSHKey {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [string]
+        $DistributionName,
+
+        [string]
+        $Username,
+
+        [string]
+        $HomeDir,
+
+        [string]
+        $KeyPath
+    )
+
+    if (-not $HomeDir) {
+        $homeCmd = "getent passwd $Username | cut -d: -f6"
+        $HomeDir = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $homeCmd
+        if (-not $HomeDir) {
+            throw "Home directory not found for user '$Username' in WSL distribution '$DistributionName'"
+        }
+    }
+
+    # Determine SSH key path
+    $sshKeyPath = if ($KeyPath) { $KeyPath } else { "$HomeDir/.ssh/id_rsa" }
+
+    # Check if key already exists
+    $checkKeyCmd = "test -f '$sshKeyPath' && echo 'EXISTS' || echo 'NOT_EXISTS'"
+    $keyExists = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $checkKeyCmd).Trim() -eq "EXISTS"
+
+    if ($keyExists) {
+        return @{
+            changed = $false
+            key_path = $sshKeyPath
+            public_key_path = "$sshKeyPath.pub"
+        }
+    }
+
+    # Ensure .ssh directory exists with proper permissions
+    $sshDirCmd = "mkdir -p '$HomeDir/.ssh' && chmod 700 '$HomeDir/.ssh' && chown $Username:$Username '$HomeDir/.ssh'"
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Create SSH directory for user: $Username")) {
+        try {
+            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $sshDirCmd | Out-Null
+        } catch {
+            throw "Failed to create SSH directory for user '$Username' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
+    }
+
+    # Generate SSH key
+    $generateKeyCmd = "ssh-keygen -t rsa -b 4096 -f '$sshKeyPath' -N '' -C '$Username@wsl' && chmod 600 '$sshKeyPath' && chmod 644 '$sshKeyPath.pub' && chown -R $Username:$Username '$HomeDir/.ssh'"
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Generate SSH key for user: $Username")) {
+        try {
+            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $generateKeyCmd | Out-Null
+
+            # Add to authorized_keys if not already there
+            $pubKeyCmd = "cat '$sshKeyPath.pub'"
+            $pubKey = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $pubKeyCmd
+
+            # Get current authorized keys
+            $currentKeysCmd = "test -f '$HomeDir/.ssh/authorized_keys' && cat '$HomeDir/.ssh/authorized_keys' || echo ''"
+            $currentKeys = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $currentKeysCmd
+
+            # Add key to authorized_keys if not already there
+            if ($currentKeys -notmatch [regex]::Escape($pubKey)) {
+                $authorizedKeysCmd = "echo '$pubKey' >> '$HomeDir/.ssh/authorized_keys' && chmod 600 '$HomeDir/.ssh/authorized_keys' && chown $Username:$Username '$HomeDir/.ssh/authorized_keys'"
+                Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $authorizedKeysCmd | Out-Null
+            }
+
+            return @{
+                changed = $true
+                key_path = $sshKeyPath
+                public_key_path = "$sshKeyPath.pub"
+                public_key = $pubKey
+            }
+        } catch {
+            throw "Failed to generate SSH key for user '$Username' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
+    }
+
+    return @{
+        changed = $false
+    }
+}
+
 function Remove-WSLUser {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -520,18 +527,15 @@ $name = $module.Params.name
 $distribution = $module.Params.distribution
 $comment = $module.Params.comment
 $create_home = $module.Params.create_home
-$group = $module.Params.group
-$groups = $module.Params.groups
-$append = $module.Params.append
 $home = $module.Params.home
 $shell = $module.Params.shell
 $password = $module.Params.password
 $ssh_key = $module.Params.ssh_key
 $ssh_key_file = $module.Params.ssh_key_file
-$system = $module.Params.system
+$generate_ssh_key = $module.Params.generate_ssh_key
+$ssh_key_path = $module.Params.ssh_key_path
 $uid = $module.Params.uid
 $sudo = $module.Params.sudo
-$remove = $module.Params.remove
 $state = $module.Params.state
 $check_mode = $module.CheckMode
 
@@ -578,12 +582,18 @@ try {
     if ($state -eq "absent") {
         if ($currentUser) {
             if (-not $check_mode) {
-                Remove-WSLUser -DistributionName $distribution -Username $name -RemoveHome $remove
+                # Use --remove option to remove home directory too
+                Remove-WSLUser -DistributionName $distribution -Username $name -RemoveHome $true
             }
             $module.Result.changed = $true
             $module.Diff.after = $null
         }
         $module.ExitJson()
+    }
+
+    # Set default home directory path if not specified
+    if (-not $home -and $create_home) {
+        $home = "/home/$name"
     }
 
     # Create or update user
@@ -595,12 +605,9 @@ try {
                 Username = $name
                 Comment = $comment
                 CreateHome = $create_home
-                Group = $group
-                Groups = $groups
                 Home = $home
                 Shell = $shell
                 Password = $password
-                System = $system
                 Uid = $uid
             }
             New-User @newUserParams
@@ -617,6 +624,12 @@ try {
             if ($ssh_key) {
                 Set-SSHAuthorizedKey -DistributionName $distribution -Username $name -Key $ssh_key -HomeDir $currentUser.home
             }
+
+            # Generate SSH key if requested
+            if ($generate_ssh_key) {
+                $sshKeyResult = Generate-SSHKey -DistributionName $distribution -Username $name -HomeDir $currentUser.home -KeyPath $ssh_key_path
+                $module.Result.ssh_key_result = $sshKeyResult
+            }
         }
         $module.Result.changed = $true
     } else {
@@ -629,9 +642,6 @@ try {
                 DistributionName = $distribution
                 Username = $name
                 Comment = $comment
-                Group = $group
-                Groups = $groups
-                Append = $append
                 Home = $home
                 Shell = $shell
                 Password = $password
@@ -650,7 +660,16 @@ try {
                 $false
             }
 
-            $changes = $userChanged -or $sudoChanged -or $sshChanged
+            # Generate SSH key if requested
+            if ($generate_ssh_key) {
+                $sshKeyResult = Generate-SSHKey -DistributionName $distribution -Username $name -HomeDir ($home ?? $currentUser.home) -KeyPath $ssh_key_path
+                $module.Result.ssh_key_result = $sshKeyResult
+                $sshKeyGenChanged = $sshKeyResult.changed
+            } else {
+                $sshKeyGenChanged = $false
+            }
+
+            $changes = $userChanged -or $sudoChanged -or $sshChanged -or $sshKeyGenChanged
         }
 
         $module.Result.changed = $changes
@@ -662,6 +681,9 @@ try {
     } else {
         $module.Diff.after = $currentUser
     }
+
+    # Set the user result
+    $module.Result.user = $module.Diff.after
 
 } catch {
     $module.FailJson("An error occurred: $($_.Exception.Message)", $_)
