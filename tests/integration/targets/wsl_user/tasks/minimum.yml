@@ -1,15 +1,9 @@
----
-- name: Ensure test WSL instance exists
-  vanduc2514.wsl_automation.wsl_instance:
-    name: "{{ wsl_instance_minimum_store_distro }}"
-    state: run
-
 - name: Test basic user creation scenario
   block:
     - name: Test basic user creation in check_mode
       vanduc2514.wsl_automation.wsl_user:
-        name: "testuser1"
-        distribution: "{{ wsl_instance_minimum_store_distro }}"
+        name: testuser1
+        distribution: "{{ wsl_distribution }}"
         state: present
       check_mode: true
       register: wsl_user_actual
@@ -21,8 +15,8 @@
 
     - name: Test basic user creation
       vanduc2514.wsl_automation.wsl_user:
-        name: "testuser1"
-        distribution: "{{ wsl_instance_minimum_store_distro }}"
+        name: testuser1
+        distribution: "{{ wsl_distribution }}"
         state: present
       register: wsl_user_actual
 
@@ -30,58 +24,13 @@
       ansible.builtin.assert:
         that:
           - wsl_user_actual is changed
-          - wsl_user_actual.user.exists
           - wsl_user_actual.user.name == "testuser1"
-          - wsl_user_actual.user.home == "/home/testuser1"
+          - wsl_user_actual.user.home_path == "/home/testuser1"
 
     - name: Test idempotency of basic user creation
       vanduc2514.wsl_automation.wsl_user:
-        name: "testuser1"
-        distribution: "{{ wsl_instance_minimum_store_distro }}"
-        state: present
-      register: wsl_user_actual
-
-    - name: Assert operation is idempotent
-      ansible.builtin.assert:
-        that:
-          - not wsl_user_actual is changed
-
-- name: Test user with custom home directory
-  block:
-    - name: Test user creation with custom home in check_mode
-      vanduc2514.wsl_automation.wsl_user:
-        name: "testuser2"
-        distribution: "{{ wsl_instance_minimum_store_distro }}"
-        home: "/opt/testuser2"
-        state: present
-      check_mode: true
-      register: wsl_user_actual
-
-    - name: Assert no change in check_mode
-      ansible.builtin.assert:
-        that:
-          - not wsl_user_actual is changed
-
-    - name: Test user creation with custom home
-      vanduc2514.wsl_automation.wsl_user:
-        name: "testuser2"
-        distribution: "{{ wsl_instance_minimum_store_distro }}"
-        home: "/opt/testuser2"
-        state: present
-      register: wsl_user_actual
-
-    - name: Assert operation changed
-      ansible.builtin.assert:
-        that:
-          - wsl_user_actual is changed
-          - wsl_user_actual.user.exists
-          - wsl_user_actual.user.home == "/opt/testuser2"
-
-    - name: Test idempotency of user with custom home
-      vanduc2514.wsl_automation.wsl_user:
-        name: "testuser2"
-        distribution: "{{ wsl_instance_minimum_store_distro }}"
-        home: "/opt/testuser2"
+        name: testuser1
+        distribution: "{{ wsl_distribution }}"
         state: present
       register: wsl_user_actual
 
@@ -94,8 +43,9 @@
   block:
     - name: Test user removal in check_mode
       vanduc2514.wsl_automation.wsl_user:
-        name: "testuser1"
-        distribution: "{{ wsl_instance_minimum_store_distro }}"
+        name: testuser1
+        remove_home: true
+        distribution: "{{ wsl_distribution }}"
         state: absent
       check_mode: true
       register: wsl_user_actual
@@ -107,8 +57,9 @@
 
     - name: Test user removal
       vanduc2514.wsl_automation.wsl_user:
-        name: "testuser1"
-        distribution: "{{ wsl_instance_minimum_store_distro }}"
+        name: testuser1
+        remove_home: true
+        distribution: "{{ wsl_distribution }}"
         state: absent
       register: wsl_user_actual
 
@@ -119,8 +70,9 @@
 
     - name: Test idempotency of user removal
       vanduc2514.wsl_automation.wsl_user:
-        name: "testuser1"
-        distribution: "{{ wsl_instance_minimum_store_distro }}"
+        name: testuser1
+        remove_home: true
+        distribution: "{{ wsl_distribution }}"
         state: absent
       register: wsl_user_actual
 
@@ -128,9 +80,3 @@
       ansible.builtin.assert:
         that:
           - not wsl_user_actual is changed
-
-    - name: Remove second test user
-      vanduc2514.wsl_automation.wsl_user:
-        name: "testuser2"
-        distribution: "{{ wsl_instance_minimum_store_distro }}"
-        state: absent

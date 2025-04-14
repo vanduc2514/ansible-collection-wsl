@@ -1,17 +1,11 @@
----
-- name: Ensure test WSL instance exists
-  vanduc2514.wsl_automation.wsl_instance:
-    name: "{{ wsl_instance_store_distro }}"
-    state: run
-
-- name: Test user with sudo access scenario
+- name: Test user creation with sudo access and authorized key scenario
   block:
-    - name: Test user creation with sudo in check_mode
+    - name: Test user creation with sudo and authorized key in check_mode
       vanduc2514.wsl_automation.wsl_user:
-        name: "adminuser"
-        distribution: "{{ wsl_instance_store_distro }}"
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
         sudo: true
-        comment: "Admin User"
+        authorized_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB5l8hA2T2sN9aMkqzO4N6zY+zV8lUOqz9b+yF7EJTZR dummy@example.com
         state: present
       check_mode: true
       register: wsl_user_actual
@@ -21,12 +15,12 @@
         that:
           - not wsl_user_actual is changed
 
-    - name: Test user creation with sudo
+    - name: Test user creation with sudo and authorized key
       vanduc2514.wsl_automation.wsl_user:
-        name: "adminuser"
-        distribution: "{{ wsl_instance_store_distro }}"
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
         sudo: true
-        comment: "Admin User"
+        authorized_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB5l8hA2T2sN9aMkqzO4N6zY+zV8lUOqz9b+yF7EJTZR dummy@example.com
         state: present
       register: wsl_user_actual
 
@@ -34,15 +28,14 @@
       ansible.builtin.assert:
         that:
           - wsl_user_actual is changed
-          - wsl_user_actual.user.exists
           - wsl_user_actual.user.sudo
 
-    - name: Test idempotency of user with sudo
+    - name: Test idempotency of user with sudo and authorized key
       vanduc2514.wsl_automation.wsl_user:
-        name: "adminuser"
-        distribution: "{{ wsl_instance_store_distro }}"
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
         sudo: true
-        comment: "Admin User"
+        authorized_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB5l8hA2T2sN9aMkqzO4N6zY+zV8lUOqz9b+yF7EJTZR dummy@example.com
         state: present
       register: wsl_user_actual
 
@@ -51,14 +44,16 @@
         that:
           - not wsl_user_actual is changed
 
-- name: Test SSH key generation scenario
+- name: Test user modification with home path and authorized key scenario
   block:
-    - name: Test SSH key generation in check_mode
+    - name: Test user modification with home path and authorized key in check_mode
       vanduc2514.wsl_automation.wsl_user:
-        name: "sshuser"
-        distribution: "{{ wsl_instance_store_distro }}"
-        generate_ssh_key: true
-        comment: "SSH User"
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
+        home_path: /opt/sudouser
+        login_shell: /bin/bash
+        authorized_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPn72DqN/U6N+JBRqpXeHE4rv38fL90L085P0fMT0/gY dummy@example.com
+        sudo: false
         state: present
       check_mode: true
       register: wsl_user_actual
@@ -68,12 +63,14 @@
         that:
           - not wsl_user_actual is changed
 
-    - name: Test SSH key generation
+    - name: Test user modification with home path and authorized key
       vanduc2514.wsl_automation.wsl_user:
-        name: "sshuser"
-        distribution: "{{ wsl_instance_store_distro }}"
-        generate_ssh_key: true
-        comment: "SSH User"
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
+        home_path: /opt/sudouser
+        login_shell: /bin/bash
+        authorized_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPn72DqN/U6N+JBRqpXeHE4rv38fL90L085P0fMT0/gY dummy@example.com
+        sudo: false
         state: present
       register: wsl_user_actual
 
@@ -81,16 +78,16 @@
       ansible.builtin.assert:
         that:
           - wsl_user_actual is changed
-          - wsl_user_actual.user.exists
-          - wsl_user_actual.ssh_key_result.changed
-          - wsl_user_actual.ssh_key_result.public_key is defined
+          - wsl_user_actual.user.home_path == "/opt/sudouser"
 
-    - name: Test idempotency of SSH key generation
+    - name: Test idempotency of user modification with home path and authorized key
       vanduc2514.wsl_automation.wsl_user:
-        name: "sshuser"
-        distribution: "{{ wsl_instance_store_distro }}"
-        generate_ssh_key: true
-        comment: "SSH User"
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
+        home_path: /opt/sudouser
+        login_shell: /bin/bash
+        authorized_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPn72DqN/U6N+JBRqpXeHE4rv38fL90L085P0fMT0/gY dummy@example.com
+        sudo: false
         state: present
       register: wsl_user_actual
 
@@ -98,16 +95,15 @@
       ansible.builtin.assert:
         that:
           - not wsl_user_actual is changed
-          - not wsl_user_actual.ssh_key_result.changed
 
-- name: Test user modification scenario
+- name: Test append authorized key scenario
   block:
-    - name: Test user modification in check_mode
+    - name: Test append authorized key in check_mode
       vanduc2514.wsl_automation.wsl_user:
-        name: "sshuser"
-        distribution: "{{ wsl_instance_store_distro }}"
-        shell: "/bin/zsh"
-        comment: "Modified SSH User"
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
+        authorized_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKqGGUPtAcwm9Gq8LO7WlHXBnE8pQXXDu1wQVQFNBGgB dummy2@example.com
+        authorized_key_append: true
         state: present
       check_mode: true
       register: wsl_user_actual
@@ -117,12 +113,12 @@
         that:
           - not wsl_user_actual is changed
 
-    - name: Test user modification
+    - name: Test append authorized key
       vanduc2514.wsl_automation.wsl_user:
-        name: "sshuser"
-        distribution: "{{ wsl_instance_store_distro }}"
-        shell: "/bin/zsh"
-        comment: "Modified SSH User"
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
+        authorized_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKqGGUPtAcwm9Gq8LO7WlHXBnE8pQXXDu1wQVQFNBGgB dummy2@example.com
+        authorized_key_append: true
         state: present
       register: wsl_user_actual
 
@@ -130,33 +126,136 @@
       ansible.builtin.assert:
         that:
           - wsl_user_actual is changed
-          - wsl_user_actual.user.shell == "/bin/zsh"
-          - wsl_user_actual.user.comment == "Modified SSH User"
 
-    - name: Test idempotency of user modification
+    - name: Test idempotency of append authorized key
       vanduc2514.wsl_automation.wsl_user:
-        name: "sshuser"
-        distribution: "{{ wsl_instance_store_distro }}"
-        shell: "/bin/zsh"
-        comment: "Modified SSH User"
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
+        authorized_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKqGGUPtAcwm9Gq8LO7WlHXBnE8pQXXDu1wQVQFNBGgB dummy2@example.com
+        authorized_key_append: true
         state: present
       register: wsl_user_actual
 
     - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_user_actual is changed
+
+- name: Test password modification scenario
+  block:
+    - name: Test password modification in check_mode
+      vanduc2514.wsl_automation.wsl_user:
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
+        password: newpassword123
+        state: present
+      check_mode: true
+      register: wsl_user_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_user_actual is changed
+
+    - name: Test password modification
+      vanduc2514.wsl_automation.wsl_user:
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
+        password: newpassword123
+        state: present
+      register: wsl_user_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_user_actual is changed
+
+    - name: Test non-idempotency of password modification
+      vanduc2514.wsl_automation.wsl_user:
+        name: sudouser
+        distribution: "{{ wsl_distribution }}"
+        password: newpassword123
+        state: present
+      register: wsl_user_actual
+
+    - name: Assert operation is not idempotent
+      ansible.builtin.assert:
+        that:
+          - wsl_user_actual is changed
+
+- name: Test root user authorized keys scenarios
+  block:
+    - name: Test setting authorized keys for root user in check_mode
+      vanduc2514.wsl_automation.wsl_user:
+        name: root
+        distribution: "{{ wsl_distribution }}"
+        sudo: true
+        authorized_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC6 dummy@example.com"
+        state: present
+      check_mode: true
+      register: wsl_user_actual
+
+    - name: Assert not change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_user_actual is changed
+
+    - name: Test setting authorized keys for root user
+      vanduc2514.wsl_automation.wsl_user:
+        name: root
+        distribution: "{{ wsl_distribution }}"
+        sudo: true
+        authorized_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC6 dummy@example.com"
+        state: present
+      register: wsl_user_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_user_actual is changed
+
+    - name: Test idempotency of setting authorized keys
+      vanduc2514.wsl_automation.wsl_user:
+        name: root
+        distribution: "{{ wsl_distribution }}"
+        sudo: true
+        authorized_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC6 dummy@example.com"
+        state: present
+      register: wsl_user_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_user_actual is changed
+
+- name: Test root user immutability for uid and sudo access
+  block:
+    - name: Attempt to change root user UID and sudo in check_mode
+      vanduc2514.wsl_automation.wsl_user:
+        name: root
+        distribution: "{{ wsl_distribution }}"
+        uid: 1
+        sudo: false
+        state: present
+      register: wsl_user_actual
+
+    - name: Assert no change
       ansible.builtin.assert:
         that:
           - not wsl_user_actual is changed
 
 - name: Clean up test users
   block:
-    - name: Remove admin user
+    - name: Remove sudouser
       vanduc2514.wsl_automation.wsl_user:
-        name: "adminuser"
-        distribution: "{{ wsl_instance_store_distro }}"
+        name: sudouser
+        remove_home: true
+        distribution: "{{ wsl_distribution }}"
         state: absent
-
-    - name: Remove SSH user
+    - name: Replace with tab in authorized_keys
       vanduc2514.wsl_automation.wsl_user:
-        name: "sshuser"
-        distribution: "{{ wsl_instance_store_distro }}"
-        state: absent
+        name: root
+        distribution: "{{ wsl_distribution }}"
+        authorized_key: "\t"
+        state: present
+      register: wsl_user_actual

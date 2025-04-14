@@ -1,4 +1,3 @@
----
 - name: Test WSL User scenarios
   block:
     - name: Import minimum scenario
