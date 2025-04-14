@@ -7,201 +7,165 @@ module: wsl_user
 short_description: Manage users in Windows Subsystem for Linux (WSL) distributions
 description:
   - Create, modify, and remove user accounts in WSL distributions.
-  - Set user properties like home directory, shell, and group membership.
-  - Configure SSH authorized keys for user authentication.
-  - Grant or revoke sudo privileges.
+  - Configure user properties including home directory, shell, and UID.
+  - Set up SSH authorized keys for authentication.
+  - Manage sudo privileges.
+  - Set user passwords.
+  - This module is intended for basic initial user setup in WSL distributions only. For advanced user management, please use ansible.builtin.user module.
 options:
-  name:
-    description:
-      - Name of the user account.
-    type: str
-    required: true
   distribution:
     description:
       - Name of the WSL distribution where the user account should be managed.
     type: str
     required: true
-  comment:
+  name:
     description:
-      - Comment/description for the user account.
+      - Name of the user account to manage.
     type: str
-    default: ""
-  create_home:
+    required: true
+  uid:
     description:
-      - Whether to create the user's home directory.
-    type: bool
-    default: true
-
-  group:
+      - User ID (UID) for the account.
+      - Only used when creating a new user or modifying an existing one.
+      - Won't have any effect if the specified user is root
+    type: int
+  home_path:
     description:
-      - Primary group for the user account.
+      - Absolute path to the user's home directory.
+      - If not specified, defaults to /home/<username>.
     type: str
-  groups:
+  login_shell:
     description:
-      - List of supplementary groups for the user account.
-    type: list
-    elements: str
-  append:
+      - Path to the user's login shell.
+      - Example: /bin/bash, /bin/sh, etc.
+    type: str
+  sudo:
     description:
-      - If C(true), add the user to the groups specified in C(groups) without removing from other groups.
-      - If C(false), set the user's supplementary groups to exactly the list specified in C(groups).
+      - If C(true), grant the user sudo privileges without password.
+      - If C(false), remove sudo privileges.
+      - Won't have any effect if the specified user is root
     type: bool
     default: false
-  home:
-    description:
-      - Home directory path for the user account.
-    type: str
-  shell:
-    description:
-      - Login shell for the user account.
-    type: str
   password:
     description:
       - Password for the user account.
-      - This is not idempotent and will always apply the change when specified.
+      - This is not idempotent and will be updated whenever specified.
     type: str
     no_log: true
-  ssh_key:
+  authorized_key:
     description:
       - SSH public key content to add to the user's authorized_keys file.
-      - Mutually exclusive with C(ssh_key_file).
     type: str
-  ssh_key_file:
+    no_log: true
+  authorized_key_append:
     description:
-      - Path to a file containing SSH public key to add to the user's authorized_keys file.
-      - Mutually exclusive with C(ssh_key).
+      - If C(true), append the authorized key to existing keys.
+      - If C(false), replace existing authorized keys with the specified key.
+    type: bool
+    default: false
+  authorized_keys_path:
+    description:
+      - Path to the authorized_keys file.
+      - If not specified, defaults to <home_path>/.ssh/authorized_keys.
     type: path
-  system:
+  remove_home:
     description:
-      - If C(true), create a system account.
-      - Only applies when creating a new user.
-    type: bool
-    default: false
-  uid:
-    description:
-      - User ID for the user account.
-    type: int
-  sudo:
-    description:
-      - If C(true), configure sudo access for the user.
-      - Will create a sudoers.d file granting passwordless sudo access.
-    type: bool
-    default: false
-  remove:
-    description:
-      - If C(true), remove the user's home directory when removing the account.
-      - Only applies when C(state=absent).
+      - When C(state=absent), also remove the user's home directory.
     type: bool
     default: false
   state:
     description:
       - Whether the user account should exist or not.
     type: str
-    choices: [present, absent]
+    choices: [ present, absent ]
     default: present
 notes:
-  - This module requires the WSL distribution to be installed and properly configured.
-  - The module will attempt to start the distribution if it's not running.
-  - When setting authorized SSH keys, it will replace any existing keys.
-  - For proper operation, the WSL distribution must have the required user management tools installed.
+  - Requires Windows Subsystem for Linux (WSL) and PowerShell.
+  - The target WSL distribution must be installed and configured.
+  - The module operates using PowerShell and WSL commands.
+  - When managing authorized keys, the .ssh directory will be created with appropriate permissions if it doesn't exist.
+  - Sudo access is granted by creating a sudoers.d file for the user with NOPASSWD access.
 seealso:
-  - name: Linux User Management Commands
-    description: Documentation for commands like useradd, usermod, and userdel
-    link: https://man7.org/linux/man-pages/man8/useradd.8.html
-  - name: WSL User Management
-    description: Microsoft's guide for managing users in WSL
-    link: https://learn.microsoft.com/en-us/windows/wsl/user-support
+  - name: Windows Subsystem for Linux Documentation
+    description: Microsoft's official WSL documentation
+    link: https://learn.microsoft.com/en-us/windows/wsl/
 author:
   - vanduc2514 (vanduc2514@gmail.com)
 '''
 
 EXAMPLES = r'''
-- name: Create a user account in Ubuntu WSL distribution
+- name: Create a user in Ubuntu WSL
   vanduc2514.wsl_automation.wsl_user:
-    name: ansible
     distribution: Ubuntu
-    comment: Ansible automation user
-    groups: sudo
-    shell: /bin/bash
-
-- name: Create a user with sudo access
-  vanduc2514.wsl_automation.wsl_user:
-    name: admin
-    distribution: Debian
-    sudo: true
-    password: "secure_password"
+    name: myuser
     state: present
 
-- name: Configure SSH access for a user
+- name: Create user with custom settings
   vanduc2514.wsl_automation.wsl_user:
-    name: deploy
     distribution: Ubuntu
-    ssh_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..."
-    shell: /bin/bash
+    name: customuser
+    uid: 1500
+    login_shell: /bin/bash
+    home_path: /home/customuser
 
-- name: Configure SSH access using a key file
+- name: Create admin user
   vanduc2514.wsl_automation.wsl_user:
-    name: deploy
     distribution: Ubuntu
-    ssh_key_file: /path/to/public_key.pub
-    shell: /bin/bash
+    name: admin
+    sudo: true
+    password: "secretpassword"
 
-- name: Add a user to specific groups
+- name: Set up SSH access for user
   vanduc2514.wsl_automation.wsl_user:
-    name: devuser
     distribution: Ubuntu
-    groups:
-      - sudo
-      - docker
-      - developers
-    append: true
+    name: deployuser
+    authorized_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..."
+    authorized_key_append: true
 
-- name: Create a system user
+- name: Remove user
   vanduc2514.wsl_automation.wsl_user:
-    name: app
     distribution: Ubuntu
-    system: true
-    home: /opt/app
-    shell: /usr/sbin/nologin
-
-- name: Update an existing user's properties
-  vanduc2514.wsl_automation.wsl_user:
-    name: existing_user
-    distribution: Ubuntu
-    shell: /bin/zsh
-    home: /home/custom_home
-    comment: Updated user description
-
-- name: Remove a user account
-  vanduc2514.wsl_automation.wsl_user:
     name: olduser
-    distribution: Ubuntu
     state: absent
 
-- name: Remove a user account and their home directory
+- name: Remove user completely
   vanduc2514.wsl_automation.wsl_user:
-    name: olduser
     distribution: Ubuntu
+    name: olduser
     state: absent
-    remove: true
+    remove_home: true
 '''
 
 RETURN = r'''
 user:
-  description: Final state of the user account with all properties.
+  description: Information about the managed user account.
   returned: success and state is present
   type: dict
+  contains:
+    name:
+      description: Username of the account
+      type: str
+      sample: myuser
+    uid:
+      description: User ID of the account
+      type: int
+      sample: 1000
+    home_path:
+      description: Home directory path
+      type: str
+      sample: /home/myuser
+    login_shell:
+      description: Login shell path
+      type: str
+      sample: /bin/bash
+    sudo:
+      description: Whether the user has sudo privileges
+      type: bool
+      sample: false
   sample:
-    name: ansible
-    uid: 1001
-    gid: 1001
-    group: ansible
-    groups:
-      - sudo
-      - docker
-    home: /home/ansible
-    shell: /bin/bash
-    comment: Ansible automation user
-    sudo: true
-    exists: true
+    name: myuser
+    uid: 1000
+    home_path: /home/myuser
+    login_shell: /bin/bash
+    sudo: false
 '''

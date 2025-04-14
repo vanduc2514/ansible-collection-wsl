@@ -19,7 +19,7 @@ $spec = @{
         home_path = @{
             type     = "str"
         }
-        shell = @{
+        login_shell = @{
             type     = "str"
         }
         sudo = @{
@@ -34,8 +34,16 @@ $spec = @{
             type     = "str"
             no_log   = $true
         }
+        authorized_key_append = @{
+            type     = "bool"
+            default  = $false
+        }
         authorized_keys_path = @{
             type     = "path"
+        }
+        remove_authorized_keys = @{
+            type     = "bool"
+            default  = $false
         }
         remove_home = @{
             type     = "bool"
@@ -49,9 +57,19 @@ $spec = @{
     }
     supports_check_mode = $true
     mutually_exclusive = @(
-        ,@("authorized_key", "authorized_keys_path")
+        , @("authorized_key", "remove_authorized_keys")
     )
 }
+
+function Test-RootUser {
+    param(
+        [string]
+        $UserName
+    )
+
+    return $UserName -eq 'root'
+}
+
 
 function Get-UserInfo {
     param(
@@ -69,8 +87,11 @@ function Get-UserInfo {
         return $null
     }
 
-    # Parse the id command output
-    $uidMatch = $result -match "uid=(\d+)"
+    $UID = if ($result -match "uid=(\d+)") {
+        [int]$Matches[1]
+    } else {
+        $null
+    }
 
     # Get home directory
     $homeCmd = "getent passwd $UserName 2>/dev/null | cut -d: -f6 || echo ''"
@@ -78,21 +99,79 @@ function Get-UserInfo {
 
     # Get shell
     $shellCmd = "getent passwd $UserName 2>/dev/null | cut -d: -f7 || echo ''"
-    $login_shell = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $shellCmd).Trim()
+    $loginShell = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $shellCmd).Trim()
 
     # Check sudo status
-    $sudoCmd = "grep -q '^$UserName\\s\\+ALL\\s*=' /etc/sudoers 2>/dev/null || [ -f /etc/sudoers.d/$UserName ] && echo 'true' || echo 'false'"
-    $sudo = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $sudoCmd).Trim() -eq "true"
+    $sudoCmd = "{ grep -q '^$UserName\\s\\+ALL\\s*=' /etc/sudoers 2>/dev/null || [ -f /etc/sudoers.d/$UserName ]; } && echo 'true' || echo 'false'"
+    $isSudo = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $sudoCmd).Trim() -eq "true"
 
     return @{
-        username = $UserName
-        uid = $uid
-        home = $homePath
-        login_shell = $login_shell
-        sudo = $sudo
-        exists = $true
+        name = $UserName
+        uid = $UID
+        home_path = $homePath
+        login_shell = $loginShell
+        sudo = $isSudo
     }
 }
+
+
+function Remove-User {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [string]
+        $DistributionName,
+
+        [string]
+        $UserName,
+
+        [bool]
+        $RemoveHome = $false
+    )
+
+    $args = if ($RemoveHome) { "--remove" } else { "" }
+    $userdel = "userdel $args $UserName 2>/dev/null"
+
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Remove user: $UserName")) {
+        try {
+            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $userdel | Out-Null
+            # Clean up sudo file if it exists
+            $sudoCleanup = "rm -f /etc/sudoers.d/$UserName"
+            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $sudoCleanup | Out-Null
+        } catch {
+            throw "Failed to remove user '$UserName' from WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
+    }
+}
+
+
+function New-UserHomeDirectory {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [string]
+        $DistributionName,
+
+        [string]
+        $UserName,
+
+        [string]
+        $Path
+    )
+
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Create home directory: $Path")) {
+        try {
+            $newWSLDirectoryCommandArguments = @{
+                DistributionName = $DistributionName
+                Owner = "${UserName}"
+                Mode = 700
+                Path = $Path
+            }
+            New-WSLDirectory @newWSLDirectoryCommandArguments | Out-Null
+        } catch {
+            throw "Failed to create home directory '$Path' for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
+    }
+}
+
 
 function New-User {
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -107,52 +186,67 @@ function New-User {
         $UID,
 
         [string]
-        $UserHome,
+        $HomePath,
 
         [string]
         $LoginShell
     )
 
-    $userCmd = "useradd --home-dir '$UserHome'"
+    $userAddCmdArgs = @(
+        if ($UID) { '--uid', $UID }
+        if ($LoginShell) { '--shell', $LoginShell }
+    )
 
-    if ($Shell) {
-        $userCmd += " --shell '$Shell'"
-    }
-
-    if ($Uid) {
-        $userCmd += " --uid $Uid"
-    }
+    $userAddCmd = "useradd --home-dir $HomePath $($userAddCmdArgs -join ' ')"
 
     if ($PSCmdlet.ShouldProcess($DistributionName, "Create user: $UserName")) {
         try {
-            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand "$userCmd $UserName" | Out-Null
+            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand "$userAddCmd $UserName" | Out-Null
         } catch {
             throw "Failed to create user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
     }
 }
 
-function Set-Password {
+
+function Set-User {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]
         $DistributionName,
 
         [string]
-        $UserName
+        $UserName,
 
         [string]
-        $RawPassword
+        $UID,
+
+        [string]
+        $HomePath,
+
+        [string]
+        $LoginShell
     )
 
-    if ($PSCmdlet.ShouldProcess($DistributionName, "Set password for user: $UserName")) {
-        $passwordCmd = "echo '${UserName}:${RawPassword}' | chpasswd"
-        try {
-            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $passwordCmd | Out-Null
-        } catch {
-            throw "Failed to set password for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+    $userModCmdArgs = @(
+        if ($UID) { '--uid', $UID }
+        if ($HomePath) { '--home', $HomePath }
+        if ($LoginShell) { '--shell', $LoginShell }
+    )
+
+    $userModCmd = "usermod $($userModCmdArgs -join ' ')"
+
+    if ($userModCmdArgs.Count -gt 0) {
+        if ($PSCmdlet.ShouldProcess($DistributionName, "Modify user properties for: $UserName")) {
+            try {
+                Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand "$userModCmd $UserName" | Out-Null
+            } catch {
+                throw "Failed to modify properties for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+            }
         }
     }
 }
+
 
 function Set-SudoAccess {
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -188,7 +282,8 @@ function Set-SudoAccess {
     }
 }
 
-function Remove-User {
+
+function Set-Password {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]
@@ -197,21 +292,109 @@ function Remove-User {
         [string]
         $UserName,
 
-        [bool]
-        $RemoveHome = $false
+        [string]
+        $RawPassword
     )
 
-    $args = if ($RemoveHome) { "--remove" } else { "" }
-    $userdel = "userdel $args $UserName"
-
-    if ($PSCmdlet.ShouldProcess($DistributionName, "Remove user: $UserName")) {
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Set password for user: $UserName")) {
+        $passwordCmd = "echo '${UserName}:${RawPassword}' | chpasswd"
         try {
-            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $userdel | Out-Null
-            # Clean up sudo file if it exists
-            $sudoCleanup = "rm -f /etc/sudoers.d/$UserName"
-            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $sudoCleanup | Out-Null
+            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $passwordCmd | Out-Null
         } catch {
-            throw "Failed to remove user '$UserName' from WSL distribution '$DistributionName': $($_.Exception.Message)"
+            throw "Failed to set password for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
+    }
+}
+
+
+function New-AuthorizedKeysFile {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [string]
+        $DistributionName,
+
+        [string]
+        $UserName,
+
+        [string]
+        $Path
+    )
+
+    $parent = Get-ParentDirectory -Path $Path
+
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Create authorized_keys file: $Path")) {
+        try {
+            $newWSLDirectoryCommandArguments = @{
+                DistributionName = $DistributionName
+                Owner = $UserName
+                Mode = 700
+                Path = $parent
+            }
+            New-WSLDirectory @newWSLDirectoryCommandArguments | Out-Null
+
+            $newWSLFileCommandArguments = @{
+                DistributionName = $DistributionName
+                Owner = $UserName
+                Mode = 600
+                Path = $Path
+            }
+            New-WSLFile @newWSLFileCommandArguments | Out-Null
+        } catch {
+            throw "Failed to create authorized_keys file '$Path' for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
+    }
+}
+
+
+function Test-AuthorizedKeyExist {
+    param(
+        [string]
+        $DistributionName,
+
+        [string]
+        $AuthorizedKey,
+
+        [string]
+        $AuthorizedKeysPath
+    )
+
+    try {
+        $checkCmd = "grep --quiet '^$AuthorizedKey\$' '$AuthorizedKeysPath' 2>/dev/null && echo 'true' || echo 'false'"
+        $result = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $checkCmd
+        return $result.Trim() -eq 'true'
+    } catch {
+        return $false
+    }
+}
+
+
+function Set-AuthorizedKey {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [string]
+        $DistributionName,
+
+        [string]
+        $AuthorizedKey,
+
+        [bool]
+        $Append,
+
+        [string]
+        $AuthorizedKeysPath
+    )
+
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Add authorized key to: $AuthorizedKeysPath")) {
+        try {
+            $setWSLFileContent = @{
+                DistributionName = $DistributionName
+                Append = $Append
+                Content = "$AuthorizedKey`n"
+                Path = $AuthorizedKeysPath
+            }
+            Set-WSLFileContent @setWSLFileContent | Out-Null
+        } catch {
+            throw "Failed to set authorized key in '$AuthorizedKeysPath' for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
     }
 }
@@ -220,14 +403,15 @@ function Remove-User {
 
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
-$distribution_name = $module.Params.distribution
 $name = $module.Params.name
+$distribution_name = $module.Params.distribution
 $uid = $module.Params.uid
 $home_path = $module.Params.home_path
-$login_shell = $module.Params.shell
+$login_shell = $module.Params.login_shell
 $sudo = $module.Params.sudo
 $raw_password = $module.Params.password
 $authorized_key = $module.Params.authorized_key
+$authorized_key_append = $module.Params.authorized_key_append
 $authorized_keys_path = $module.Params.authorized_keys_path
 $remove_home = $module.Params.remove_home
 $state = $module.Params.state
@@ -235,6 +419,8 @@ $check_mode = $module.CheckMode
 
 $home_path = if ($home_path) {
     $home_path
+} elseif (Test-RootUser -UserName $name) {
+    '/root'
 } else {
     "/home/$name"
 }
@@ -247,7 +433,7 @@ $authorized_keys_path = if ($authorized_keys_path) {
 
 try {
     # Get current user information
-    $user = Get-UserInfo -DistributionName $distribution_name -Username $name
+    $user = Get-UserInfo -DistributionName $distribution_name -UserName $name
     $module.Diff.before = $user
 
     # Handle user removal
@@ -257,7 +443,7 @@ try {
                 DistributionName = $distribution_name
                 UserName = $name
                 RemoveHome = $remove_home
-                WhatIf = check_mode
+                WhatIf = $check_mode
             }
 
             Remove-User @removeUserParams
@@ -267,95 +453,89 @@ try {
         $module.ExitJson()
     }
 
+    if (-not $user) {
+        $newUserParams = @{
+            DistributionName = $distribution_name
+            UserName = $name
+            UID = $uid
+            HomePath = $home_path
+            LoginShell = $login_shell
+            WhatIf = $check_mode
+        }
+        New-User @newUserParams
+        $user = Get-UserInfo -DistributionName $distribution_name -UserName $name
+        Set-ModuleChanged -Module $module
+    }
+
     if (-not $(Test-WSLFileExist -DistributionName $distribution_name -Path $home_path)) {
         $newUserHomeDirectoryParams = @{
             DistributionName = $distribution_name
+            UserName = $name
             Path = $home_path
             WhatIf = $check_mode
         }
-        New-UserHomeDirectory @newUserHomeDirectoryParams # TODO: Implement this function
+        New-UserHomeDirectory @newUserHomeDirectoryParams
         Set-ModuleChanged -Module $module
     }
 
     if (-not $(Test-WSLFileExist -DistributionName $distribution_name -Path $authorized_keys_path)) {
         $newAuthorizedKeysFile = @{
             DistributionName = $distribution_name
+            UserName = $name
             Path = $authorized_keys_path
             WhatIf = $check_mode
         }
-        New-AuthorizedKeysFile @newAuthorizedKeysFile # TODO: implement this function, should create parent first then new file
+        New-AuthorizedKeysFile @newAuthorizedKeysFile
         Set-ModuleChanged -Module $module
     }
 
-    if (-not $user) {
-        $newUserParams = @{
+    if ($uid -and $(Test-RootUser -UserName $name)) {
+        $module.Warn('Cannot change uid of root user')
+    } elseif ($uid -and $user.uid -ne $uid) {
+        $setUserUIDCommandArguments = @{
             DistributionName = $distribution_name
             UserName = $name
-            CreateHome = $create_home
-            UserHome = $home_path
-            Shell = $login_shell
-            Password = $raw_password
-            Uid = $uid
+            UID = $uid
             WhatIf = $check_mode
         }
-        New-User @newUserParams
-        $user = Get-UserInfo -DistributionName $distribution_name -Username $name
+        Set-User @setUserUIDCommandArguments
         Set-ModuleChanged -Module $module
     }
 
-    if ($user.user_name -ne $name) {
-        $setUserNameParams = @{
+    if ($home_path -and $user.home_path -ne $home_path) {
+        $setUserHomePathCommandArguments = @{
             DistributionName = $distribution_name
             UserName = $name
+            HomePath = $home_path
             WhatIf = $check_mode
         }
-        Set-UserName @setUserNameParams #TODO: Implement this function, create a common function which user usermod and pass argument to it
+        Set-User @setUserHomePathCommandArguments
         Set-ModuleChanged -Module $module
     }
 
-    if ($user.uid -ne $uid) {
-        $setUserUIDParams = @{
-            DistributionName = $distribution_name
-            UserName = $name
-            UserUID = $uid
-            WhatIf = $check_mode
-        }
-        Set-UserUID @setUserUIDParams #TODO: Implement this function, create a common function which user usermod and pass argument to it
-        Set-ModuleChanged -Module $module
-    }
-
-    if ($user.home_path -ne $home_path) {
-        $setUserHomePathParams = @{
-            DistributionName = $distribution_name
-            UserName = $name
-            UserHome = $home_path
-            WhatIf = $check_mode
-        }
-        Set-UserHome @setUserHomePathParams #TODO: Implement this function, create a common function which user usermod and pass argument to it
-        Set-ModuleChanged -Module $module
-    }
-
-    if ($user.login_shell -ne $login_shell) {
-        $setUserHomePathParams = @{
+    if ($login_shell -and $user.login_shell -ne $login_shell) {
+        $setUserLoginShellCommandArguments = @{
             DistributionName = $distribution_name
             UserName = $name
             LoginShell = $login_shell
             WhatIf = $check_mode
         }
-        Set-UserHome @setUserHomePathParams #TODO: Implement this function, create a common function which user usermod and pass argument to it
+        Set-User @setUserLoginShellCommandArguments
         Set-ModuleChanged -Module $module
     }
 
-    if ($sudo -and $sudo -ne $user.sudo) {
-        $setSudoAccessParams = {
-            DistributionName = $name
+    if (-not $sudo -and $(Test-RootUser -UserName $name)) {
+        $module.Warn('Cannot change sudo access of root user')
+    } elseif ($sudo -ne $user.sudo) {
+        $setSudoAccessParams = @{
+            DistributionName = $distribution_name
             UserName = $name
+            Sudo = $sudo
             WhatIf = $check_mode
         }
         Set-SudoAccess @setSudoAccessParams
         Set-ModuleChanged -Module $module
     }
-
 
     if ($raw_password) {
         $setPasswordParams = @{
@@ -368,28 +548,28 @@ try {
         Set-ModuleChanged -Module $module
     }
 
-    $testHavingAuthorizedKeyParams = {
-        DistributionName = $distribution_name
-        AuthorizedKey = $authorized_key
-        AuthorizedKeysPath = $authorized_keys_path
-    }
-    $hasAuthorizedKey = Test-HavingAuthorizedKey @testHavingAuthorizedKeyParams # TODO: check if authorized_key file in the path contain authorized_key value
-
-    if ($authorized_key -and -not $hasAuthorizedKey) {
-        setAuthorizedKeyParams = {
+    if ($authorized_key) {
+        $testAuthorizedKeyExist = @{
             DistributionName = $distribution_name
             AuthorizedKey = $authorized_key
-            AuthorizedKeyPath = $authorized_keys_path
-            WhatIf = $check_mode
+            AuthorizedKeysPath = $authorized_keys_path
         }
-        Set-AuthorizedKey @setAuthorizedKeyParams # TODO: append value to the end of authorized_key
-        Set-ModuleChanged -Module $module
+        $authorizedKeyExist = Test-AuthorizedKeyExist @testAuthorizedKeyExist
+
+        if (-not $authorizedKeyExist) {
+            $setAuthorizedKeyParams = @{
+                DistributionName = $distribution_name
+                AuthorizedKey = $authorized_key
+                Append = $authorized_key_append
+                AuthorizedKeysPath = $authorized_keys_path
+                WhatIf = $check_mode
+            }
+            Set-AuthorizedKey @setAuthorizedKeyParams
+            Set-ModuleChanged -Module $module
+        }
     }
 
-    if ($module.Result.changed) {
-        $module.Diff.after = Get-UserInfo -DistributionName $distribution_name -Username $name
-    }
-
+    $module.Diff.after = Get-UserInfo -DistributionName $distribution_name -UserName $name
     $module.Result.user = $module.Diff.after
 
 } catch {
