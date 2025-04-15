@@ -44,9 +44,6 @@ $spec = @{
             choices  = @(1, 2)
             default  = 2
         }
-        config = @{
-            type = "str"
-        }
         state = @{
             type     = "str"
             choices  = @("run", "stop", "absent")
@@ -63,10 +60,7 @@ $spec = @{
 function Get-WSLDistribution {
     param(
         [string]
-        $DistributionName,
-
-        [string]
-        $ConfigPath
+        $DistributionName
     )
 
     # Get all available distributions
@@ -79,51 +73,11 @@ function Get-WSLDistribution {
     foreach ($distro in $distributions) {
         # If the distro found in distributions
         if ($distro.name -eq $DistributionName) {
-            if ($ConfigPath) {
-                $getConfigArguments = @{
-                    DistributionName = $DistributionName
-                    ConfigPath = $ConfigPath
-                    Stop = $('Stopped' -eq $distro.state)
-                }
-                $member = @{
-                    MemberType = 'NoteProperty'
-                    Name = 'config'
-                    Value = Get-WSLDistributionConfig @getConfigArguments
-                }
-                $distro | Add-Member @member
-            }
             return $distro
         }
     }
 
     return $null
-}
-
-
-function Get-WSLDistributionConfig {
-    param(
-        [string]
-        $DistributionName,
-
-        [string]
-        $ConfigPath,
-
-        # Whether to stop after fetch configuration
-        [bool]
-        $Stop = $false
-    )
-
-    try {
-        $wslConfig = Get-WSLFileContent -DistributionName $DistributionName -Path $ConfigPath
-    } catch {
-        throw "Failed to get config of WSL distribution '$DistributionName': $($_.Exception.Message)"
-    }
-
-    if ($Stop) {
-        Stop-WSLDistribution -DistributionName $DistributionName
-    }
-
-    return $wslConfig
 }
 
 
@@ -308,32 +262,6 @@ function Import-WSLDistribution {
 }
 
 
-function Set-WSLDistributionConfig {
-    [CmdletBinding(SupportsShouldProcess = $true)]
-    param(
-        [string]
-        $DistributionName,
-
-        [string]
-        $ConfigPath,
-
-        [string]
-        $Config
-    )
-
-    if ($PSCmdlet.ShouldProcess($DistributionName, 'Configure WSL distribution')) {
-        try {
-            $setWSLFileContentArguments = @{
-                DistributionName = $DistributionName
-                Path = $ConfigPath
-                Content = $Config
-            }
-            Set-WSLFileContent @setWSLFileContentArguments | Out-Null
-        } catch {
-            throw "Failed to configure WSL distribution '$DistributionName': $($_.Exception.Message)"
-        }
-    }
-}
 
 
 function Set-WSLDistributionArchVersion {
@@ -449,13 +377,10 @@ $import_dir_path = $module.Params.import_dir_path
 $import_bundle = $module.Params.import_bundle
 $import_vhd = $module.Params.import_vhd
 $arch_version = $module.Params.arch_version
-$config = $module.Params.config
 $state = $module.Params.state
 $check_mode = $module.CheckMode
 
-$config_path = "/etc/wsl.conf"
-
-$before = Get-WSLDistribution -DistributionName $name -ConfigPath $config_path
+$before = Get-WSLDistribution -DistributionName $name
 $module.Diff.before = $before
 
 try {
@@ -504,29 +429,7 @@ try {
         Set-ModuleChanged -Module $module
     }
 
-    $distro = Get-WSLDistribution -DistributionName $name -ConfigPath $config_path
-
-    if ($config -and ($distro.config -replace '\s+', '') -ne ($config -replace '\s+', '')) {
-        $config_params = @{
-            DistributionName = $name
-            ConfigPath = $config_path
-            Config = $config
-            WhatIf = $check_mode
-        }
-        Set-WSLDistributionConfig @config_params
-
-        if ($distro.state -eq 'Running') {
-            Stop-WSLDistribution -DistributionName $name -WhatIf:$check_mode
-            Start-WSLDistribution -DistributionName $name -WhatIf:$check_mode
-            if (-not $check_mode) {
-                $module.Result.restarted = $true
-            }
-        } else {
-            Stop-WSLDistribution -DistributionName $name -WhatIf:$check_mode
-        }
-
-        Set-ModuleChanged -Module $module
-    }
+    $distro = Get-WSLDistribution -DistributionName $name
 
     if ($arch_version -ne $distro.arch_version) {
         $set_version_params = @{
@@ -549,7 +452,7 @@ try {
     }
 
     if ($module.Result.changed) {
-        $module.Diff.after = Get-WSLDistribution -DistributionName $name -ConfigPath $config_path
+        $module.Diff.after = Get-WSLDistribution -DistributionName $name
     }
 
 } catch {

@@ -30,21 +30,6 @@ $spec = @{
             type     = "str"
             no_log   = $true
         }
-        authorized_key = @{
-            type     = "str"
-            no_log   = $true
-        }
-        authorized_key_append = @{
-            type     = "bool"
-            default  = $false
-        }
-        authorized_keys_path = @{
-            type     = "path"
-        }
-        remove_authorized_keys = @{
-            type     = "bool"
-            default  = $false
-        }
         remove_home = @{
             type     = "bool"
             default  = $false
@@ -56,9 +41,6 @@ $spec = @{
         }
     }
     supports_check_mode = $true
-    mutually_exclusive = @(
-        , @("authorized_key", "remove_authorized_keys")
-    )
 }
 
 function Test-RootUser {
@@ -139,35 +121,6 @@ function Remove-User {
             Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $sudoCleanup | Out-Null
         } catch {
             throw "Failed to remove user '$UserName' from WSL distribution '$DistributionName': $($_.Exception.Message)"
-        }
-    }
-}
-
-
-function New-UserHomeDirectory {
-    [CmdletBinding(SupportsShouldProcess = $true)]
-    param(
-        [string]
-        $DistributionName,
-
-        [string]
-        $UserName,
-
-        [string]
-        $Path
-    )
-
-    if ($PSCmdlet.ShouldProcess($DistributionName, "Create home directory: $Path")) {
-        try {
-            $newWSLDirectoryCommandArguments = @{
-                DistributionName = $DistributionName
-                Owner = "${UserName}"
-                Mode = 700
-                Path = $Path
-            }
-            New-WSLDirectory @newWSLDirectoryCommandArguments | Out-Null
-        } catch {
-            throw "Failed to create home directory '$Path' for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
     }
 }
@@ -306,99 +259,6 @@ function Set-Password {
     }
 }
 
-
-function New-AuthorizedKeysFile {
-    [CmdletBinding(SupportsShouldProcess = $true)]
-    param(
-        [string]
-        $DistributionName,
-
-        [string]
-        $UserName,
-
-        [string]
-        $Path
-    )
-
-    $parent = Get-ParentDirectory -Path $Path
-
-    if ($PSCmdlet.ShouldProcess($DistributionName, "Create authorized_keys file: $Path")) {
-        try {
-            $newWSLDirectoryCommandArguments = @{
-                DistributionName = $DistributionName
-                Owner = $UserName
-                Mode = 700
-                Path = $parent
-            }
-            New-WSLDirectory @newWSLDirectoryCommandArguments | Out-Null
-
-            $newWSLFileCommandArguments = @{
-                DistributionName = $DistributionName
-                Owner = $UserName
-                Mode = 600
-                Path = $Path
-            }
-            New-WSLFile @newWSLFileCommandArguments | Out-Null
-        } catch {
-            throw "Failed to create authorized_keys file '$Path' for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
-        }
-    }
-}
-
-
-function Test-AuthorizedKeyExist {
-    param(
-        [string]
-        $DistributionName,
-
-        [string]
-        $AuthorizedKey,
-
-        [string]
-        $AuthorizedKeysPath
-    )
-
-    try {
-        $checkCmd = "grep --quiet '^$AuthorizedKey\$' '$AuthorizedKeysPath' 2>/dev/null && echo 'true' || echo 'false'"
-        $result = Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $checkCmd
-        return $result.Trim() -eq 'true'
-    } catch {
-        return $false
-    }
-}
-
-
-function Set-AuthorizedKey {
-    [CmdletBinding(SupportsShouldProcess = $true)]
-    param(
-        [string]
-        $DistributionName,
-
-        [string]
-        $AuthorizedKey,
-
-        [bool]
-        $Append,
-
-        [string]
-        $AuthorizedKeysPath
-    )
-
-    if ($PSCmdlet.ShouldProcess($DistributionName, "Add authorized key to: $AuthorizedKeysPath")) {
-        try {
-            $setWSLFileContent = @{
-                DistributionName = $DistributionName
-                Append = $Append
-                Content = "$AuthorizedKey`n"
-                Path = $AuthorizedKeysPath
-            }
-            Set-WSLFileContent @setWSLFileContent | Out-Null
-        } catch {
-            throw "Failed to set authorized key in '$AuthorizedKeysPath' for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
-        }
-    }
-}
-
 ######################################### Main ##########################################
 
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
@@ -410,9 +270,6 @@ $home_path = $module.Params.home_path
 $login_shell = $module.Params.login_shell
 $sudo = $module.Params.sudo
 $raw_password = $module.Params.password
-$authorized_key = $module.Params.authorized_key
-$authorized_key_append = $module.Params.authorized_key_append
-$authorized_keys_path = $module.Params.authorized_keys_path
 $remove_home = $module.Params.remove_home
 $state = $module.Params.state
 $check_mode = $module.CheckMode
@@ -423,12 +280,6 @@ $home_path = if ($home_path) {
     '/root'
 } else {
     "/home/$name"
-}
-
-$authorized_keys_path = if ($authorized_keys_path) {
-    $authorized_keys_path
-} else {
-    "$home_path/.ssh/authorized_keys"
 }
 
 try {
@@ -464,28 +315,6 @@ try {
         }
         New-User @newUserParams
         $user = Get-UserInfo -DistributionName $distribution_name -UserName $name
-        Set-ModuleChanged -Module $module
-    }
-
-    if (-not $(Test-WSLFileExist -DistributionName $distribution_name -Path $home_path)) {
-        $newUserHomeDirectoryParams = @{
-            DistributionName = $distribution_name
-            UserName = $name
-            Path = $home_path
-            WhatIf = $check_mode
-        }
-        New-UserHomeDirectory @newUserHomeDirectoryParams
-        Set-ModuleChanged -Module $module
-    }
-
-    if (-not $(Test-WSLFileExist -DistributionName $distribution_name -Path $authorized_keys_path)) {
-        $newAuthorizedKeysFile = @{
-            DistributionName = $distribution_name
-            UserName = $name
-            Path = $authorized_keys_path
-            WhatIf = $check_mode
-        }
-        New-AuthorizedKeysFile @newAuthorizedKeysFile
         Set-ModuleChanged -Module $module
     }
 
@@ -546,27 +375,6 @@ try {
         }
         Set-Password @setPasswordParams
         Set-ModuleChanged -Module $module
-    }
-
-    if ($authorized_key) {
-        $testAuthorizedKeyExist = @{
-            DistributionName = $distribution_name
-            AuthorizedKey = $authorized_key
-            AuthorizedKeysPath = $authorized_keys_path
-        }
-        $authorizedKeyExist = Test-AuthorizedKeyExist @testAuthorizedKeyExist
-
-        if (-not $authorizedKeyExist) {
-            $setAuthorizedKeyParams = @{
-                DistributionName = $distribution_name
-                AuthorizedKey = $authorized_key
-                Append = $authorized_key_append
-                AuthorizedKeysPath = $authorized_keys_path
-                WhatIf = $check_mode
-            }
-            Set-AuthorizedKey @setAuthorizedKeyParams
-            Set-ModuleChanged -Module $module
-        }
     }
 
     $module.Diff.after = Get-UserInfo -DistributionName $distribution_name -UserName $name

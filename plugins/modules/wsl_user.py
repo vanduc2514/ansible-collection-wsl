@@ -8,7 +8,6 @@ short_description: Manage users in Windows Subsystem for Linux (WSL) distributio
 description:
   - Create, modify, and remove user accounts in WSL distributions.
   - Configure user properties including home directory, shell, and UID.
-  - Set up SSH authorized keys for authentication.
   - Manage sudo privileges.
   - Set user passwords.
   - This module is intended for basic initial user setup in WSL distributions only. For advanced user management, please use ansible.builtin.user module.
@@ -52,22 +51,6 @@ options:
       - This is not idempotent and will be updated whenever specified.
     type: str
     no_log: true
-  authorized_key:
-    description:
-      - SSH public key content to add to the user's authorized_keys file.
-    type: str
-    no_log: true
-  authorized_key_append:
-    description:
-      - If C(true), append the authorized key to existing keys.
-      - If C(false), replace existing authorized keys with the specified key.
-    type: bool
-    default: false
-  authorized_keys_path:
-    description:
-      - Path to the authorized_keys file.
-      - If not specified, defaults to <home_path>/.ssh/authorized_keys.
-    type: path
   remove_home:
     description:
       - When C(state=absent), also remove the user's home directory.
@@ -83,7 +66,6 @@ notes:
   - Requires Windows Subsystem for Linux (WSL) and PowerShell.
   - The target WSL distribution must be installed and configured.
   - The module operates using PowerShell and WSL commands.
-  - When managing authorized keys, the .ssh directory will be created with appropriate permissions if it doesn't exist.
   - Sudo access is granted by creating a sudoers.d file for the user with NOPASSWD access.
 seealso:
   - name: Windows Subsystem for Linux Documentation
@@ -115,12 +97,6 @@ EXAMPLES = r'''
     sudo: true
     password: "secretpassword"
 
-- name: Set up SSH access for user
-  vanduc2514.wsl_automation.wsl_user:
-    distribution: Ubuntu
-    name: deployuser
-    authorized_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..."
-    authorized_key_append: true
 
 - name: Remove user
   vanduc2514.wsl_automation.wsl_user:

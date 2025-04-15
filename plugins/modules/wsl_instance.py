@@ -74,12 +74,6 @@ options:
     type: int
     choices: [1, 2]
     default: 2
-  config:
-    description:
-      - Content for the /etc/wsl.conf file in the WSL distribution.
-      - This file configures various WSL settings like automount, network, interop, etc.
-      - See the Microsoft documentation for details on the format and options.
-    type: str
   state:
     description:
       - Desired state of the WSL distribution.
@@ -96,9 +90,6 @@ seealso:
   - name: WSL Installation Guide
     description: Microsoft's guide for installing WSL
     link: https://learn.microsoft.com/en-us/windows/wsl/install
-  - name: WSL Configuration
-    description: Documentation for configuring WSL distributions
-    link: https://learn.microsoft.com/en-us/windows/wsl/wsl-config
   - name: WSL Command Reference
     description: Reference for WSL commands
     link: https://learn.microsoft.com/en-us/windows/wsl/basic-commands
@@ -113,23 +104,6 @@ EXAMPLES = r'''
     web_download: true
     state: run
 
-- name: Install a specific distribution from Microsoft Store and configure it
-  ansible.windows.wsl_instance:
-    name: Debian
-    web_download: true
-    config: |
-      [automount]
-      enabled = true
-      options = "metadata,umask=22,fmask=11"
-
-      [network]
-      generateHosts = true
-      generateResolvConf = true
-
-      [interop]
-      enabled = true
-      appendWindowsPath = true
-    state: run
 
 - name: Import a custom distribution from a local rootfs archive
   ansible.windows.wsl_instance:
@@ -153,16 +127,6 @@ EXAMPLES = r'''
     import_bundle: true
     state: run
 
-- name: Configure an existing WSL distribution
-  ansible.windows.wsl_instance:
-    name: Ubuntu
-    config: |
-      [boot]
-      command = /usr/sbin/service ssh start
-
-      [user]
-      default = ansible
-    state: run
 
 - name: Change WSL version for a distribution
   ansible.windows.wsl_instance:
@@ -181,9 +145,4 @@ EXAMPLES = r'''
 '''
 
 RETURN = r'''
-restarted:
-  description: Whether the WSL distribution was restarted due to configuration changes.
-  returned: when configuration is changed and the distribution was running
-  type: bool
-  sample: true
 '''
