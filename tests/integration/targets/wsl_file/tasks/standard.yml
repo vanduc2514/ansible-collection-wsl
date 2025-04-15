@@ -292,3 +292,9 @@
         path: /tmp/permission_file.txt
         distribution: "{{ wsl_distribution }}"
         state: absent
+
+    - name: Remove permission dir
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/permission_dir
+        distribution: "{{ wsl_distribution }}"
+        state: absent

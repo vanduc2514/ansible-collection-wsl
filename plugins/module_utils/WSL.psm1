@@ -170,9 +170,9 @@ function Set-WSLFileContent {
     $base64Content = [Convert]::ToBase64String($contentBytes)
 
     $linuxCommand = if ($Append) {
-        "echo '$base64Content' | base64 -d >> $Path"
+        "echo -n '$base64Content' | base64 -d >> $Path"
     } else {
-        "echo '$base64Content' | base64 -d > $Path"
+        "echo -n '$base64Content' | base64 -d > $Path"
     }
 
     $setContentCommandArguments = @{
@@ -221,7 +221,7 @@ function Invoke-WSLCommand {
         $Arguments
     )
 
-    return wsl @Arguments | Out-String | Get-FormattedText | Test-CommandOutput
+    return $(wsl @Arguments) -join "`n" | Normalize-WSLOutput | Test-CommandOutput
 }
 
 function Invoke-WSLCommandInBackground {

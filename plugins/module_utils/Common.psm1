@@ -61,14 +61,14 @@ function Get-HashFromURL {
     }
 }
 
-function Get-FormattedText {
+function Normalize-WSLOutput {
     param(
         [Parameter(ValueFromPipeline = $true)]
-        [string]
-        $Text
+        [Object[]]
+        $Output
     )
 
-    return $Text -replace '\u0000', ''
+    return $Output -join "`n" -replace '\u0000', ''
 }
 
 function Get-ParentDirectory {
@@ -117,7 +117,7 @@ $export_members = @{
         'New-Win32Process',
         'Remove-Win32Process',
         'Get-HashFromURL',
-        'Get-FormattedText',
+        'Normalize-WSLOutput',
         'Get-ParentDirectory',
         'Set-ModuleChanged'
     )

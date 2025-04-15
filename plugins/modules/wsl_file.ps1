@@ -72,19 +72,11 @@ function Get-FileInfo {
     $modeCmd = "stat -c '%a' '$Path' 2>/dev/null || echo ''"
     $mode = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $modeCmd).Trim()
 
-    # Get content if it's a file
-    $content = if (-not $isDirectory) {
-        Get-WSLFileContent -DistributionName $DistributionName -Path $Path
-    } else {
-        $null
-    }
-
     return @{
         path = $Path
         is_directory = $isDirectory
         owner = $owner
         mode = $mode
-        content = $content
     }
 }
 
@@ -428,7 +420,6 @@ try {
 
     # Module outputs
     $module.Result.path = $path
-    $module.Result.file_info = $module.Diff.after
 
 } catch {
     $module.FailJson("An error occurred: $($_.Exception.Message)", $_)
