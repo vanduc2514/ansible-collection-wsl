@@ -1,0 +1,21 @@
+---
+# Create test files in WSL for testing
+
+- name: Create test file content
+  set_fact:
+    test_file_content: "This is a test file content\nwith multiple lines\nfor WSL slurp testing."
+
+- name: Create test directory and files in WSL
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ wsl_distribution }}"
+    path: "/tmp/ansible_test"
+    state: directory
+    mode: '755'
+
+- name: Create a test file for content retrieval
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ wsl_distribution }}"
+    path: "/tmp/ansible_test/test_file.txt"
+    content: "{{ test_file_content }}"
+    state: file
+    mode: '644'

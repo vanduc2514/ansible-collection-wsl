@@ -1,0 +1,47 @@
+---
+# Minimum parameter tests for wsl_slurp module
+
+- name: Test with minimum parameters
+  block:
+    - name: Read test file with minimum parameters
+      vanduc2514.wsl_automation.wsl_slurp:
+        distribution: "{{ wsl_distribution }}"
+        path: "/tmp/ansible_test/test_file.txt"
+      register: slurp_result
+
+    - name: Validate the minimum parameters result
+      assert:
+        that:
+          - slurp_result is changed == false
+          - slurp_result.path == '/tmp/ansible_test/test_file.txt'
+          - slurp_result.encoding == 'base64'
+          - slurp_result.mode == '644'
+          - slurp_result.content | b64decode | trim == test_file_content
+
+- name: Test error handling
+  block:
+    - name: Try to read non-existent file
+      vanduc2514.wsl_automation.wsl_slurp:
+        distribution: "{{ wsl_distribution }}"
+        path: "/tmp/ansible_test/non_existent_file.txt"
+      register: slurp_error
+      failed_when: false
+
+    - name: Validate error for non-existent file
+      assert:
+        that:
+          - slurp_error is failed
+          - "'not found' in slurp_error.msg"
+
+    - name: Try to read a directory instead of a file
+      vanduc2514.wsl_automation.wsl_slurp:
+        distribution: "{{ wsl_distribution }}"
+        path: "/tmp/ansible_test"
+      register: directory_error
+      failed_when: false
+
+    - name: Validate error for directory
+      assert:
+        that:
+          - directory_error is failed
+          - "'is a directory' in directory_error.msg"
