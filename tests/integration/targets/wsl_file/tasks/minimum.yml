@@ -1,0 +1,161 @@
+- name: Test basic file creation scenario
+  block:
+    - name: Test basic file creation in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testfile.txt
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test basic file creation
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testfile.txt
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+          - wsl_file_actual.path == "/tmp/testfile.txt"
+          - wsl_file_actual.file_info.exists
+          - not wsl_file_actual.file_info.is_directory
+
+    - name: Test idempotency of basic file creation
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testfile.txt
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+- name: Test basic directory creation scenario
+  block:
+    - name: Test basic directory creation in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testdir
+        distribution: "{{ wsl_distribution }}"
+        state: directory
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test basic directory creation
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testdir
+        distribution: "{{ wsl_distribution }}"
+        state: directory
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+          - wsl_file_actual.path == "/tmp/testdir"
+          - wsl_file_actual.file_info.exists
+          - wsl_file_actual.file_info.is_directory
+
+    - name: Test idempotency of basic directory creation
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testdir
+        distribution: "{{ wsl_distribution }}"
+        state: directory
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+- name: Test file removal scenario
+  block:
+    - name: Test file removal in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testfile.txt
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test file removal
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testfile.txt
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+
+    - name: Test idempotency of file removal
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testfile.txt
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+- name: Test directory removal scenario
+  block:
+    - name: Test directory removal in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testdir
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test directory removal
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testdir
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+
+    - name: Test idempotency of directory removal
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/testdir
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed

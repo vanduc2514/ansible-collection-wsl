@@ -1,0 +1,14 @@
+- name: Test WSL File scenarios
+  block:
+    - name: Import minimum scenario
+      ansible.builtin.import_tasks:
+        file: minimum.yml
+
+    - name: Import standard scenario
+      ansible.builtin.import_tasks:
+        file: standard.yml
+
+  rescue:
+    - name: Debug actual output if any test failed
+      ansible.builtin.debug:
+        msg: "{{ wsl_file_actual }}"

@@ -1,0 +1,301 @@
+- name: Test file creation with content scenario
+  block:
+    - name: Test file creation with content in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/content_file.txt
+        content: "Hello, World!"
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test file creation with content
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/content_file.txt
+        content: "Hello, World!"
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+          - wsl_file_actual.file_info.content == "Hello, World!"
+
+    - name: Test idempotency of file creation with content
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/content_file.txt
+        content: "Hello, World!"
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+- name: Test append content scenario
+  block:
+    - name: Test append content in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/content_file.txt
+        content: "\nAdditional content"
+        append: true
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test append content
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/content_file.txt
+        content: "\nAdditional content"
+        append: true
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+          - wsl_file_actual.file_info.content == "Hello, World!\nAdditional content"
+
+    - name: Test idempotency of append content
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/content_file.txt
+        content: "\nAdditional content"
+        append: true
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+- name: Test owner and mode scenario
+  block:
+    - name: Test setting owner and mode in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/permission_file.txt
+        content: "Permission test file"
+        owner: root
+        mode: "644"
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test setting owner and mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/permission_file.txt
+        content: "Permission test file"
+        owner: root
+        mode: "644"
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+          - wsl_file_actual.file_info.owner == "root"
+          - wsl_file_actual.file_info.mode == "644"
+
+    - name: Test idempotency of setting owner and mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/permission_file.txt
+        content: "Permission test file"
+        owner: root
+        mode: "644"
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+- name: Test directory with owner and mode scenario
+  block:
+    - name: Test creating directory with owner and mode in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/permission_dir
+        owner: root
+        mode: "755"
+        distribution: "{{ wsl_distribution }}"
+        state: directory
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test creating directory with owner and mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/permission_dir
+        owner: root
+        mode: "755"
+        distribution: "{{ wsl_distribution }}"
+        state: directory
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+          - wsl_file_actual.file_info.owner == "root"
+          - wsl_file_actual.file_info.mode == "755"
+          - wsl_file_actual.file_info.is_directory
+
+    - name: Test idempotency of creating directory with owner and mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/permission_dir
+        owner: root
+        mode: "755"
+        distribution: "{{ wsl_distribution }}"
+        state: directory
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+- name: Test recursive removal scenario
+  block:
+    - name: Create nested file structure
+      vanduc2514.wsl_automation.wsl_file:
+        path: "/tmp/permission_dir/nested/file.txt"
+        content: "Nested file content"
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Test recursive removal in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/permission_dir
+        recursive: true
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test recursive removal
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/permission_dir
+        recursive: true
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+
+    - name: Test idempotency of recursive removal
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/permission_dir
+        recursive: true
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+- name: Test force removal scenario
+  block:
+    - name: Create read-only file
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/readonly_file.txt
+        content: "Read-only file content"
+        mode: "444" # read-only
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Test force removal in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/readonly_file.txt
+        force: true
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test force removal
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/readonly_file.txt
+        force: true
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+
+    - name: Test idempotency of force removal
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/readonly_file.txt
+        force: true
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+- name: Clean up test files
+  block:
+    - name: Remove content file
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/content_file.txt
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+
+    - name: Remove permission file
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/permission_file.txt
+        distribution: "{{ wsl_distribution }}"
+        state: absent
