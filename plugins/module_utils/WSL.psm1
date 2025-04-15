@@ -294,6 +294,7 @@ $export_members = @{
         'New-WSLDirectory',
         'New-WSLFile',
         'Set-WSLFileContent',
+        'Set-OwnerAndModeWSLFile',
         'Remove-WSLFileContent',
         'Invoke-WSLCommand',
         'Invoke-WSLCommandInBackground',
