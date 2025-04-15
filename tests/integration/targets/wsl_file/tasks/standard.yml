@@ -26,6 +26,7 @@
       ansible.builtin.assert:
         that:
           - wsl_file_actual is changed
+          # TODO: Remove the following assert
           - wsl_file_actual.file_info.content == "Hello, World!"
 
     - name: Test idempotency of file creation with content
@@ -71,6 +72,7 @@
       ansible.builtin.assert:
         that:
           - wsl_file_actual is changed
+          # TODO: Remove the following assert
           - wsl_file_actual.file_info.content == "Hello, World!\nAdditional content"
 
     - name: Test idempotency of append content
@@ -119,6 +121,7 @@
       ansible.builtin.assert:
         that:
           - wsl_file_actual is changed
+          # TODO: Remove the following assert. Only assert path
           - wsl_file_actual.file_info.owner == "root"
           - wsl_file_actual.file_info.mode == "644"
 
@@ -167,6 +170,7 @@
       ansible.builtin.assert:
         that:
           - wsl_file_actual is changed
+          # TODO: Remove the following assert. Only assert path
           - wsl_file_actual.file_info.owner == "root"
           - wsl_file_actual.file_info.mode == "755"
           - wsl_file_actual.file_info.is_directory

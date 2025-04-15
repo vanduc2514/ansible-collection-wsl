@@ -45,7 +45,7 @@ $spec = @{
     }
     supports_check_mode = $true
     mutually_exclusive = @(
-        , @("state=directory", "content")
+        , @("state=directory", "content") # TODO: Re-check if it works with state=directory. I think it does not work
     )
 }
 
@@ -83,7 +83,7 @@ function Get-FileInfo {
 
     return @{
         path = $Path
-        exists = $true
+        exists = $true # TODO: Remove this, if the file does not exist, simply return $null
         is_directory = $isDirectory
         owner = $owner
         mode = $mode
@@ -122,6 +122,7 @@ function Remove-WSLFileOrDirectory {
     }
 }
 
+# TODO: Refactor this function to separate creating new file, and set content to file
 function New-WSLFileWithContent {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -148,12 +149,12 @@ function New-WSLFileWithContent {
         try {
             # Ensure parent directory exists
             $parent = Get-ParentDirectory -Path $Path
-            if (-not $(Test-WSLFileExist -DistributionName $DistributionName -Path $parent)) {
+            if (-not $(Test-WSLFileExist -DistributionName $DistributionName -Path $parent)) { # TODO: Move this to implementation to create new file in module utils WSL.psm1
                 $newWSLDirectoryParams = @{
                     DistributionName = $DistributionName
                     Path = $parent
-                    Owner = if ($Owner) { $Owner } else { "root" }
-                    Mode = if ($Mode) { $Mode } else { "755" }
+                    Owner = if ($Owner) { $Owner } else { "root" } # TODO: move setting default value to main
+                    Mode = if ($Mode) { $Mode } else { "755" } # TODO: move setting default value to main
                 }
                 New-WSLDirectory @newWSLDirectoryParams
             }
@@ -163,8 +164,8 @@ function New-WSLFileWithContent {
                 $newWSLFileParams = @{
                     DistributionName = $DistributionName
                     Path = $Path
-                    Owner = if ($Owner) { $Owner } else { "root" }
-                    Mode = if ($Mode) { $Mode } else { "644" }
+                    Owner = if ($Owner) { $Owner } else { "root" } # TODO: move setting default value to main
+                    Mode = if ($Mode) { $Mode } else { "644" } # TODO: move setting default value to main
                 }
                 New-WSLFile @newWSLFileParams
             }
@@ -172,6 +173,7 @@ function New-WSLFileWithContent {
             # Set content if provided
             if ($Content) {
                 # If appending, check if content is already in the file
+                # TODO: recheck if the condition in main method is sufficient, if yes then remove this
                 if ($Append) {
                     $existingContent = Get-WSLFileContent -DistributionName $DistributionName -Path $Path
                     if ($existingContent -and $existingContent.Contains($Content)) {
@@ -189,6 +191,7 @@ function New-WSLFileWithContent {
                 Set-WSLFileContent @setWSLFileContentParams
             }
 
+            # TODO: Remove this, will be check explicitly in main
             # Set owner and mode if specified
             if ($Owner -or $Mode) {
                 $setOwnerAndModeParams = @{
@@ -233,8 +236,8 @@ function New-WSLDirectoryStructure {
             $newWSLDirectoryParams = @{
                 DistributionName = $DistributionName
                 Path = $Path
-                Owner = if ($Owner) { $Owner } else { "root" }
-                Mode = if ($Mode) { $Mode } else { "755" }
+                Owner = if ($Owner) { $Owner } else { "root" } # TODO: move setting default value to main
+                Mode = if ($Mode) { $Mode } else { "755" } # TODO: move setting default value to main
             }
             New-WSLDirectory @newWSLDirectoryParams
         } catch {
@@ -294,7 +297,7 @@ try {
         $module.FailJson("Cannot set content when state is 'directory'")
     }
 
-    if ($recursive -and $state -ne "absent") {
+    if ($recursive -and $state -ne "absent") { # TODO: Remove this condition, now recursive can be used with any state. Check the TODOs in WSL.psm1 to get the new context and try to apply recursive parameter
         $module.FailJson("'recursive' parameter can only be used when state is 'absent'")
     }
 
@@ -325,6 +328,7 @@ try {
 
     # Handle state=file
     if ($state -eq "file") {
+        # TODO: Refactor this section and explicitly separate the creation of new file and updating of existing file. You can use the functions of module WSL.psm1 directly instead of creating new function
         $contentChanged = $false
 
         if ($content -or -not $file_info -or ($file_info -and $file_info.is_directory)) {
@@ -333,6 +337,7 @@ try {
 
         $ownerChanged = $owner -and $file_info -and $file_info.owner -ne $owner
         $modeChanged = $mode -and $file_info -and $file_info.mode -ne $mode
+
 
         if (-not $file_info -or $file_info.is_directory -or $contentChanged -or $ownerChanged -or $modeChanged) {
             $newWSLFileWithContentParams = @{

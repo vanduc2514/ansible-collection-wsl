@@ -54,6 +54,8 @@ function New-WSLDirectory {
 
         [string]
         $Path
+
+        # TODO: add new recursive param. Default is $true, if $true then include --parents to the command arguments. Update other functions if needed
     )
 
     $createDirectoryCommandArguments = @{
@@ -121,6 +123,8 @@ function Set-OwnerAndModeWSLFile {
 
         [string]
         $Path
+
+        # TODO: add new recursive param. Default is $true, if $true then include --recursive to the command arguments. Update other functions if needed
     )
 
     $changeOwnerCommandArguments = @{

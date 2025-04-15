@@ -25,6 +25,7 @@
         that:
           - wsl_file_actual is changed
           - wsl_file_actual.path == "/tmp/testfile.txt"
+          # TODO: Remove the following assert
           - wsl_file_actual.file_info.exists
           - not wsl_file_actual.file_info.is_directory
 
@@ -67,6 +68,7 @@
         that:
           - wsl_file_actual is changed
           - wsl_file_actual.path == "/tmp/testdir"
+          # TODO: Remove the following assert
           - wsl_file_actual.file_info.exists
           - wsl_file_actual.file_info.is_directory
 
