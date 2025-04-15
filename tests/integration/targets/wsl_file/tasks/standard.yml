@@ -26,8 +26,6 @@
       ansible.builtin.assert:
         that:
           - wsl_file_actual is changed
-          # TODO: Remove the following assert
-          - wsl_file_actual.file_info.content == "Hello, World!"
 
     - name: Test idempotency of file creation with content
       vanduc2514.wsl_automation.wsl_file:
@@ -72,8 +70,6 @@
       ansible.builtin.assert:
         that:
           - wsl_file_actual is changed
-          # TODO: Remove the following assert
-          - wsl_file_actual.file_info.content == "Hello, World!\nAdditional content"
 
     - name: Test idempotency of append content
       vanduc2514.wsl_automation.wsl_file:
@@ -121,9 +117,6 @@
       ansible.builtin.assert:
         that:
           - wsl_file_actual is changed
-          # TODO: Remove the following assert. Only assert path
-          - wsl_file_actual.file_info.owner == "root"
-          - wsl_file_actual.file_info.mode == "644"
 
     - name: Test idempotency of setting owner and mode
       vanduc2514.wsl_automation.wsl_file:
@@ -170,10 +163,6 @@
       ansible.builtin.assert:
         that:
           - wsl_file_actual is changed
-          # TODO: Remove the following assert. Only assert path
-          - wsl_file_actual.file_info.owner == "root"
-          - wsl_file_actual.file_info.mode == "755"
-          - wsl_file_actual.file_info.is_directory
 
     - name: Test idempotency of creating directory with owner and mode
       vanduc2514.wsl_automation.wsl_file:

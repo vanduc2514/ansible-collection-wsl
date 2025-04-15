@@ -25,9 +25,6 @@
         that:
           - wsl_file_actual is changed
           - wsl_file_actual.path == "/tmp/testfile.txt"
-          # TODO: Remove the following assert
-          - wsl_file_actual.file_info.exists
-          - not wsl_file_actual.file_info.is_directory
 
     - name: Test idempotency of basic file creation
       vanduc2514.wsl_automation.wsl_file:
@@ -68,9 +65,6 @@
         that:
           - wsl_file_actual is changed
           - wsl_file_actual.path == "/tmp/testdir"
-          # TODO: Remove the following assert
-          - wsl_file_actual.file_info.exists
-          - wsl_file_actual.file_info.is_directory
 
     - name: Test idempotency of basic directory creation
       vanduc2514.wsl_automation.wsl_file:

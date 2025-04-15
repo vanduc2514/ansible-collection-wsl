@@ -53,15 +53,16 @@ function New-WSLDirectory {
         $Mode,
 
         [string]
-        $Path
+        $Path,
 
-        # TODO: add new recursive param. Default is $true, if $true then include --parents to the command arguments. Update other functions if needed
+        [bool]
+        $Recursive = $true
     )
 
     $createDirectoryCommandArguments = @{
         DistributionName = $DistributionName
         DistributionUser = 'root'
-        LinuxCommand = "mkdir --parents $Path"
+        LinuxCommand = if ($Recursive) { "mkdir --parents $Path" } else { "mkdir $Path" }
     }
 
     Invoke-LinuxCommand @createDirectoryCommandArguments
@@ -71,6 +72,7 @@ function New-WSLDirectory {
         Owner = $Owner
         Mode = $Mode
         Path = $Path
+        Recursive = $Recursive
     }
 
     Set-OwnerAndModeWSLFile @setOwnerAndModeCommandArguments
@@ -109,7 +111,6 @@ function New-WSLFile {
     Set-OwnerAndModeWSLFile @setOwnerAndModeCommandArguments
 }
 
-
 function Set-OwnerAndModeWSLFile {
     param(
         [string]
@@ -122,26 +123,31 @@ function Set-OwnerAndModeWSLFile {
         $Mode,
 
         [string]
-        $Path
+        $Path,
 
-        # TODO: add new recursive param. Default is $true, if $true then include --recursive to the command arguments. Update other functions if needed
+        [bool]
+        $Recursive = $true
     )
 
-    $changeOwnerCommandArguments = @{
-        DistributionName = $DistributionName
-        DistributionUser = 'root'
-        LinuxCommand = "chown --recursive $Owner $Path"
+    if ($Owner) {
+        $changeOwnerCommandArguments = @{
+            DistributionName = $DistributionName
+            DistributionUser = 'root'
+            LinuxCommand = if ($Recursive) { "chown --recursive $Owner $Path" } else { "chown $Owner $Path" }
+        }
+
+        Invoke-LinuxCommand @changeOwnerCommandArguments
     }
 
-    Invoke-LinuxCommand @changeOwnerCommandArguments
+    if ($Mode) {
+        $changeModeCommandArguments = @{
+            DistributionName = $DistributionName
+            DistributionUser = 'root'
+            LinuxCommand = if ($Recursive) { "chmod --recursive $Mode $Path" } else { "chmod $Mode $Path" }
+        }
 
-    $changeModeCommandArguments = @{
-        DistributionName = $DistributionName
-        DistributionUser = 'root'
-        LinuxCommand = "chmod --recursive $Mode $Path"
+        Invoke-LinuxCommand @changeModeCommandArguments
     }
-
-    Invoke-LinuxCommand @changeModeCommandArguments
 }
 
 function Set-WSLFileContent {
@@ -299,7 +305,7 @@ $export_members = @{
         'New-WSLFile',
         'Set-WSLFileContent',
         'Set-OwnerAndModeWSLFile',
-        'Remove-WSLFileContent',
+        'Remove-WSLFile',
         'Invoke-WSLCommand',
         'Invoke-WSLCommandInBackground',
         'Invoke-LinuxCommand',
