@@ -44,10 +44,8 @@ $spec = @{
         }
     }
     supports_check_mode = $true
-    mutually_exclusive = @(
-        , @("state=directory", "content")
-    )
 }
+
 
 function Get-FileInfo {
     param(
@@ -83,13 +81,13 @@ function Get-FileInfo {
 
     return @{
         path = $Path
-        exists = $true
         is_directory = $isDirectory
         owner = $owner
         mode = $mode
         content = $content
     }
 }
+
 
 function Remove-WSLFileOrDirectory {
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -122,14 +120,6 @@ function Remove-WSLFileOrDirectory {
     }
 }
 
-function Get-ParentDirectory {
-    param(
-        [string]
-        $Path
-    )
-
-    return [System.IO.Path]::GetDirectoryName($Path)
-}
 
 function New-WSLEmptyFile {
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -141,27 +131,14 @@ function New-WSLEmptyFile {
         $Path,
 
         [string]
-        $Owner = "root",
+        $Owner,
 
         [string]
-        $Mode = "644"
+        $Mode
     )
 
     if ($PSCmdlet.ShouldProcess($DistributionName, "Create empty file: $Path")) {
         try {
-            # Ensure parent directory exists
-            $parent = Get-ParentDirectory -Path $Path
-            if (-not $(Test-WSLFileExist -DistributionName $DistributionName -Path $parent)) {
-                $newWSLDirectoryParams = @{
-                    DistributionName = $DistributionName
-                    Path = $parent
-                    Owner = $Owner
-                    Mode = "755" # Default directory mode
-                    Recursive = $true
-                }
-                New-WSLDirectory @newWSLDirectoryParams
-            }
-
             $newWSLFileParams = @{
                 DistributionName = $DistributionName
                 Path = $Path
@@ -174,6 +151,7 @@ function New-WSLEmptyFile {
         }
     }
 }
+
 
 function Set-WSLFileContents {
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -193,15 +171,6 @@ function Set-WSLFileContents {
 
     if ($PSCmdlet.ShouldProcess($DistributionName, "Set content for file: $Path")) {
         try {
-            # If appending, check if content is already in the file
-            if ($Append) {
-                $existingContent = Get-WSLFileContent -DistributionName $DistributionName -Path $Path
-                if ($existingContent -and $existingContent.Contains($Content)) {
-                    # Content already exists, no need to append
-                    return
-                }
-            }
-
             $setWSLFileContentParams = @{
                 DistributionName = $DistributionName
                 Content = $Content
@@ -214,6 +183,7 @@ function Set-WSLFileContents {
         }
     }
 }
+
 
 function Update-WSLFileAttributes {
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -259,6 +229,7 @@ function Update-WSLFileAttributes {
     }
 }
 
+
 function New-WSLDirectoryStructure {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -269,10 +240,10 @@ function New-WSLDirectoryStructure {
         $Path,
 
         [string]
-        $Owner = "root",
+        $Owner,
 
         [string]
-        $Mode = "755",
+        $Mode,
 
         [bool]
         $Recursive = $true
@@ -294,6 +265,7 @@ function New-WSLDirectoryStructure {
     }
 }
 
+
 function Test-FileContentChanged {
     param(
         [string]
@@ -308,12 +280,6 @@ function Test-FileContentChanged {
         [bool]
         $Append = $false
     )
-
-    $fileExists = Test-WSLFileExist -DistributionName $DistributionName -Path $Path
-
-    if (-not $fileExists) {
-        return $true
-    }
 
     $existingContent = Get-WSLFileContent -DistributionName $DistributionName -Path $Path
 
@@ -339,9 +305,24 @@ $mode = $module.Params.mode
 $state = $module.Params.state
 $check_mode = $module.CheckMode
 
+$owner = if ($owner) {
+    $owner
+} else {
+    'root'
+}
+# default rw for file and rwx for directory
+$mode = if ($mode) {
+    $mode
+} elseif ($state -eq 'file') {
+    '644'
+} elseif ($state -eq 'directory') {
+    '755'
+} else {
+    $null
+}
+
 try {
-    # Validate parameters
-    if ($state -eq "directory" -and $content) {
+    if ($state -eq 'directory' -and $content) {
         $module.FailJson("Cannot set content when state is 'directory'")
     }
 
@@ -349,8 +330,18 @@ try {
     $file_info = Get-FileInfo -DistributionName $distribution_name -Path $path
     $module.Diff.before = $file_info
 
-    # Handle state=absent
-    if ($state -eq "absent") {
+    $invalidFileChange = $state -eq 'file' -and $file_info.is_directory
+    $invalidDirectoryChange = $state -eq 'directory' -and -not $file_info.is_directory
+    if ($file_info) {
+        if ($invalidFileChange) {
+            $module.FailJson("Invalid state. Cannot change from directory to file")
+        }
+        if ($invalidDirectoryChange) {
+            $module.FailJson("Invalid state. Cannot change from file to directory")
+        }
+    }
+
+    if ($state -eq 'absent') {
         if ($file_info) {
             $removeWSLFileOrDirectoryParams = @{
                 DistributionName = $distribution_name
@@ -365,31 +356,31 @@ try {
             $module.Diff.after = $null
         }
 
-        # Module outputs
-        $module.Result.path = $path
+        $module.Result.path = $null
         $module.ExitJson()
     }
 
-    # Handle state=file
-    if ($state -eq "file") {
-        $contentChanged = $false
-        $fileNeedsCreation = (-not $file_info) -or ($file_info -and $file_info.is_directory)
-        $ownerChanged = $owner -and $file_info -and $file_info.owner -ne $owner
-        $modeChanged = $mode -and $file_info -and $file_info.mode -ne $mode
-
-        if ($fileNeedsCreation) {
+    if ($state -eq 'file') {
+        if (-not $file_info) {
             $newWSLEmptyFileParams = @{
                 DistributionName = $distribution_name
                 Path = $path
-                Owner = if ($owner) { $owner } else { "root" }
-                Mode = if ($mode) { $mode } else { "644" }
+                Owner = $owner
+                Mode = $mode
                 WhatIf = $check_mode
             }
             New-WSLEmptyFile @newWSLEmptyFileParams
             Set-ModuleChanged -Module $module
+            $file_info = Get-FileInfo -DistributionName $distribution_name -Path $path
         }
 
-        if ($content -and ($fileNeedsCreation -or (Test-FileContentChanged -DistributionName $distribution_name -Path $path -Content $content -Append $append))) {
+        $contentChangedParams = @{
+            DistributionName = $distribution_name
+            Path = $path
+            Content = $content
+            Append = $append
+        }
+        if ($content -and $(Test-FileContentChanged @contentChangedParams)) {
             $setWSLFileContentsParams = @{
                 DistributionName = $distribution_name
                 Path = $path
@@ -400,40 +391,36 @@ try {
             Set-WSLFileContents @setWSLFileContentsParams
             Set-ModuleChanged -Module $module
         }
-
-        if ((-not $fileNeedsCreation) -and ($ownerChanged -or $modeChanged)) {
-            $updateWSLFileAttributesParams = @{
-                DistributionName = $distribution_name
-                Path = $path
-                Owner = $owner
-                Mode = $mode
-                Recursive = $recursive
-                WhatIf = $check_mode
-            }
-            Update-WSLFileAttributes @updateWSLFileAttributesParams
-            Set-ModuleChanged -Module $module
-        }
     }
 
-    # Handle state=directory
-    if ($state -eq "directory") {
-        $dirExists = $file_info -and $file_info.is_directory
-        $ownerChanged = $owner -and $file_info -and $file_info.owner -ne $owner
-        $modeChanged = $mode -and $file_info -and $file_info.mode -ne $mode
-
-        if (-not $dirExists -or $ownerChanged -or $modeChanged) {
-            $newWSLDirectoryStructureParams = @{
-                DistributionName = $distribution_name
-                Path = $path
-                Owner = if ($owner) { $owner } else { "root" }
-                Mode = if ($mode) { $mode } else { "755" }
-                Recursive = $recursive
-                WhatIf = $check_mode
-            }
-
-            New-WSLDirectoryStructure @newWSLDirectoryStructureParams
-            Set-ModuleChanged -Module $module
+    if ($state -eq 'directory' -and -not $file_info) {
+        $newWSLDirectoryStructureParams = @{
+            DistributionName = $distribution_name
+            Path = $path
+            Owner = $owner
+            Mode = $mode
+            Recursive = $recursive
+            WhatIf = $check_mode
         }
+
+        New-WSLDirectoryStructure @newWSLDirectoryStructureParams
+        Set-ModuleChanged -Module $module
+        $file_info = Get-FileInfo -DistributionName $distribution_name -Path $path
+    }
+
+    $ownerChanged = $owner -and $file_info.owner -ne $owner
+    $modeChanged = $mode -and $file_info.mode -ne $mode
+    if ($ownerChanged -or $modeChanged) {
+        $updateWSLFileAttributesParams = @{
+            DistributionName = $distribution_name
+            Path = $path
+            Owner = $owner
+            Mode = $mode
+            Recursive = $recursive
+            WhatIf = $check_mode
+        }
+        Update-WSLFileAttributes @updateWSLFileAttributesParams
+        Set-ModuleChanged -Module $module
     }
 
     # Update diff after
