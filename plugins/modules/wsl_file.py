@@ -38,8 +38,8 @@ options:
         default: false
     recursive:
         description:
+            - Create new directories recursively.
             - Remove files and directories recursively.
-            - Only valid when state=absent.
         type: bool
         default: false
     force:
@@ -118,37 +118,8 @@ EXAMPLES = r'''
 
 RETURN = r'''
 path:
-    description: Path to the file or directory.
+    description: Path to the file or directory or null if the file or directory is removed
     type: str
     returned: always
     sample: "/home/user/test.txt"
-file_info:
-    description: Information about the file or directory.
-    type: dict
-    returned: success
-    contains:
-        path:
-            description: Path to the file or directory.
-            type: str
-            sample: "/home/user/test.txt"
-        exists:
-            description: Whether the file or directory exists.
-            type: bool
-            sample: true
-        is_directory:
-            description: Whether the path is a directory.
-            type: bool
-            sample: false
-        owner:
-            description: Owner of the file or directory.
-            type: str
-            sample: "user"
-        mode:
-            description: Permission mode of the file or directory.
-            type: str
-            sample: "644"
-        content:
-            description: Content of the file if it's not a directory.
-            type: str
-            sample: "Hello, World!"
 '''
