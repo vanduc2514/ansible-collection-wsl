@@ -1,0 +1,58 @@
+- name: Test with check mode (should work the same as normal mode for read operations)
+  block:
+    - name: Read test file in check mode
+      vanduc2514.wsl_automation.wsl_slurp:
+        distribution: "{{ wsl_distribution }}"
+        path: "/tmp/ansible_test/test_file.txt"
+      check_mode: true
+      register: wsl_slurp_result
+
+    - name: Validate check mode result
+      assert:
+        that:
+          - wsl_slurp_result is changed == false
+          - wsl_slurp_result.path == '/tmp/ansible_test/test_file.txt'
+          - wsl_slurp_result.encoding == 'base64'
+          - wsl_slurp_result.content | b64decode | trim == test_file_content
+
+- name: Test with special characters in content
+  block:
+    - name: Create a file with special characters
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_distribution }}"
+        path: "/tmp/ansible_test/special_chars.txt"
+        content: "Special characters: !@#$%^&*()_+-={}[]|\\:;\"'<>,./?\nUnicode: 你好, こんにちは, 안녕하세요"
+        state: file
+        mode: '644'
+
+    - name: Read file with special characters
+      vanduc2514.wsl_automation.wsl_slurp:
+        distribution: "{{ wsl_distribution }}"
+        path: "/tmp/ansible_test/special_chars.txt"
+      register: wsl_slurp_result
+
+    - name: Create expected content variable
+      set_fact:
+        expected_special_content: "Special characters: !@#$%^&*()_+-={}[]|\\:;\"'<>,./?\nUnicode: 你好, こんにちは, 안녕하세요"
+
+    - name: Validate special characters handling
+      assert:
+        that:
+          - wsl_slurp_result is changed == false
+          - wsl_slurp_result.content | b64decode | trim == expected_special_content
+
+- name: Test with binary file
+  block:
+    - name: Read binary file
+      vanduc2514.wsl_automation.wsl_slurp:
+        distribution: "{{ wsl_distribution }}"
+        path: /usr/bin/env
+      register: wsl_slurp_result
+
+    - name: Validate binary file reading
+      assert:
+        that:
+          - wsl_slurp_result is changed == false
+          - wsl_slurp_result.encoding == 'base64'
+          - wsl_slurp_result.content is string
+          - wsl_slurp_result.content | length > 0

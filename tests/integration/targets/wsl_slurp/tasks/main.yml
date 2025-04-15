@@ -1,6 +1,3 @@
----
-# Create test files in WSL for testing
-
 - name: Create test file content
   set_fact:
     test_file_content: "This is a test file content\nwith multiple lines\nfor WSL slurp testing."
@@ -19,3 +16,25 @@
     content: "{{ test_file_content }}"
     state: file
     mode: '644'
+
+- name: Test wsl_slurp scenarios
+  block:
+    - name: Import minimum scenario
+      ansible.builtin.import_tasks:
+        file: minimum.yml
+
+    - name: Import standard scenario
+      ansible.builtin.import_tasks:
+        file: standard.yml
+
+  rescue:
+    - name: Debug actual output if any test failed
+      ansible.builtin.debug:
+        msg: "{{ wsl_slurp_result }}"
+
+- name: Cleanup test files
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ wsl_distribution }}"
+    path: "/tmp/ansible_test"
+    state: absent
+    force: true
