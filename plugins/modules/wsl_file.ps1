@@ -99,13 +99,20 @@ function Remove-WSLFileOrDirectory {
 
     if ($PSCmdlet.ShouldProcess($DistributionName, "Remove $Path")) {
         try {
-            $removeWSLFileParams = @{
+            $removeCommand = "rm"
+
+            $extraArguments = @() + $(
+                if ($Recursive) { '--recursive' }
+                if ($Force) { '--force' }
+            ) -join ' '
+
+            $invokeLinuxCommandArguments = @{
                 DistributionName = $DistributionName
-                Recursive = $Recursive
-                Force = $Force
-                Path = $Path
+                DistributionUser = 'root'
+                LinuxCommand = "$removeCommand $extraArguments $Path"
             }
-            Remove-WSLFile @removeWSLFileParams
+
+            Invoke-LinuxCommand @invokeLinuxCommandArguments
         } catch {
             throw "Failed to remove '$Path' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
@@ -131,13 +138,17 @@ function New-WSLEmptyFile {
 
     if ($PSCmdlet.ShouldProcess($DistributionName, "Create empty file: $Path")) {
         try {
-            $newWSLFileParams = @{
+            $touchNewFileCommandArguments = @{
                 DistributionName = $DistributionName
-                Path = $Path
-                Owner = $Owner
-                Mode = $Mode
+                DistributionUser = 'root'
+                LinuxCommand = "touch $Path"
             }
-            New-WSLFile @newWSLFileParams
+
+            Invoke-LinuxCommand @touchNewFileCommandArguments
+
+            if ($Owner -or $Mode) {
+                Set-WSLFileAttributes -DistributionName $DistributionName -Owner $Owner -Mode $Mode -Path $Path
+            }
         } catch {
             throw "Failed to create empty file '$Path' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
@@ -145,7 +156,7 @@ function New-WSLEmptyFile {
 }
 
 
-function Set-WSLFileContents {
+function Set-WSLFileContent {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]
@@ -163,13 +174,23 @@ function Set-WSLFileContents {
 
     if ($PSCmdlet.ShouldProcess($DistributionName, "Set content for file: $Path")) {
         try {
-            $setWSLFileContentParams = @{
-                DistributionName = $DistributionName
-                Content = $Content
-                Append = $Append
-                Path = $Path
+            # Convert content to base64 to safely handle multiline strings and special characters
+            $contentBytes = [System.Text.Encoding]::UTF8.GetBytes($Content)
+            $base64Content = [Convert]::ToBase64String($contentBytes)
+
+            $linuxCommand = if ($Append) {
+                "echo -n '$base64Content' | base64 -d >> $Path"
+            } else {
+                "echo -n '$base64Content' | base64 -d > $Path"
             }
-            Set-WSLFileContent @setWSLFileContentParams
+
+            $setContentCommandArguments = @{
+                DistributionName = $DistributionName
+                DistributionUser = 'root'
+                LinuxCommand = $linuxCommand
+            }
+
+            Invoke-LinuxCommand @setContentCommandArguments
         } catch {
             throw "Failed to set content for file '$Path' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
@@ -177,7 +198,7 @@ function Set-WSLFileContents {
 }
 
 
-function Update-WSLFileAttributes {
+function Set-WSLFileAttributes {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]
@@ -198,22 +219,24 @@ function Update-WSLFileAttributes {
 
     if ($PSCmdlet.ShouldProcess($DistributionName, "Update attributes for: $Path")) {
         try {
-            if ($Owner -or $Mode) {
-                $setOwnerAndModeParams = @{
+            if ($Owner) {
+                $changeOwnerCommandArguments = @{
                     DistributionName = $DistributionName
-                    Path = $Path
-                    Recursive = $Recursive
+                    DistributionUser = 'root'
+                    LinuxCommand = if ($Recursive) { "chown --recursive $Owner $Path" } else { "chown $Owner $Path" }
                 }
 
-                if ($Owner) {
-                    $setOwnerAndModeParams.Owner = $Owner
+                Invoke-LinuxCommand @changeOwnerCommandArguments
+            }
+
+            if ($Mode) {
+                $changeModeCommandArguments = @{
+                    DistributionName = $DistributionName
+                    DistributionUser = 'root'
+                    LinuxCommand = if ($Recursive) { "chmod --recursive $Mode $Path" } else { "chmod $Mode $Path" }
                 }
 
-                if ($Mode) {
-                    $setOwnerAndModeParams.Mode = $Mode
-                }
-
-                Set-OwnerAndModeWSLFile @setOwnerAndModeParams
+                Invoke-LinuxCommand @changeModeCommandArguments
             }
         } catch {
             throw "Failed to update attributes for '$Path' in WSL distribution '$DistributionName': $($_.Exception.Message)"
@@ -222,7 +245,7 @@ function Update-WSLFileAttributes {
 }
 
 
-function New-WSLDirectoryStructure {
+function New-WSLDirectory {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]
@@ -243,14 +266,17 @@ function New-WSLDirectoryStructure {
 
     if ($PSCmdlet.ShouldProcess($DistributionName, "Create directory: $Path")) {
         try {
-            $newWSLDirectoryParams = @{
+            $createDirectoryCommandArguments = @{
                 DistributionName = $DistributionName
-                Path = $Path
-                Owner = $Owner
-                Mode = $Mode
-                Recursive = $Recursive
+                DistributionUser = 'root'
+                LinuxCommand = if ($Recursive) { "mkdir --parents $Path" } else { "mkdir $Path" }
             }
-            New-WSLDirectory @newWSLDirectoryParams
+
+            Invoke-LinuxCommand @createDirectoryCommandArguments
+
+            if ($Owner -or $Mode) {
+                Set-WSLFileAttributes -DistributionName $DistributionName -Owner $Owner -Mode $Mode -Path $Path -Recursive $Recursive
+            }
         } catch {
             throw "Failed to create directory '$Path' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
@@ -373,14 +399,14 @@ try {
             Append = $append
         }
         if ($content -and $(Test-FileContentChanged @contentChangedParams)) {
-            $setWSLFileContentsParams = @{
+            $setWSLFileContentParams = @{
                 DistributionName = $distribution_name
                 Path = $path
                 Content = $content
                 Append = $append
                 WhatIf = $check_mode
             }
-            Set-WSLFileContents @setWSLFileContentsParams
+            Set-WSLFileContent @setWSLFileContentParams
             Set-ModuleChanged -Module $module
         }
     }
@@ -395,7 +421,7 @@ try {
             WhatIf = $check_mode
         }
 
-        New-WSLDirectoryStructure @newWSLDirectoryStructureParams
+        New-WSLDirectory @newWSLDirectoryStructureParams
         Set-ModuleChanged -Module $module
         $file_info = Get-FileInfo -DistributionName $distribution_name -Path $path
     }
@@ -411,7 +437,7 @@ try {
             Recursive = $recursive
             WhatIf = $check_mode
         }
-        Update-WSLFileAttributes @updateWSLFileAttributesParams
+        Set-WSLFileAttributes @updateWSLFileAttributesParams
         Set-ModuleChanged -Module $module
     }
 
