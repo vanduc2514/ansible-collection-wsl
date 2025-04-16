@@ -1,13 +1,33 @@
-# TODO: Change this so I can test with difference distribution. You need to read the file mentioned in import_tasks in the same directory to get more context
+# Test WSL Package with multiple distributions
 - name: Test WSL Package scenarios
-  block:
-    - name: Import minimum scenario
-      ansible.builtin.import_tasks:
-        file: minimum.yml
+  vars:
+    test_distributions:
+      - name: Ubuntu-20.04    # Debian-based
+        id: Ubuntu
+      - name: Alpine          # Alpine-based
+        id: Alpine
+      - name: Fedora          # Red Hat-based
+        id: Fedora
 
-    - name: Import standard scenario
-      ansible.builtin.import_tasks:
-        file: standard.yml
+  block:
+    - name: Run tests for each distribution
+      loop: "{{ test_distributions }}"
+      loop_control:
+        loop_var: distribution
+      block:
+        - name: Run minimum scenario for {{ distribution.name }}
+          ansible.builtin.include_tasks:
+            file: minimum.yml
+          vars:
+            distribution_name: "{{ distribution.name }}"
+            distribution_id: "{{ distribution.id }}"
+
+        - name: Run standard scenario for {{ distribution.name }}
+          ansible.builtin.include_tasks:
+            file: standard.yml
+          vars:
+            distribution_name: "{{ distribution.name }}"
+            distribution_id: "{{ distribution.id }}"
 
   rescue:
     - name: Debug actual output if any test failed

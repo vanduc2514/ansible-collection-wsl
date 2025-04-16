@@ -1,10 +1,35 @@
+- name: Define distribution-specific test packages
+  ansible.builtin.set_fact:
+    test_packages:
+      Ubuntu:
+        version_package: "curl"
+        version_value: "7.68.0-1ubuntu2.7"
+        cache_package: "wget"
+        force_package: "git"
+      Debian:
+        version_package: "curl"
+        version_value: "7.74.0-1.3+deb11u7"
+        cache_package: "wget"
+        force_package: "git"
+      Alpine:
+        version_package: "curl"
+        version_value: "7.83.1-r5"
+        cache_package: "wget"
+        force_package: "git"
+      Fedora:
+        version_package: "curl"
+        version_value: "7.76.1-18.fc37"
+        cache_package: "wget"
+        force_package: "git"
+    current_packages: "{{ test_packages[distribution_id] | default(test_packages.Ubuntu) }}"
+
 - name: Test package installation with specific version scenario
   block:
     - name: Test package installation with version in check_mode
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "curl"
-        version: "7.68.0-1ubuntu2.7"
+        name: "{{ current_packages.version_package }}"
+        version: "{{ current_packages.version_value }}"
         state: present
       check_mode: true
       register: wsl_package_actual
@@ -17,8 +42,8 @@
     - name: Test package installation with version
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "curl"
-        version: "7.68.0-1ubuntu2.7"
+        name: "{{ current_packages.version_package }}"
+        version: "{{ current_packages.version_value }}"
         state: present
       register: wsl_package_actual
 
@@ -26,12 +51,13 @@
       ansible.builtin.assert:
         that:
           - wsl_package_actual is changed
+          - wsl_package_actual.diff.after.installed | default(false)
 
     - name: Test idempotency of package installation with version
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "curl"
-        version: "7.68.0-1ubuntu2.7"
+        name: "{{ current_packages.version_package }}"
+        version: "{{ current_packages.version_value }}"
         state: present
       register: wsl_package_actual
 
@@ -45,7 +71,7 @@
     - name: Test package cache update in check_mode
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "wget"
+        name: "{{ current_packages.cache_package }}"
         update_cache: true
         state: present
       check_mode: true
@@ -59,7 +85,7 @@
     - name: Test package cache update
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "wget"
+        name: "{{ current_packages.cache_package }}"
         update_cache: true
         state: present
       register: wsl_package_actual
@@ -68,11 +94,12 @@
       ansible.builtin.assert:
         that:
           - wsl_package_actual is changed
+          - wsl_package_actual.diff.after.installed | default(false)
 
     - name: Test idempotency of package cache update
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "wget"
+        name: "{{ current_packages.cache_package }}"
         update_cache: true
         state: present
       register: wsl_package_actual
@@ -87,7 +114,7 @@
     - name: Test force package installation in check_mode
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "git"
+        name: "{{ current_packages.force_package }}"
         force: true
         state: present
       check_mode: true
@@ -101,7 +128,7 @@
     - name: Test force package installation
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "git"
+        name: "{{ current_packages.force_package }}"
         force: true
         state: present
       register: wsl_package_actual
@@ -110,11 +137,12 @@
       ansible.builtin.assert:
         that:
           - wsl_package_actual is changed
+          - wsl_package_actual.diff.after.installed | default(false)
 
     - name: Test idempotency of force package installation
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "git"
+        name: "{{ current_packages.force_package }}"
         force: true
         state: present
       register: wsl_package_actual
@@ -126,20 +154,20 @@
 
 - name: Clean up test packages
   block:
-    - name: Remove curl package
+    - name: Remove version package
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "curl"
+        name: "{{ current_packages.version_package }}"
         state: absent
 
-    - name: Remove wget package
+    - name: Remove cache package
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "wget"
+        name: "{{ current_packages.cache_package }}"
         state: absent
 
-    - name: Remove git package
+    - name: Remove force package
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "git"
+        name: "{{ current_packages.force_package }}"
         state: absent

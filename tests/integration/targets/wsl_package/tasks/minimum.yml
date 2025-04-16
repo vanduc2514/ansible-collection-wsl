@@ -24,6 +24,7 @@
       ansible.builtin.assert:
         that:
           - wsl_package_actual is changed
+          - wsl_package_actual.diff.after.installed
 
     - name: Test idempotency of basic package installation
       vanduc2514.wsl_automation.wsl_package:
@@ -36,6 +37,7 @@
       ansible.builtin.assert:
         that:
           - not wsl_package_actual is changed
+          - wsl_package_actual.diff.after.installed
 
 - name: Test basic package removal scenario
   block:
@@ -63,6 +65,7 @@
       ansible.builtin.assert:
         that:
           - wsl_package_actual is changed
+          - not wsl_package_actual.diff.after.installed
 
     - name: Test idempotency of package removal
       vanduc2514.wsl_automation.wsl_package:
@@ -75,3 +78,4 @@
       ansible.builtin.assert:
         that:
           - not wsl_package_actual is changed
+          - not wsl_package_actual.diff.after.installed

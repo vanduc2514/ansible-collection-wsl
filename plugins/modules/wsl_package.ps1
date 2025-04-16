@@ -59,8 +59,11 @@ else
 fi
 '@
 
-    #TODO: use splatting params
-    $packageManager = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $detectPackageManagerCommand).Trim()
+    $linuxCommandParams = @{
+        DistributionName = $DistributionName
+        LinuxCommand     = $detectPackageManagerCommand
+    }
+    $packageManager = (Invoke-LinuxCommand @linuxCommandParams).Trim()
 
     if ($packageManager -eq "unknown") {
         throw "Could not determine package manager for distribution '$DistributionName'"
@@ -93,7 +96,11 @@ function Get-PackageInfo {
             default { throw "Unsupported package manager: $PackageManager" }
         }
 
-        $result = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $isInstalledCommand).Trim()
+        $linuxCommandParams = @{
+            DistributionName = $DistributionName
+            LinuxCommand     = $isInstalledCommand
+        }
+        $result = (Invoke-LinuxCommand @linuxCommandParams).Trim()
 
         if ($result -eq "not-installed" -or $result -match "no packages found" -or $result -match "not installed") {
             return @{
@@ -326,15 +333,16 @@ $state = $module.Params.state
 $check_mode = $module.CheckMode
 
 try {
-    # Detect package manager
     $package_manager = Get-PackageManager -DistributionName $distribution_name
 
-    # Get current package information
-    #TODO: use splatting params
-    $package_info = Get-PackageInfo -DistributionName $distribution_name -PackageName $package_name -PackageManager $package_manager
+    $packageInfoParams = @{
+        DistributionName = $distribution_name
+        PackageName      = $package_name
+        PackageManager   = $package_manager
+    }
+    $package_info = Get-PackageInfo @packageInfoParams
     $module.Diff.before = $package_info
 
-    # Update package cache if requested
     if ($update_cache) {
         $updatePackageCacheParams = @{
             DistributionName = $distribution_name
@@ -378,7 +386,7 @@ try {
         }
     }
 
-    # TODO: invoke Get-PackageInfo again for setting after state
+    $package_info = Get-PackageInfo @packageInfoParams
     $module.Diff.after = $package_info
 
 } catch {
