@@ -34,6 +34,7 @@ $spec = @{
     supports_check_mode = $true
 }
 
+
 function Get-PackageManager {
     param(
         [string]
@@ -58,6 +59,7 @@ else
 fi
 '@
 
+    #TODO: use splatting params
     $packageManager = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $detectPackageManagerCommand).Trim()
 
     if ($packageManager -eq "unknown") {
@@ -66,6 +68,7 @@ fi
 
     return $packageManager
 }
+
 
 function Get-PackageInfo {
     param(
@@ -126,6 +129,7 @@ function Get-PackageInfo {
     }
 }
 
+
 function Update-PackageCache {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -161,6 +165,7 @@ function Update-PackageCache {
         }
     }
 }
+
 
 function Install-Package {
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -243,6 +248,7 @@ function Install-Package {
     }
 }
 
+
 function Remove-Package {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -324,6 +330,7 @@ try {
     $package_manager = Get-PackageManager -DistributionName $distribution_name
 
     # Get current package information
+    #TODO: use splatting params
     $package_info = Get-PackageInfo -DistributionName $distribution_name -PackageName $package_name -PackageManager $package_manager
     $module.Diff.before = $package_info
 
@@ -351,10 +358,6 @@ try {
 
             Remove-Package @removePackageParams
             Set-ModuleChanged -Module $module
-            $package_info = @{
-                installed = $false
-                version = $null
-            }
         }
     } elseif ($state -eq 'present') {
         $need_to_install = -not $package_info.installed
@@ -372,16 +375,10 @@ try {
 
             Install-Package @installPackageParams
             Set-ModuleChanged -Module $module
-
-            # Update package info for diff
-            $package_info = @{
-                installed = $true
-                version = $package_version
-            }
         }
     }
 
-    # Update diff after
+    # TODO: invoke Get-PackageInfo again for setting after state
     $module.Diff.after = $package_info
 
 } catch {
