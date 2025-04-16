@@ -1,0 +1,77 @@
+- name: Test basic package installation scenario
+  block:
+    - name: Test basic package installation in check_mode
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "nano"
+        state: present
+      check_mode: true
+      register: wsl_package_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_package_actual is changed
+
+    - name: Test basic package installation
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "nano"
+        state: present
+      register: wsl_package_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_package_actual is changed
+
+    - name: Test idempotency of basic package installation
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "nano"
+        state: present
+      register: wsl_package_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_package_actual is changed
+
+- name: Test basic package removal scenario
+  block:
+    - name: Test package removal in check_mode
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "nano"
+        state: absent
+      check_mode: true
+      register: wsl_package_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_package_actual is changed
+
+    - name: Test package removal
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "nano"
+        state: absent
+      register: wsl_package_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_package_actual is changed
+
+    - name: Test idempotency of package removal
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "nano"
+        state: absent
+      register: wsl_package_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_package_actual is changed

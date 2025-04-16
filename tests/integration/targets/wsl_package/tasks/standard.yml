@@ -1,0 +1,145 @@
+- name: Test package installation with specific version scenario
+  block:
+    - name: Test package installation with version in check_mode
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "curl"
+        version: "7.68.0-1ubuntu2.7"
+        state: present
+      check_mode: true
+      register: wsl_package_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_package_actual is changed
+
+    - name: Test package installation with version
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "curl"
+        version: "7.68.0-1ubuntu2.7"
+        state: present
+      register: wsl_package_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_package_actual is changed
+
+    - name: Test idempotency of package installation with version
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "curl"
+        version: "7.68.0-1ubuntu2.7"
+        state: present
+      register: wsl_package_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_package_actual is changed
+
+- name: Test package cache update scenario
+  block:
+    - name: Test package cache update in check_mode
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "wget"
+        update_cache: true
+        state: present
+      check_mode: true
+      register: wsl_package_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_package_actual is changed
+
+    - name: Test package cache update
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "wget"
+        update_cache: true
+        state: present
+      register: wsl_package_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_package_actual is changed
+
+    - name: Test idempotency of package cache update
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "wget"
+        update_cache: true
+        state: present
+      register: wsl_package_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_package_actual is changed
+
+- name: Test force package installation scenario
+  block:
+    - name: Test force package installation in check_mode
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "git"
+        force: true
+        state: present
+      check_mode: true
+      register: wsl_package_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_package_actual is changed
+
+    - name: Test force package installation
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "git"
+        force: true
+        state: present
+      register: wsl_package_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_package_actual is changed
+
+    - name: Test idempotency of force package installation
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "git"
+        force: true
+        state: present
+      register: wsl_package_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_package_actual is changed
+
+- name: Clean up test packages
+  block:
+    - name: Remove curl package
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "curl"
+        state: absent
+
+    - name: Remove wget package
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "wget"
+        state: absent
+
+    - name: Remove git package
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "git"
+        state: absent
