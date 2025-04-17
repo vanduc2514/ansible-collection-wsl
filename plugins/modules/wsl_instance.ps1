@@ -86,7 +86,7 @@ function List-WSLDistribution {
 
     # Split the output into lines and remove empty lines
     # Skip the header line and process the remaining lines
-    $lines = $wslDistros -split "\r\n" | Where-Object { $_ -ne '' } | Select-Object -Skip 1
+    $lines = $wslDistros -split "\n" | Where-Object { $_ -ne '' } | Select-Object -Skip 1
 
     # Create an array to store the distribution objects
     $distributions = @()
@@ -109,6 +109,43 @@ function List-WSLDistribution {
     return $distributions
 }
 
+function Get-WSLOnlineDistribution {
+    $wslDistros = Invoke-WSLCommand -Arguments @("--list", "--online")
+
+    # Split the output into lines and remove empty lines
+    $lines = $wslDistros -split "\n" | Where-Object { $_ -ne '' }
+
+    # Create an array to store the distribution information
+    $distributions = @()
+
+    # Flag to indicate when we've found the header line
+    $headerFound = $false
+
+    foreach ($line in $lines) {
+        # Skip lines until we find "NAME"
+        if ($line -match "NAME\s+FRIENDLY NAME") {
+            $headerFound = $true
+            continue
+        }
+
+        # Process distribution entries after the header
+        if ($headerFound -and -not [string]::IsNullOrWhiteSpace($line)) {
+            # The name is everything before the first space
+            $name = ($line -split '\s+', 2)[0]
+            $friendlyName = ($line -split '\s+', 2)[1]
+            if ($name) {
+                $distro = [PSCustomObject]@{
+                    name = $name
+                    friendly_name = $friendlyName
+                }
+                $distributions += $distro
+            }
+        }
+    }
+
+    return $distributions
+}
+
 
 function Install-WSLDistribution {
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -124,7 +161,11 @@ function Install-WSLDistribution {
         if ($WebDownload) { '--web-download' }
     ) -join ' '
 
-    # TODO: List online distros and test if contains $DistributionName
+    $availableDistros = Get-WSLOnlineDistribution
+    $availableNames = $availableDistros | ForEach-Object { $_.name }
+    if (-not ($availableNames -contains $DistributionName)) {
+        throw "WSL distribution '$DistributionName' is not available for online installation. Available distributions: $($availableNames -join ', ')"
+    }
 
     if ($PSCmdlet.ShouldProcess($DistributionName, 'Install WSL distribution')) {
         $wslArgument = "--install $DistributionName $extraArgument"
@@ -133,7 +174,6 @@ function Install-WSLDistribution {
         WaitFor-WSLDistributionState -DistributionName $DistributionName -TimeoutSeconds 600
         Stop-WSLDistribution -DistributionName $DistributionName
     }
-
 }
 
 
@@ -384,13 +424,12 @@ $before = Get-WSLDistribution -DistributionName $name
 $module.Diff.before = $before
 
 try {
-    if ($module.Diff.before -and $state -eq 'absent') {
-        Delete-WSLDistribution -DistributionName $name -WhatIf:$check_mode
-        Set-ModuleChanged -Module $module
-        $module.ExitJson()
-    }
-
-    if (-not $module.Diff.before -and $state -eq 'absent') {
+    if ($state -eq 'absent') {
+        if ($before) {
+            Delete-WSLDistribution -DistributionName $name -WhatIf:$check_mode
+            Set-ModuleChanged -Module $module
+            $module.Diff.after = $null
+        }
         $module.ExitJson()
     }
 
