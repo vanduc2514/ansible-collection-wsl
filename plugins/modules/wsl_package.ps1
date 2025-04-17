@@ -92,7 +92,7 @@ function Get-PackageInfo {
             "yum" { "rpm -q --queryformat '%{NAME} %{VERSION}-%{RELEASE}' $PackageName 2>/dev/null || echo 'not-installed'" }
             "zypper" { "rpm -q --queryformat '%{NAME} %{VERSION}-%{RELEASE}' $PackageName 2>/dev/null || echo 'not-installed'" }
             "pacman" { "pacman -Q $PackageName 2>/dev/null || echo 'not-installed'" }
-            "apk" { "apk info -e $PackageName 2>/dev/null || echo 'not-installed'" }
+            "apk" { "apk version $PackageName 2>/dev/null || echo 'not-installed'" }
             default { throw "Unsupported package manager: $PackageManager" }
         }
 
@@ -103,9 +103,17 @@ function Get-PackageInfo {
         }
         $result = (Invoke-LinuxCommand @linuxCommandParams).Trim()
 
-        $installed = -not ($result -match "not-installed" -or
-            $result -match "no packages found" -or
-            $result -match "not installed")
+        $installed = switch ($PackageManager) {
+            "apk" {
+                # For APK, check if there's any content after "Installed: Available:"
+                $result -match "$PackageName-[^\s]+"
+            }
+            default {
+                -not ($result -match "not-installed" -or
+                    $result -match "no packages found" -or
+                    $result -match "not installed")
+            }
+        }
 
         # Extract the version based on package manager
         $version = switch ($PackageManager) {
@@ -114,7 +122,7 @@ function Get-PackageInfo {
             "yum" { if ($result -match "$PackageName (.+)$") { $Matches[1] } else { $null } }
             "zypper" { if ($result -match "$PackageName (.+)$") { $Matches[1] } else { $null } }
             "pacman" { if ($result -match "$PackageName (.+)$") { $Matches[1] } else { $null } }
-            "apk" { if ($result -ne "not-installed") { $result } else { $null } }
+            "apk" { if ($result -match "$PackageName-([^\s]+)") { $Matches[1] } else { $null } }
             default { $null }
         }
 
@@ -143,9 +151,9 @@ function Update-PackageCache {
         try {
             $updateCacheCommand = switch ($PackageManager) {
                 "apt" { "apt-get update" }
-                "dnf" { "dnf check-update -y || true" }  # dnf returns 100 when updates are available
-                "yum" { "yum check-update -y || true" }  # yum returns 100 when updates are available
-                "zypper" { "zypper refresh" }
+                "dnf" { "LC_ALL=C.UTF-8 dnf update -y || true" }  # dnf returns 100 when updates are available
+                "yum" { "LC_ALL=C.UTF-8 yum update -y || true" }  # yum returns 100 when updates are available
+                "zypper" { "LC_ALL=C.UTF-8 zypper refresh" }
                 "pacman" { "pacman -Sy" }
                 "apk" { "apk update" }
                 default { throw "Unsupported package manager: $PackageManager" }
@@ -157,7 +165,7 @@ function Update-PackageCache {
                 LinuxCommand = $updateCacheCommand
             }
 
-            Invoke-LinuxCommand @updateCacheCommandArguments
+            Invoke-LinuxCommand @updateCacheCommandArguments | Out-Null
         }
         catch {
             throw "Failed to update package cache in WSL distribution '$DistributionName': $($_.Exception.Message)"
@@ -203,12 +211,12 @@ function Install-Package {
 
             $forceFlag = if ($Force) {
                 switch ($PackageManager) {
-                    "apt" { "-y --force-yes" }
+                    "apt" { "-y --allow-downgrades --allow-change-held-packages --fix-broken" }
                     "dnf" { "-y" }
                     "yum" { "-y" }
                     "zypper" { "-y --force" }
                     "pacman" { "--noconfirm --needed" }
-                    "apk" { "--force-broken-world" }
+                    "apk" { "--no-cache" }
                     default { "" }
                 }
             } else {
@@ -271,7 +279,7 @@ function Remove-Package {
         try {
             $forceFlag = if ($Force) {
                 switch ($PackageManager) {
-                    "apt" { "-y --force-yes" }
+                    "apt" { "-y --alow" }
                     "dnf" { "-y" }
                     "yum" { "-y" }
                     "zypper" { "-y --force" }
