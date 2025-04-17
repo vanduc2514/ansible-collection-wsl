@@ -192,6 +192,9 @@ function Import-WSLDistribution {
         [string]
         $RootFSPath,
 
+        [bool]
+        $RootFSDownload,
+
         [string]
         $RootFSDownloadPath,
 
@@ -208,26 +211,22 @@ function Import-WSLDistribution {
         $ImportBundle
     )
 
-    $rootfsPath = $RootFSPath
-
     $extraArgument = @() + $(
         if ($ImportVHD) { '--vhd' }
     ) -join ' '
 
     # If the path is an URL, handle download
-    if ($rootfsPath.StartsWith('http') -and $PSCmdlet.ShouldProcess($DistributionName, 'Download WSL distribution')) {
-        $rootfsUrlHash = Get-HashFromURL -Url $rootfsPath
-        $rootfsDownloadExtension = ".tar.gz"
-        if ($ImportBundle) {
-            $rootfsDownloadExtension = ".zip"
-        }
-        $rootfsDownloadFileName = $rootfsUrlHash + $rootfsDownloadExtension
-        $rootfsDownloadPath = Join-Path -Path $RootFSDownloadPath -ChildPath $rootfsDownloadFileName
-
+    if ($RootFSDownload -and $PSCmdlet.ShouldProcess($DistributionName, 'Download WSL distribution')) {
         $rootfsDownloadScript = {
             param($Response, $Stream)
 
-            $rootfs = [System.IO.File]::Create($rootfsDownloadPath)
+            $rootFSDownloadParentPath = Split-Path -Path $RootFSDownloadPath -Parent
+            if (-not (Test-Path -Path $rootFSDownloadParentPath)) {
+                New-Item -ItemType Directory -Path $rootFSDownloadParentPath -Force | Out-Null
+            }
+
+            $rootfs = [System.IO.File]::Create($RootFSDownloadPath)
+
             try {
                 $Stream.CopyTo($rootfs)
                 $rootfs.Flush()
@@ -237,40 +236,45 @@ function Import-WSLDistribution {
             }
 
             if ($RootFSDownloadChecksum) {
-                $getFileHashArgument = @(
-                    Path = $rootfsDownloadPath
+                $getFileHashArgument = @{
+                    Path = $RootFSDownloadPath
                     Algorithm = $RootFSDownloadChecksumAlgorithm
-                )
+                }
                 $downloadedChecksum = (Get-FileHash @getFileHashArgument).Hash.toLower()
                 if ($downloadedChecksum -ne $RootFSDownloadChecksum) {
-                    Remove-Item -Path $rootfsDownloadPath -Force | Out-Null
+                    Remove-Item -Path $RootFSDownloadPath -Force | Out-Null
                     throw "Failed Checksum ($RootFSDownloadChecksumAlgorithm) Check for download rootfs, '$downloadedChecksum' did not match '$RootFSDownloadChecksum'"
                 }
             }
         }
 
-        if (-not $(Test-Path -Path $rootfsDownloadPath)) {
-            $webRequest = Get-AnsibleWindowsWebRequest -Uri $rootfsPath
+        if (-not $(Test-Path -Path $RootFSDownloadPath)) {
+            $webRequest = Get-AnsibleWindowsWebRequest -Uri $RootFSPath
 
             try {
                 Invoke-AnsibleWindowsWebRequest -Module $Module -Request $webRequest -Script $rootfsDownloadScript
             }
             catch {
-                throw "Failed to download rootfs from '$rootfsPath': $($_.Exception.Message)"
+                throw "Failed to download rootfs from '$RootFSPath': $($_.Exception.Message)"
             }
         }
 
         # If the URL points to a Appx bundle, extract it and get the rootfs inside
         if ($ImportBundle -and $PSCmdlet.ShouldProcess($DistributionName, 'Extract WSL distribution bundle')) {
-            $baseName = [System.IO.Path]::GetFileNameWithoutExtension($rootfsDownloadPath)
-            $rootfsDownloadPathParent = Split-Path -Path $rootfsDownloadPath -Parent
+            $baseName = [System.IO.Path]::GetFileNameWithoutExtension($RootFSDownloadPath)
+            $rootfsDownloadPathParent = Split-Path -Path $RootFSDownloadPath -Parent
             $rootfsExtractDir = Join-Path -Path $rootfsDownloadPathParent -ChildPath $baseName
 
             try {
-                Expand-Archive -Path $rootfsDownloadPath -DestinationPath $rootfsExtractDir -Force | Out-Null
-            }
-            catch {
-                throw "Failed to extract rootfs bundle from '$rootfsDownloadPath': $($_.Exception.Message)"
+                $expandParams = @{
+                    Path = $RootFSDownloadPath
+                    DestinationPath = $rootfsExtractDir
+                    Force = $true
+                    ErrorAction = 'Stop'
+                }
+                Expand-Archive @expandParams
+            } catch {
+                throw "Failed to extract rootfs bundle from '$RootFSDownloadPath': $($_.Exception.Message)"
             }
 
             $rootfsExtracted = Get-ChildItem -Path $rootfsExtractDir -Recurse |
@@ -280,10 +284,10 @@ function Import-WSLDistribution {
                 throw "Failed to find rootfs file in the extracted bundle for WSL distribution: $DistributionName"
             }
 
-            $rootfsPath = $rootfsExtracted.FullName
+            $RootFSPath = $rootfsExtracted.FullName
         }
         else {
-            $rootfsPath = $rootfsDownloadPath
+            $RootFSPath = $RootFSDownloadPath
         }
     }
 
@@ -291,7 +295,7 @@ function Import-WSLDistribution {
         try {
             $wslArguments = @(
                 "--import", $DistributionName,
-                $ImportDirectoryPath, $rootfsPath
+                $ImportDirectoryPath, $RootFSPath
                 $extraArgument
             )
             Invoke-WSLCommand -Arguments $wslArguments | Out-Null
@@ -420,6 +424,22 @@ $arch_version = $module.Params.arch_version
 $state = $module.Params.state
 $check_mode = $module.CheckMode
 
+$rootfs_download = $rootfs_path -and $rootfs_path.StartsWith('http')
+
+$rootfs_download_path = if ($rootfs_download_path) {
+    $rootfs_download_path
+} elseif ($rootfs_download) {
+    $urlHash = Get-HashFromURL -Url $rootfs_path
+    $fileExtension = if ($import_bundle) { "zip" } else { "tar.gz" }
+    "$([System.IO.Path]::GetTempPath())\WSLRootFSDownloaded\${urlHash}.${fileExtension}"
+}
+
+$import_dir_path = if ($import_dir_path) {
+    $import_dir_path
+} else {
+    "$env:ProgramData\WSLDistributions\$name"
+}
+
 $before = Get-WSLDistribution -DistributionName $name
 $module.Diff.before = $before
 
@@ -436,19 +456,14 @@ try {
     if (-not $module.Diff.before) {
         # Install or import if not existed
         if ($rootfs_path) {
-            if (-not $import_dir_path) {
-                $import_dir_path = "$env:ProgramData\WSLDistributions\$name"
-            }
-            if (-not $rootfs_download_path) {
-                $rootfs_download_path = "$([System.IO.Path]::GetTempPath())\WSLRootFSDownloaded"
-            }
             $import_params = @{
                 Module = $module
                 DistributionName = $name
                 RootFSPath = $rootfs_path
+                RootFSDownload = $rootfs_download
+                RootFSDownloadPath = $rootfs_download_path
                 RootFSDownloadChecksum = $rootfs_download_checksum
                 RootFSDownloadChecksumAlgorithm = $rootfs_download_checksum_algorithm
-                RootFSDownloadPath = $rootfs_download_path
                 ImportBundle = $import_bundle
                 ImportVHD = $import_vhd
                 ImportDirectoryPath = $import_dir_path
