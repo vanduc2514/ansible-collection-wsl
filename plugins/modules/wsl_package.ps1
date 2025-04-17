@@ -86,8 +86,8 @@ function Get-PackageInfo {
     )
 
     try {
-        $isInstalledCommand = switch ($PackageManager) {
-            "apt" { "dpkg-query -W -f='\${Status} \${Version}' $PackageName 2>/dev/null || echo 'not-installed'" }
+        $getPackageCommand = switch ($PackageManager) {
+            "apt" { "dpkg-query -s $PackageName 2>/dev/null | grep -E '^Status:|^Version:' || echo 'not-installed'" }
             "dnf" { "rpm -q --queryformat '%{NAME} %{VERSION}-%{RELEASE}' $PackageName 2>/dev/null || echo 'not-installed'" }
             "yum" { "rpm -q --queryformat '%{NAME} %{VERSION}-%{RELEASE}' $PackageName 2>/dev/null || echo 'not-installed'" }
             "zypper" { "rpm -q --queryformat '%{NAME} %{VERSION}-%{RELEASE}' $PackageName 2>/dev/null || echo 'not-installed'" }
@@ -98,26 +98,18 @@ function Get-PackageInfo {
 
         $linuxCommandParams = @{
             DistributionName = $DistributionName
-            LinuxCommand     = $isInstalledCommand
+            DistributionUser = 'root'
+            LinuxCommand     = $getPackageCommand
         }
         $result = (Invoke-LinuxCommand @linuxCommandParams).Trim()
 
-        if ($result -eq "not-installed" -or $result -match "no packages found" -or $result -match "not installed") {
-            return @{
-                installed = $false
-                version = $null
-            }
-        }
+        $installed = -not ($result -match "not-installed" -or
+            $result -match "no packages found" -or
+            $result -match "not installed")
 
         # Extract the version based on package manager
         $version = switch ($PackageManager) {
-            "apt" {
-                if ($result -match "^install ok installed (.+)$") {
-                    $Matches[1]
-                } else {
-                    $null
-                }
-            }
+            "apt" { if ($result -match "Version: (.+)$") { $Matches[1] } else { $null } }
             "dnf" { if ($result -match "$PackageName (.+)$") { $Matches[1] } else { $null } }
             "yum" { if ($result -match "$PackageName (.+)$") { $Matches[1] } else { $null } }
             "zypper" { if ($result -match "$PackageName (.+)$") { $Matches[1] } else { $null } }
@@ -127,7 +119,7 @@ function Get-PackageInfo {
         }
 
         return @{
-            installed = $true
+            installed = $installed
             version = $version
         }
     }
@@ -232,10 +224,14 @@ function Install-Package {
             }
 
             $installCommand = switch ($PackageManager) {
-                "apt" { "apt-get install $forceFlag $packageSpec" }
-                "dnf" { "dnf install $forceFlag $packageSpec" }
-                "yum" { "yum install $forceFlag $packageSpec" }
-                "zypper" { "zypper install $forceFlag $packageSpec" }
+                "apt" {
+                    "DEBIAN_FRONTEND=noninteractive " + `
+                    "DEBCONF_NONINTERACTIVE_SEEN=true " + `
+                    "apt-get install -qq $forceFlag $packageSpec"
+                }
+                "dnf" { "LC_ALL=C.UTF-8 dnf install $forceFlag $packageSpec" }
+                "yum" { "LC_ALL=C.UTF-8 yum install $forceFlag $packageSpec" }
+                "zypper" { "LC_ALL=C.UTF-8 zypper install $forceFlag $packageSpec" }
                 "pacman" { "pacman -S $forceFlag $packageSpec" }
                 "apk" { "apk add $forceFlag $packageSpec" }
                 default { throw "Unsupported package manager: $PackageManager" }
@@ -247,9 +243,8 @@ function Install-Package {
                 LinuxCommand = $installCommand
             }
 
-            Invoke-LinuxCommand @installCommandArguments
-        }
-        catch {
+            Invoke-LinuxCommand @installCommandArguments | Out-Null
+        } catch {
             throw "Failed to install package '$PackageName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
     }
@@ -298,9 +293,9 @@ function Remove-Package {
 
             $removeCommand = switch ($PackageManager) {
                 "apt" { "apt-get remove $forceFlag $PackageName" }
-                "dnf" { "dnf remove $forceFlag $PackageName" }
-                "yum" { "yum remove $forceFlag $PackageName" }
-                "zypper" { "zypper remove $forceFlag $PackageName" }
+                "dnf" { "LC_ALL=C.UTF-8 dnf remove $forceFlag $PackageName" }
+                "yum" { "LC_ALL=C.UTF-8 yum remove $forceFlag $PackageName" }
+                "zypper" { "LC_ALL=C.UTF-8 zypper remove $forceFlag $PackageName" }
                 "pacman" { "pacman -R $forceFlag $PackageName" }
                 "apk" { "apk del $forceFlag $PackageName" }
                 default { throw "Unsupported package manager: $PackageManager" }
@@ -312,7 +307,7 @@ function Remove-Package {
                 LinuxCommand = $removeCommand
             }
 
-            Invoke-LinuxCommand @removeCommandArguments
+            Invoke-LinuxCommand @removeCommandArguments | Out-Null
         }
         catch {
             throw "Failed to remove package '$PackageName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
