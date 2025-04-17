@@ -1,3 +1,10 @@
+- name: Remove installed packages
+  vanduc2514.wsl_automation.wsl_package:
+    distribution: "{{ wsl_distribution }}"
+    name: zip
+    state: absent
+  ignore_errors: true
+
 - name: Test basic package installation scenario
   block:
     - name: Test basic package installation in check_mode
