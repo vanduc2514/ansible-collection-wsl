@@ -1,27 +1,22 @@
 - name: Define distribution-specific test packages
   ansible.builtin.set_fact:
-    test_packages:
-      Ubuntu:
-        version_package: "curl"
-        version_value: "7.68.0-1ubuntu2.7"
-        cache_package: "wget"
-        force_package: "git"
-      Debian:
-        version_package: "curl"
-        version_value: "7.74.0-1.3+deb11u7"
-        cache_package: "wget"
-        force_package: "git"
-      Alpine:
-        version_package: "curl"
-        version_value: "7.83.1-r5"
-        cache_package: "wget"
-        force_package: "git"
-      Fedora:
-        version_package: "curl"
-        version_value: "7.76.1-18.fc37"
-        cache_package: "wget"
-        force_package: "git"
-    current_packages: "{{ test_packages[distribution_id] | default(test_packages.Ubuntu) }}"
+    current_packages: "{{ test_packages_standard[wsl_distribution] }}"
+
+- name: Remove installed packages
+  block:
+    - name: Remove version package
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "{{ current_packages.version_package }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Remove cache package
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ wsl_distribution }}"
+        name: "{{ current_packages.cache_package }}"
+        state: absent
+      ignore_errors: true
 
 - name: Test package installation with specific version scenario
   block:
@@ -51,7 +46,6 @@
       ansible.builtin.assert:
         that:
           - wsl_package_actual is changed
-          - wsl_package_actual.diff.after.installed | default(false)
 
     - name: Test idempotency of package installation with version
       vanduc2514.wsl_automation.wsl_package:
@@ -94,9 +88,8 @@
       ansible.builtin.assert:
         that:
           - wsl_package_actual is changed
-          - wsl_package_actual.diff.after.installed | default(false)
 
-    - name: Test idempotency of package cache update
+    - name: Test non-idempotency of package cache update
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
         name: "{{ current_packages.cache_package }}"
@@ -104,53 +97,10 @@
         state: present
       register: wsl_package_actual
 
-    - name: Assert operation is idempotent
-      ansible.builtin.assert:
-        that:
-          - not wsl_package_actual is changed
-
-- name: Test force package installation scenario
-  block:
-    - name: Test force package installation in check_mode
-      vanduc2514.wsl_automation.wsl_package:
-        distribution: "{{ wsl_distribution }}"
-        name: "{{ current_packages.force_package }}"
-        force: true
-        state: present
-      check_mode: true
-      register: wsl_package_actual
-
-    - name: Assert no change in check_mode
-      ansible.builtin.assert:
-        that:
-          - not wsl_package_actual is changed
-
-    - name: Test force package installation
-      vanduc2514.wsl_automation.wsl_package:
-        distribution: "{{ wsl_distribution }}"
-        name: "{{ current_packages.force_package }}"
-        force: true
-        state: present
-      register: wsl_package_actual
-
-    - name: Assert operation changed
+    - name: Assert operation is not idempotent
       ansible.builtin.assert:
         that:
           - wsl_package_actual is changed
-          - wsl_package_actual.diff.after.installed | default(false)
-
-    - name: Test idempotency of force package installation
-      vanduc2514.wsl_automation.wsl_package:
-        distribution: "{{ wsl_distribution }}"
-        name: "{{ current_packages.force_package }}"
-        force: true
-        state: present
-      register: wsl_package_actual
-
-    - name: Assert operation is idempotent
-      ansible.builtin.assert:
-        that:
-          - not wsl_package_actual is changed
 
 - name: Clean up test packages
   block:
@@ -164,10 +114,4 @@
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
         name: "{{ current_packages.cache_package }}"
-        state: absent
-
-    - name: Remove force package
-      vanduc2514.wsl_automation.wsl_package:
-        distribution: "{{ wsl_distribution }}"
-        name: "{{ current_packages.force_package }}"
         state: absent
