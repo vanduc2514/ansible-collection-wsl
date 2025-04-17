@@ -1,33 +1,28 @@
+- name: Ensure test distributions exist
+  vanduc2514.wsl_automation.wsl_instance:
+    name: "{{ item.name }}"
+    rootfs_path: "{{ item.rootfs_path | default(omit) }}"
+    import_bundle: "{{ item.import_bundle | default(omit) }}"
+    rootfs_download_checksum: "{{ item.rootfs_download_checksum | default(omit) }}"
+    rootfs_download_checksum_algorithm: "{{ item.rootfs_download_checksum_algorithm | default(omit) }}"
+  loop: "{{ test_distributions }}"
+
 # Test WSL Package with multiple distributions
 - name: Test WSL Package scenarios
-  vars:
-    test_distributions:
-      - name: Ubuntu-20.04    # Debian-based
-        id: Ubuntu
-      - name: Alpine          # Alpine-based
-        id: Alpine
-      - name: Fedora          # Red Hat-based
-        id: Fedora
-
   block:
-    - name: Run tests for each distribution
+    - name: Run minimum scenario
+      ansible.builtin.include_tasks:
+        file: minimum.yml
+      vars:
+        wsl_distribution: "{{ item.name }}"
       loop: "{{ test_distributions }}"
-      loop_control:
-        loop_var: distribution
-      block:
-        - name: Run minimum scenario for {{ distribution.name }}
-          ansible.builtin.include_tasks:
-            file: minimum.yml
-          vars:
-            distribution_name: "{{ distribution.name }}"
-            distribution_id: "{{ distribution.id }}"
 
-        - name: Run standard scenario for {{ distribution.name }}
-          ansible.builtin.include_tasks:
-            file: standard.yml
-          vars:
-            distribution_name: "{{ distribution.name }}"
-            distribution_id: "{{ distribution.id }}"
+    - name: Run standard scenario
+      ansible.builtin.include_tasks:
+        file: standard.yml
+      vars:
+        wsl_distribution: "{{ item.name }}"
+      loop: "{{ test_distributions }}"
 
   rescue:
     - name: Debug actual output if any test failed

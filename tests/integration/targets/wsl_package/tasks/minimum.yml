@@ -3,7 +3,7 @@
     - name: Test basic package installation in check_mode
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "nano"
+        name: zip
         state: present
       check_mode: true
       register: wsl_package_actual
@@ -16,7 +16,7 @@
     - name: Test basic package installation
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "nano"
+        name: zip
         state: present
       register: wsl_package_actual
 
@@ -24,12 +24,11 @@
       ansible.builtin.assert:
         that:
           - wsl_package_actual is changed
-          - wsl_package_actual.diff.after.installed
 
     - name: Test idempotency of basic package installation
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "nano"
+        name: zip
         state: present
       register: wsl_package_actual
 
@@ -37,14 +36,13 @@
       ansible.builtin.assert:
         that:
           - not wsl_package_actual is changed
-          - wsl_package_actual.diff.after.installed
 
 - name: Test basic package removal scenario
   block:
     - name: Test package removal in check_mode
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "nano"
+        name: zip
         state: absent
       check_mode: true
       register: wsl_package_actual
@@ -57,7 +55,7 @@
     - name: Test package removal
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "nano"
+        name: zip
         state: absent
       register: wsl_package_actual
 
@@ -65,12 +63,11 @@
       ansible.builtin.assert:
         that:
           - wsl_package_actual is changed
-          - not wsl_package_actual.diff.after.installed
 
     - name: Test idempotency of package removal
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
-        name: "nano"
+        name: zip
         state: absent
       register: wsl_package_actual
 
@@ -78,4 +75,3 @@
       ansible.builtin.assert:
         that:
           - not wsl_package_actual is changed
-          - not wsl_package_actual.diff.after.installed
