@@ -18,6 +18,10 @@ $spec = @{
             choices = @("started", "stopped")
             default = "started"
         }
+        dbus_timeout = @{
+            type = "int"
+            default = 120
+        }
     }
     supports_check_mode = $true
 }
@@ -50,6 +54,45 @@ function Get-ServiceStatus {
     }
     catch {
         throw "Failed to get service status for '$ServiceName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+    }
+}
+
+function Test-DBusConnection {
+    param(
+        [string]
+        $DistributionName,
+
+        [int]
+        $TimeoutSeconds
+    )
+
+    try {
+        $startTime = Get-Date
+        $timeout = New-TimeSpan -Seconds $TimeoutSeconds
+        $connected = $false
+
+        while (-not $connected -and ((Get-Date) - $startTime) -lt $timeout) {
+            $checkDbusParams = @{
+                DistributionName = $DistributionName
+                DistributionUser = 'root'
+                # Using busctl to check if we can connect to dbus
+                LinuxCommand = "busctl --system --no-pager > /dev/null 2>&1 && echo 'connected' || echo 'disconnected'"
+            }
+
+            $result = (Invoke-LinuxCommand @checkDbusParams).Trim()
+
+            if ($result -eq 'connected') {
+                $connected = $true
+            }
+            else {
+                Start-Sleep -Seconds 1
+            }
+        }
+
+        return $connected
+    }
+    catch {
+        throw "Failed to check DBus connection in WSL distribution '$DistributionName': $($_.Exception.Message)"
     }
 }
 
@@ -110,9 +153,16 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 $distribution_name = $module.Params.distribution
 $service_name = $module.Params.name
 $desired_state = $module.Params.state
+$dbus_timeout = $module.Params.dbus_timeout
 $check_mode = $module.CheckMode
 
 try {
+    # Wait for DBus to be connected before performing any operations
+    $dbusConnected = Test-DBusConnection -DistributionName $distribution_name -TimeoutSeconds $dbus_timeout
+    if (-not $dbusConnected) {
+        throw "Timed out waiting for DBus to be ready in WSL distribution '$distribution_name' after $dbus_timeout seconds"
+    }
+
     # Get current service status
     $service_info = Get-ServiceStatus -DistributionName $distribution_name -ServiceName $service_name
     $module.Diff.before = $service_info
