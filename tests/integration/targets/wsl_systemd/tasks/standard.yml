@@ -1,0 +1,100 @@
+- name: Define distribution-specific test services
+  ansible.builtin.set_fact:
+    current_services: "{{ test_services_standard[wsl_distribution] }}"
+
+- name: Stop test services if running
+  block:
+    - name: Stop primary service
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: "{{ current_services.primary_service }}"
+        state: stopped
+      ignore_errors: true
+
+    - name: Stop secondary service
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: "{{ current_services.secondary_service }}"
+        state: stopped
+      ignore_errors: true
+
+- name: Test multiple service management scenario
+  block:
+    - name: Start primary service
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: "{{ current_services.primary_service }}"
+        state: started
+      register: wsl_systemd_actual
+
+    - name: Assert primary service start changed
+      ansible.builtin.assert:
+        that:
+          - wsl_systemd_actual is changed
+
+    - name: Start secondary service
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: "{{ current_services.secondary_service }}"
+        state: started
+      register: wsl_systemd_actual
+
+    - name: Assert secondary service start changed
+      ansible.builtin.assert:
+        that:
+          - wsl_systemd_actual is changed
+
+    - name: Test idempotency with both services running
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: "{{ item }}"
+        state: started
+      register: wsl_systemd_actual
+      loop:
+        - "{{ current_services.primary_service }}"
+        - "{{ current_services.secondary_service }}"
+
+    - name: Assert operations are idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_systemd_actual is changed
+
+- name: Test service state changes
+  block:
+    - name: Stop primary service while secondary remains running
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: "{{ current_services.primary_service }}"
+        state: stopped
+      register: wsl_systemd_actual
+
+    - name: Assert primary service stop changed
+      ansible.builtin.assert:
+        that:
+          - wsl_systemd_actual is changed
+
+    - name: Verify secondary service remains unchanged
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: "{{ current_services.secondary_service }}"
+        state: started
+      register: wsl_systemd_actual
+
+    - name: Assert secondary service state unchanged
+      ansible.builtin.assert:
+        that:
+          - not wsl_systemd_actual is changed
+
+- name: Clean up test services
+  block:
+    - name: Stop primary service
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: "{{ current_services.primary_service }}"
+        state: stopped
+
+    - name: Stop secondary service
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: "{{ current_services.secondary_service }}"
+        state: stopped

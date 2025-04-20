@@ -1,0 +1,28 @@
+test_distributions:
+  - name: Ubuntu
+
+  - name: Alpine-3.21.3-1
+    rootfs_path: https://github.com/yuk7/AlpineWSL/releases/download/3.21.3-1/Alpine.htop
+    import_bundle: true
+
+  - name: AlmaLinux-9.3.0.0
+    rootfs_path: https://wsl.almalinux.org/9/AlmaLinuxOS-9_9.3.0.0_x64.appx
+    import_bundle: true
+    rootfs_download_checksum: dce304363673c5c3eeac1bb4cb960489ff61ff7fbb11873311d42b1ee0eb4055
+    rootfs_download_checksum_algorithm: sha256
+
+test_packages_standard:
+  Ubuntu:
+    version_package: htop
+    version_value: 3.3.0-4build1
+    cache_package: zip
+
+  Alpine-3.21.3-1:
+    version_package: htop
+    version_value: 3.3.0-r0
+    cache_package: zip
+
+  AlmaLinux-9.3.0.0:
+    version_package: zip
+    version_value: 3.0-35.el9
+    cache_package: tree
