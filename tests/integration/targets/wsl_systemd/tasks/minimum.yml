@@ -1,7 +1,7 @@
 - name: Stop service if running
   vanduc2514.wsl_automation.wsl_systemd:
     distribution: "{{ wsl_distribution }}"
-    name: ssh
+    name: dummy
     state: stopped
   ignore_errors: true
 
@@ -10,7 +10,7 @@
     - name: Test basic service start in check_mode
       vanduc2514.wsl_automation.wsl_systemd:
         distribution: "{{ wsl_distribution }}"
-        name: ssh
+        name: dummy
         state: started
       check_mode: true
       register: wsl_systemd_actual
@@ -23,7 +23,7 @@
     - name: Test basic service start
       vanduc2514.wsl_automation.wsl_systemd:
         distribution: "{{ wsl_distribution }}"
-        name: ssh
+        name: dummy
         state: started
       register: wsl_systemd_actual
 
@@ -35,7 +35,7 @@
     - name: Test idempotency of basic service start
       vanduc2514.wsl_automation.wsl_systemd:
         distribution: "{{ wsl_distribution }}"
-        name: ssh
+        name: dummy
         state: started
       register: wsl_systemd_actual
 
@@ -49,7 +49,7 @@
     - name: Test service stop in check_mode
       vanduc2514.wsl_automation.wsl_systemd:
         distribution: "{{ wsl_distribution }}"
-        name: ssh
+        name: dummy
         state: stopped
       check_mode: true
       register: wsl_systemd_actual
@@ -62,7 +62,7 @@
     - name: Test service stop
       vanduc2514.wsl_automation.wsl_systemd:
         distribution: "{{ wsl_distribution }}"
-        name: ssh
+        name: dummy
         state: stopped
       register: wsl_systemd_actual
 
@@ -74,7 +74,7 @@
     - name: Test idempotency of service stop
       vanduc2514.wsl_automation.wsl_systemd:
         distribution: "{{ wsl_distribution }}"
-        name: ssh
+        name: dummy
         state: stopped
       register: wsl_systemd_actual
 
