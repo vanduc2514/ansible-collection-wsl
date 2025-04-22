@@ -301,10 +301,16 @@ function Test-FileContentChanged {
 
     $existingContent = Get-WSLFileContent -DistributionName $DistributionName -Path $Path
 
+    $normalizedExisting = $existingContent -replace "`r`n", "`n" -replace "`r", "`n"
+    $normalizedContent = $Content -replace "`r`n", "`n" -replace "`r", "`n"
+
+    $normalizedExisting = $normalizedExisting.Trim()
+    $normalizedContent = $normalizedContent.Trim()
+
     if ($Append) {
-        return -not $existingContent.Contains($Content)
+        return -not $normalizedExisting.Contains($normalizedContent)
     } else {
-        return $existingContent -ne $Content
+        return $normalizedExisting -ne $normalizedContent
     }
 }
 
