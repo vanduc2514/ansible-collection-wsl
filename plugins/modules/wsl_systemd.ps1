@@ -132,61 +132,6 @@ function Invoke-DaemonReload {
 }
 
 
-function Start-Service {
-    [CmdletBinding(SupportsShouldProcess = $true)]
-    param(
-        [string]
-        $DistributionName,
-
-        [string]
-        $ServiceName
-    )
-
-    if ($PSCmdlet.ShouldProcess($DistributionName, "Start service: $ServiceName")) {
-        try {
-            $startServiceParams = @{
-                DistributionName = $DistributionName
-                DistributionUser = 'root'
-                LinuxCommand = "systemctl start $ServiceName"
-            }
-
-            Invoke-LinuxCommand @startServiceParams | Out-Null
-        }
-        catch {
-            throw "Failed to start service '$ServiceName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
-        }
-    }
-}
-
-
-function Stop-Service {
-    [CmdletBinding(SupportsShouldProcess = $true)]
-    param(
-        [string]
-        $DistributionName,
-
-        [string]
-        $ServiceName
-    )
-
-    if ($PSCmdlet.ShouldProcess($DistributionName, "Stop service: $ServiceName")) {
-        try {
-            $stopServiceParams = @{
-                DistributionName = $DistributionName
-                DistributionUser = 'root'
-                LinuxCommand = "systemctl stop $ServiceName"
-            }
-
-            Invoke-LinuxCommand @stopServiceParams | Out-Null
-        }
-        catch {
-            throw "Failed to stop service '$ServiceName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
-        }
-    }
-}
-
-
-
 function Set-ServiceEnabled {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -203,6 +148,37 @@ function Set-ServiceEnabled {
     if ($PSCmdlet.ShouldProcess($DistributionName, "Set service enabled: $ServiceName to $Enabled")) {
         try {
             $action = if ($Enabled) { "enable" } else { "disable" }
+            $enableServiceParams = @{
+                DistributionName = $DistributionName
+                DistributionUser = 'root'
+                LinuxCommand = "systemctl $action $ServiceName 2>/dev/null || true"
+            }
+
+            Invoke-LinuxCommand @enableServiceParams | Out-Null
+        }
+        catch {
+            throw "Failed to $action service '$ServiceName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
+    }
+}
+
+
+function Set-ServiceActive {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [string]
+        $DistributionName,
+
+        [string]
+        $ServiceName,
+
+        [bool]
+        $Active
+    )
+
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Set service active: $ServiceName to $Active")) {
+        try {
+            $action = if ($Active) { "start" } else { "stop" }
             $enableServiceParams = @{
                 DistributionName = $DistributionName
                 DistributionUser = 'root'
@@ -263,9 +239,10 @@ try {
         $startServiceParams = @{
             DistributionName = $distribution_name
             ServiceName = $service_name
+            Active = $true
             WhatIf = $check_mode
         }
-        Start-Service @startServiceParams
+        Set-ServiceActive @startServiceParams
         Set-ModuleChanged -Module $module
     }
 
@@ -273,9 +250,10 @@ try {
         $stopServiceParams = @{
             DistributionName = $distribution_name
             ServiceName = $service_name
+            Active = $false
             WhatIf = $check_mode
         }
-        Stop-Service @stopServiceParams
+        Set-ServiceActive @stopServiceParams
         Set-ModuleChanged -Module $module
     }
 
