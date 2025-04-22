@@ -13,14 +13,22 @@ $spec = @{
             type = "str"
             required = $true
         }
-        state = @{
-            type = "str"
-            choices = @("started", "stopped")
-            default = "started"
+        enabled = @{
+            type = "bool"
+            default = $false
+        }
+        daemon_reload = @{
+            type = "bool"
+            default = $false
         }
         dbus_timeout = @{
             type = "int"
             default = 120
+        }
+        state = @{
+            type = "str"
+            choices = @("started", "stopped")
+            default = "started"
         }
     }
     supports_check_mode = $true
@@ -36,26 +44,29 @@ function Get-ServiceStatus {
     )
 
     try {
-        $linuxCommandParams = @{
+        $isServiceActiveCommandParams = @{
             DistributionName = $DistributionName
             DistributionUser = 'root'
-            LinuxCommand = "systemctl is-active $ServiceName 2>/dev/null || echo 'inactive'"
+            LinuxCommand = "systemctl is-active $ServiceName"
         }
-        $status = (Invoke-LinuxCommand @linuxCommandParams).Trim()
+        $active = (Invoke-LinuxCommand @isServiceActiveCommandParams).Trim() -eq 'active'
+
+        $isServiceEnabledCommandParams = @{
+            DistributionName = $DistributionName
+            DistributionUser = 'root'
+            LinuxCommand = "systemctl is-enabled $ServiceName"
+        }
+        $enabled = (Invoke-LinuxCommand @isServiceEnabledCommandParams).Trim() -eq 'enabled'
 
         return @{
-            name = $ServiceName
-            state = switch ($status) {
-                'active' { 'started' }
-                default { 'stopped' }
-            }
-            status = $status
+            active = $active
+            enabled = $enabled
         }
-    }
-    catch {
+    } catch {
         throw "Failed to get service status for '$ServiceName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
     }
 }
+
 
 function Test-DBusConnection {
     param(
@@ -96,6 +107,31 @@ function Test-DBusConnection {
     }
 }
 
+
+function Invoke-DaemonReload {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [string]
+        $DistributionName
+    )
+
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Reload systemd daemon")) {
+        try {
+            $reloadParams = @{
+                DistributionName = $DistributionName
+                DistributionUser = 'root'
+                LinuxCommand = "systemctl daemon-reload"
+            }
+
+            Invoke-LinuxCommand @reloadParams | Out-Null
+        }
+        catch {
+            throw "Failed to reload systemd daemon in WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
+    }
+}
+
+
 function Start-Service {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
@@ -121,6 +157,7 @@ function Start-Service {
         }
     }
 }
+
 
 function Stop-Service {
     [CmdletBinding(SupportsShouldProcess = $true)]
@@ -148,12 +185,48 @@ function Stop-Service {
     }
 }
 
+
+
+function Set-ServiceEnabled {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [string]
+        $DistributionName,
+
+        [string]
+        $ServiceName,
+
+        [bool]
+        $Enabled
+    )
+
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Set service enabled: $ServiceName to $Enabled")) {
+        try {
+            $action = if ($Enabled) { "enable" } else { "disable" }
+            $enableServiceParams = @{
+                DistributionName = $DistributionName
+                DistributionUser = 'root'
+                LinuxCommand = "systemctl $action $ServiceName"
+            }
+
+            Invoke-LinuxCommand @enableServiceParams | Out-Null
+        }
+        catch {
+            throw "Failed to $action service '$ServiceName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
+    }
+}
+
+######################################### Main ##########################################
+
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
 $distribution_name = $module.Params.distribution
 $service_name = $module.Params.name
-$desired_state = $module.Params.state
+$enabled = $module.Params.enabled
+$daemon_reload = $module.Params.daemon_reload
 $dbus_timeout = $module.Params.dbus_timeout
+$state = $module.Params.state
 $check_mode = $module.CheckMode
 
 try {
@@ -163,40 +236,50 @@ try {
         throw "Timed out waiting for DBus to be ready in WSL distribution '$distribution_name' after $dbus_timeout seconds"
     }
 
-    # Get current service status
     $service_info = Get-ServiceStatus -DistributionName $distribution_name -ServiceName $service_name
     $module.Diff.before = $service_info
 
-    # Check if action is needed
-    $needs_change = $service_info.state -ne $desired_state
+    if ($daemon_reload) {
+        $reloadParams = @{
+            DistributionName = $distribution_name
+            WhatIf = $check_mode
+        }
+        Invoke-DaemonReload @reloadParams
+        $module.Result.daemon_reloaded = $true
+    }
 
-    if ($needs_change) {
-        if ($desired_state -eq 'started') {
-            $startServiceParams = @{
-                DistributionName = $distribution_name
-                ServiceName = $service_name
-                WhatIf = $check_mode
-            }
-            Start-Service @startServiceParams
+    if ($enabled -ne $service_info.enabled) {
+        $enableParams = @{
+            DistributionName = $distribution_name
+            ServiceName = $service_name
+            Enabled = $enabled
+            WhatIf = $check_mode
         }
-        else {
-            $stopServiceParams = @{
-                DistributionName = $distribution_name
-                ServiceName = $service_name
-                WhatIf = $check_mode
-            }
-            Stop-Service @stopServiceParams
-        }
+        Set-ServiceEnabled @enableParams
         Set-ModuleChanged -Module $module
     }
 
-    if (-not $check_mode) {
-        $service_info = Get-ServiceStatus -DistributionName $distribution_name -ServiceName $service_name
+    if ($state -eq 'started' -and -not $service_info.active) {
+        $startServiceParams = @{
+            DistributionName = $distribution_name
+            ServiceName = $service_name
+            WhatIf = $check_mode
+        }
+        Start-Service @startServiceParams
+        Set-ModuleChanged -Module $module
     }
-    else {
-        $service_info.state = $desired_state
+
+    if ($state -eq 'stopped' -and $service_info.active) {
+        $stopServiceParams = @{
+            DistributionName = $distribution_name
+            ServiceName = $service_name
+            WhatIf = $check_mode
+        }
+        Stop-Service @stopServiceParams
+        Set-ModuleChanged -Module $module
     }
-    $module.Diff.after = $service_info
+
+    $module.Diff.after = Get-ServiceStatus -DistributionName $distribution_name -ServiceName $service_name
 
 }
 catch {

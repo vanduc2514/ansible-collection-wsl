@@ -1,0 +1,45 @@
+- name: Test service enable and daemon_reload scenario
+  block:
+    - name: Test service enable and daemon_reload in check_mode
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        enabled: true
+        daemon_reload: true
+      check_mode: true
+      register: wsl_systemd_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_systemd_actual is changed
+          - wsl_systemd_actual.daemon_reloaded
+
+    - name: Test service enable and daemon_reload
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        enabled: true
+        daemon_reload: true
+      register: wsl_systemd_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_systemd_actual is changed
+          - wsl_systemd_actual.daemon_reloaded
+
+    - name: Test idempotency of service enable
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        enabled: true
+        daemon_reload: true
+      register: wsl_systemd_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_systemd_actual is changed
+          - wsl_systemd_actual.daemon_reloaded
+
