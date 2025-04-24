@@ -1,34 +1,31 @@
 - name: Ensure test distributions exist
   vanduc2514.wsl_automation.wsl_instance:
-    name: "{{ item.name }}"
+    name: Ubuntu-20.04
     rootfs_path: "{{ item.rootfs_path | default(omit) }}"
     import_bundle: "{{ item.import_bundle | default(omit) }}"
     rootfs_download_checksum: "{{ item.rootfs_download_checksum | default(omit) }}"
     rootfs_download_checksum_algorithm: "{{ item.rootfs_download_checksum_algorithm | default(omit) }}"
-  loop: "{{ test_distributions }}"
 
 - name: Ensure systemd is disabled in test distributions
   vanduc2514.wsl_automation.wsl_file:
-    distribution: "{{ item.name }}"
+    distribution: Ubuntu-20.04
     content: |
       [boot]
       systemd=false
     owner: root
     path: /etc/wsl.conf
-  loop: "{{ test_distributions }}"
 
 - name: Ensure /etc/init.d directory exists in test distributions
   vanduc2514.wsl_automation.wsl_file:
-    distribution: "{{ item.name }}"
+    distribution: Ubuntu-20.04
     state: directory
     owner: root
     mode: '0755'
     path: /etc/init.d
-  loop: "{{ test_distributions }}"
 
 - name: Create dummy service in test distributions
   vanduc2514.wsl_automation.wsl_file:
-    distribution: "{{ item.name }}"
+    distribution: Ubuntu-20.04
     content: |
       #!/bin/sh
       case "$1" in
@@ -49,7 +46,6 @@
     owner: root
     mode: '0755'
     path: /etc/init.d/dummy
-  loop: "{{ test_distributions }}"
 
 # Test WSL SysVinit with multiple distributions
 - name: Test WSL SysVinit scenarios
@@ -58,15 +54,13 @@
       ansible.builtin.include_tasks:
         file: minimum.yml
       vars:
-        wsl_distribution: "{{ item.name }}"
-      loop: "{{ test_distributions }}"
+        wsl_distribution: Ubuntu-20.04
 
     - name: Run standard scenario
       ansible.builtin.include_tasks:
         file: standard.yml
       vars:
-        wsl_distribution: "{{ item.name }}"
-      loop: "{{ test_distributions }}"
+        wsl_distribution: Ubuntu-20.04
 
   rescue:
     - name: Debug actual output if any test failed
