@@ -17,6 +17,15 @@
     path: /etc/wsl.conf
   loop: "{{ test_distributions }}"
 
+- name: Ensure /etc/init.d directory exists in test distributions
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ item.name }}"
+    state: directory
+    owner: root
+    mode: '0755'
+    path: /etc/init.d
+  loop: "{{ test_distributions }}"
+
 - name: Create dummy service in test distributions
   vanduc2514.wsl_automation.wsl_file:
     distribution: "{{ item.name }}"
