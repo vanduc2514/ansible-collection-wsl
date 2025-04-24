@@ -1,0 +1,70 @@
+- name: Ensure test distributions exist
+  vanduc2514.wsl_automation.wsl_instance:
+    name: "{{ item.name }}"
+    rootfs_path: "{{ item.rootfs_path | default(omit) }}"
+    import_bundle: "{{ item.import_bundle | default(omit) }}"
+    rootfs_download_checksum: "{{ item.rootfs_download_checksum | default(omit) }}"
+    rootfs_download_checksum_algorithm: "{{ item.rootfs_download_checksum_algorithm | default(omit) }}"
+  loop: "{{ test_distributions }}"
+
+- name: Create dummy service in test distributions
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ item.name }}"
+    content: |
+      #!/bin/sh
+      ### BEGIN INIT INFO
+      # Provides:          dummy
+      # Required-Start:    $remote_fs $syslog
+      # Required-Stop:     $remote_fs $syslog
+      # Default-Start:     2 3 4 5
+      # Default-Stop:      0 1 6
+      # Short-Description: Dummy init script
+      ### END INIT INFO
+
+      case "$1" in
+        start)
+          nohup sleep infinity >/dev/null 2>&1 &
+          echo $! > /var/run/dummy.pid
+          ;;
+        stop)
+          kill $(cat /var/run/dummy.pid)
+          rm -f /var/run/dummy.pid
+          ;;
+        status)
+          if [ -f /var/run/dummy.pid ]; then
+            echo "running"
+          else
+            echo "stopped"
+          fi
+          ;;
+        *)
+          echo "Usage: $0 {start|stop|status}"
+          exit 1
+          ;;
+      esac
+    owner: root
+    mode: '0755'
+    path: /etc/init.d/dummy
+  loop: "{{ test_distributions }}"
+
+# Test WSL SysVinit with multiple distributions
+- name: Test WSL SysVinit scenarios
+  block:
+    - name: Run minimum scenario
+      ansible.builtin.include_tasks:
+        file: minimum.yml
+      vars:
+        wsl_distribution: "{{ item.name }}"
+      loop: "{{ test_distributions }}"
+
+    - name: Run standard scenario
+      ansible.builtin.include_tasks:
+        file: standard.yml
+      vars:
+        wsl_distribution: "{{ item.name }}"
+      loop: "{{ test_distributions }}"
+
+  rescue:
+    - name: Debug actual output if any test failed
+      ansible.builtin.debug:
+        msg: "{{ wsl_sysvinit_actual }}"

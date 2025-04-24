@@ -1,0 +1,84 @@
+- name: Stop service if running
+  vanduc2514.wsl_automation.wsl_sysvinit:
+    distribution: "{{ wsl_distribution }}"
+    name: dummy
+    state: stopped
+  ignore_errors: true
+
+- name: Test basic service start scenario
+  block:
+    - name: Test basic service start in check_mode
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        state: started
+      check_mode: true
+      register: wsl_sysvinit_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_sysvinit_actual is changed
+
+    - name: Test basic service start
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        state: started
+      register: wsl_sysvinit_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_sysvinit_actual is changed
+
+    - name: Test idempotency of basic service start
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        state: started
+      register: wsl_sysvinit_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_sysvinit_actual is changed
+
+- name: Test basic service stop scenario
+  block:
+    - name: Test service stop in check_mode
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        state: stopped
+      check_mode: true
+      register: wsl_sysvinit_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_sysvinit_actual is changed
+
+    - name: Test service stop
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        state: stopped
+      register: wsl_sysvinit_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_sysvinit_actual is changed
+
+    - name: Test idempotency of service stop
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        state: stopped
+      register: wsl_sysvinit_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_sysvinit_actual is changed

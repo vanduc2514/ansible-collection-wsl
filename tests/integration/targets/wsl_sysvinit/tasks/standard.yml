@@ -1,0 +1,57 @@
+- name: Test service enable and runlevel scenario
+  block:
+    - name: Test service enable and runlevel change in check_mode
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        enabled: true
+        runlevel: '3'
+      check_mode: true
+      register: wsl_sysvinit_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_sysvinit_actual is changed
+
+    - name: Test service enable and runlevel change
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        enabled: true
+        runlevel: '3'
+      register: wsl_sysvinit_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_sysvinit_actual is changed
+
+    - name: Test idempotency of service enable and runlevel
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        enabled: true
+        runlevel: '3'
+      register: wsl_sysvinit_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_sysvinit_actual is changed
+
+# Additional test for different runlevel
+- name: Test changing service runlevel
+  block:
+    - name: Change service runlevel
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_distribution }}"
+        name: dummy
+        enabled: true
+        runlevel: '2'
+      register: wsl_sysvinit_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_sysvinit_actual is changed
