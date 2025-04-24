@@ -1,0 +1,8 @@
+test_distributions:
+  - name: Ubuntu-20.04
+
+  - name: AlmaLinux-9.3.0.0
+    rootfs_path: https://wsl.almalinux.org/9/AlmaLinuxOS-9_9.3.0.0_x64.appx
+    import_bundle: true
+    rootfs_download_checksum: dce304363673c5c3eeac1bb4cb960489ff61ff7fbb11873311d42b1ee0eb4055
+    rootfs_download_checksum_algorithm: sha256
