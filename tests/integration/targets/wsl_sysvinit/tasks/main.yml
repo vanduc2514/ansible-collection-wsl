@@ -31,18 +31,8 @@
     distribution: "{{ item.name }}"
     content: |
       #!/bin/sh
-      ### BEGIN INIT INFO
-      # Provides:          dummy
-      # Required-Start:    $remote_fs $syslog
-      # Required-Stop:     $remote_fs $syslog
-      # Default-Start:     2 3 4 5
-      # Default-Stop:      0 1 6
-      # Short-Description: Dummy init script
-      ### END INIT INFO
-
       case "$1" in
         start)
-          nohup sleep infinity >/dev/null 2>&1 &
           echo $! > /var/run/dummy.pid
           ;;
         stop)
@@ -54,10 +44,6 @@
           else
             echo "stopped"
           fi
-          ;;
-        *)
-          echo "Usage: $0 {start|stop|status}"
-          exit 1
           ;;
       esac
     owner: root
