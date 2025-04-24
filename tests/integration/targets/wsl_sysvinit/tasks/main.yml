@@ -46,7 +46,6 @@
           echo $! > /var/run/dummy.pid
           ;;
         stop)
-          kill $(cat /var/run/dummy.pid)
           rm -f /var/run/dummy.pid
           ;;
         status)
