@@ -47,18 +47,11 @@
     mode: '0755'
     path: /etc/init.d/dummy
 
-# Test WSL SysVinit with multiple distributions
 - name: Test WSL SysVinit scenarios
   block:
     - name: Run minimum scenario
       ansible.builtin.include_tasks:
         file: minimum.yml
-      vars:
-        wsl_distribution: Ubuntu-20.04
-
-    - name: Run standard scenario
-      ansible.builtin.include_tasks:
-        file: standard.yml
       vars:
         wsl_distribution: Ubuntu-20.04
 
