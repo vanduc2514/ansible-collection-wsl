@@ -4,7 +4,7 @@
   block:
     - name: Test import rootfs bundled in check_mode
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ test_distro_name }}"
+        distribution: "{{ test_distro_name }}"
         rootfs_path: "{{ wsl_instance_minimum_import_rootfs_path }}"
         import_bundle: true
         rootfs_download_checksum: "{{ wsl_instance_import_bundled_checksum }}"
@@ -19,7 +19,7 @@
 
     - name: Test import rootfs bundled
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ test_distro_name }}"
+        distribution: "{{ test_distro_name }}"
         rootfs_path: "{{ wsl_instance_import_bundled_rootfs_path }}"
         import_bundle: true
         rootfs_download_checksum: "{{ wsl_instance_import_bundled_checksum }}"
@@ -33,7 +33,7 @@
 
     - name: Test idempotency of import rootfs bundled
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ test_distro_name }}"
+        distribution: "{{ test_distro_name }}"
         rootfs_path: "{{ wsl_instance_import_bundled_rootfs_path }}"
         import_bundle: true
         rootfs_download_checksum: "{{ wsl_instance_import_bundled_checksum }}"
@@ -47,7 +47,7 @@
 
     - name: Test state run
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ test_distro_name }}"
+        distribution: "{{ test_distro_name }}"
         state: run
       register: wsl_instance_actual
 
@@ -58,7 +58,7 @@
 
     - name: Test state stop
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ test_distro_name }}"
+        distribution: "{{ test_distro_name }}"
         state: stop
       register: wsl_instance_actual
 
@@ -69,7 +69,7 @@
 
     - name: Delete import rootfs bundled installation
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ test_distro_name }}"
+        distribution: "{{ test_distro_name }}"
         state: absent
       register: wsl_instance_actual
 

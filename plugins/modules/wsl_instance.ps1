@@ -6,7 +6,7 @@
 
 $spec = @{
     options = @{
-        name = @{
+        distribution = @{
             type     = "str"
             required = $true
         }
@@ -411,7 +411,7 @@ function Delete-WSLDistribution {
 
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
-$name = $module.Params.name
+$distribution = $module.Params.distribution
 $web_download = $module.Params.web_download
 $rootfs_path = $module.Params.rootfs_path
 $rootfs_download_checksum = $module.Params.rootfs_download_checksum
@@ -437,16 +437,16 @@ $rootfs_download_path = if ($rootfs_download_path) {
 $import_dir_path = if ($import_dir_path) {
     $import_dir_path
 } else {
-    "$env:ProgramData\WSLDistributions\$name"
+    "$env:ProgramData\WSLDistributions\$distribution"
 }
 
-$before = Get-WSLDistribution -DistributionName $name
+$before = Get-WSLDistribution -DistributionName $distribution
 $module.Diff.before = $before
 
 try {
     if ($state -eq 'absent') {
         if ($before) {
-            Delete-WSLDistribution -DistributionName $name -WhatIf:$check_mode
+            Delete-WSLDistribution -DistributionName $distribution -WhatIf:$check_mode
             Set-ModuleChanged -Module $module
             $module.Diff.after = $null
         }
@@ -458,7 +458,7 @@ try {
         if ($rootfs_path) {
             $import_params = @{
                 Module = $module
-                DistributionName = $name
+                DistributionName = $distribution
                 RootFSPath = $rootfs_path
                 RootFSDownload = $rootfs_download
                 RootFSDownloadPath = $rootfs_download_path
@@ -473,7 +473,7 @@ try {
         }
         else {
             $install_params = @{
-                DistributionName = $name
+                DistributionName = $distribution
                 WebDownload = $web_download
                 WhatIf = $check_mode
             }
@@ -483,11 +483,11 @@ try {
         Set-ModuleChanged -Module $module
     }
 
-    $distro = Get-WSLDistribution -DistributionName $name
+    $distro = Get-WSLDistribution -DistributionName $distribution
 
     if ($arch_version -ne $distro.arch_version) {
         $set_version_params = @{
-            DistributionName = $name
+            DistributionName = $distribution
             Version = $arch_version
             WhatIf = $check_mode
         }
@@ -496,17 +496,17 @@ try {
     }
 
     if ($state -eq 'stop' -and ('Stopped' -ne $before.state)) {
-        Stop-WSLDistribution -DistributionName $name -WhatIf:$check_mode
+        Stop-WSLDistribution -DistributionName $distribution -WhatIf:$check_mode
         Set-ModuleChanged -Module $module
     }
 
     if ($state -eq 'run' -and ('Running' -ne $before.state)) {
-        Start-WSLDistribution -DistributionName $name -WhatIf:$check_mode
+        Start-WSLDistribution -DistributionName $distribution -WhatIf:$check_mode
         Set-ModuleChanged -Module $module
     }
 
     if ($module.Result.changed) {
-        $module.Diff.after = Get-WSLDistribution -DistributionName $name
+        $module.Diff.after = Get-WSLDistribution -DistributionName $distribution
     }
 
 } catch {

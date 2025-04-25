@@ -12,7 +12,7 @@ description:
   - Allows configuration of WSL distributions through wsl.conf.
   - Manages WSL distribution state (running, stopped, absent).
 options:
-  name:
+  distribution:
     description:
       - Name of the WSL distribution.
     type: str
@@ -52,7 +52,7 @@ options:
     description:
       - Directory where the WSL distribution will be installed.
       - Only used when importing a custom distribution with C(rootfs_path).
-      - Defaults to C(%ProgramData%\\WSLDistributions\\<name>) if not specified.
+      - Defaults to C(%ProgramData%\\WSLDistributions\\<distribution>) if not specified.
     type: path
   import_bundle:
     description:
@@ -100,21 +100,21 @@ author:
 EXAMPLES = r'''
 - name: Install Ubuntu from Microsoft Store
   ansible.windows.wsl_instance:
-    name: Ubuntu
+    distribution: Ubuntu
     web_download: true
     state: run
 
 
 - name: Import a custom distribution from a local rootfs archive
   ansible.windows.wsl_instance:
-    name: CustomLinux
+    distribution: CustomLinux
     rootfs_path: C:\path\to\rootfs.tar.gz
     import_dir_path: D:\WSL\CustomLinux
     state: run
 
 - name: Import a custom distribution from a URL
   ansible.windows.wsl_instance:
-    name: DownloadedLinux
+    distribution: DownloadedLinux
     rootfs_path: https://example.com/path/to/rootfs.tar.gz
     rootfs_download_checksum: a1b2c3d4e5f6...
     rootfs_download_checksum_algorithm: sha256
@@ -122,7 +122,7 @@ EXAMPLES = r'''
 
 - name: Import a distribution from an Appx bundle
   ansible.windows.wsl_instance:
-    name: BundledLinux
+    distribution: BundledLinux
     rootfs_path: https://example.com/path/to/bundle.zip
     import_bundle: true
     state: run
@@ -130,17 +130,17 @@ EXAMPLES = r'''
 
 - name: Change WSL version for a distribution
   ansible.windows.wsl_instance:
-    name: Ubuntu
+    distribution: Ubuntu
     arch_version: 1
 
 - name: Stop a WSL distribution
   ansible.windows.wsl_instance:
-    name: Ubuntu
+    distribution: Ubuntu
     state: stop
 
 - name: Remove a WSL distribution
   ansible.windows.wsl_instance:
-    name: Ubuntu
+    distribution: Ubuntu
     state: absent
 '''
 

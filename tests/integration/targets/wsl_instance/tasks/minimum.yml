@@ -2,7 +2,7 @@
   block:
     - name: Test minimum installation from MS Store in check_mode
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
       check_mode: true
       register: wsl_instance_actual
 
@@ -13,7 +13,7 @@
 
     - name: Test minimum installation from MS Store
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
       register: wsl_instance_actual
 
     - name: Assert operation changed
@@ -23,7 +23,7 @@
 
     - name: Test idempotency of minimum installation from MS Store
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
       register: wsl_instance_actual
 
     - name: Assert operation is idempotent
@@ -36,7 +36,7 @@
   block:
     - name: Test minimum installation from web in check_mode
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_web_distro }}"
+        distribution: "{{ wsl_instance_minimum_web_distro }}"
         web_download: true
       check_mode: true
       register: wsl_instance_actual
@@ -48,7 +48,7 @@
 
     - name: Test minimum installation from web
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_web_distro }}"
+        distribution: "{{ wsl_instance_minimum_web_distro }}"
         web_download: true
       register: wsl_instance_actual
 
@@ -59,7 +59,7 @@
 
     - name: Test idempotency of minimum installation from web
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_web_distro }}"
+        distribution: "{{ wsl_instance_minimum_web_distro }}"
         web_download: true
       register: wsl_instance_actual
 
@@ -70,7 +70,7 @@
 
     - name: Test web installation for existing distribution
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
         web_download: true
       register: wsl_instance_actual
 
@@ -84,7 +84,7 @@
   block:
     - name: Test minimum import rootfs in check_mode
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_import_distro }}"
+        distribution: "{{ wsl_instance_minimum_import_distro }}"
         rootfs_path: "{{ wsl_instance_minimum_import_rootfs_path }}"
       check_mode: true
       register: wsl_instance_actual
@@ -96,7 +96,7 @@
 
     - name: Test minimum import rootfs
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_import_distro }}"
+        distribution: "{{ wsl_instance_minimum_import_distro }}"
         rootfs_path: "{{ wsl_instance_minimum_import_rootfs_path }}"
       register: wsl_instance_actual
 
@@ -107,7 +107,7 @@
 
     - name: Test idempotency of minimum import rootfs
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_import_distro }}"
+        distribution: "{{ wsl_instance_minimum_import_distro }}"
         rootfs_path: "{{ wsl_instance_minimum_import_rootfs_path }}"
       register: wsl_instance_actual
 
@@ -121,7 +121,7 @@
   block:
     - name: Test minimum import rootfs bundled in check_mode
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_import_bundled_distro }}"
+        distribution: "{{ wsl_instance_minimum_import_bundled_distro }}"
         rootfs_path: "{{ wsl_instance_minimum_import_bundled_rootfs_path }}"
         import_bundle: true
       check_mode: true
@@ -134,7 +134,7 @@
 
     - name: Test minimum import rootfs bundled
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_import_bundled_distro }}"
+        distribution: "{{ wsl_instance_minimum_import_bundled_distro }}"
         rootfs_path: "{{ wsl_instance_minimum_import_bundled_rootfs_path }}"
         import_bundle: true
       register: wsl_instance_actual
@@ -146,7 +146,7 @@
 
     - name: Test idempotency of minimum import rootfs bundled
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_import_bundled_distro }}"
+        distribution: "{{ wsl_instance_minimum_import_bundled_distro }}"
         rootfs_path: "{{ wsl_instance_minimum_import_bundled_rootfs_path }}"
         import_bundle: true
       register: wsl_instance_actual
@@ -161,7 +161,7 @@
   block:
     - name: Test run MS Store minimum installation in check_mode
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
         state: run
       check_mode: true
       register: wsl_instance_actual
@@ -173,7 +173,7 @@
 
     - name: Test run MS Store minimum installation
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
         state: run
       register: wsl_instance_actual
 
@@ -190,7 +190,7 @@
 
     - name: Test idempotency of run MS Store minimum installation
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
         state: run
       register: wsl_instance_actual
 
@@ -204,7 +204,7 @@
   block:
     - name: Test stop MS Store minimum installation in check_mode
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
         state: stop
       check_mode: true
       register: wsl_instance_actual
@@ -216,7 +216,7 @@
 
     - name: Test stop MS Store minimum installation
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
         state: stop
       register: wsl_instance_actual
 
@@ -227,7 +227,7 @@
 
     - name: Test idempotency of stop MS Store minimum installation
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
         state: stop
       register: wsl_instance_actual
 
