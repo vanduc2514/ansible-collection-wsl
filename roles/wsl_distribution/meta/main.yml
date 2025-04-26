@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: wsl_distribution
+  author: vanduc2514
+  description: Manages Windows Subsystem for Linux (WSL) distributions
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Windows
+      versions:
+        - 2019
+        - 2022
+  galaxy_tags:
+    - windows
+    - wsl
+    - system
+    - distribution
+
+dependencies: []
