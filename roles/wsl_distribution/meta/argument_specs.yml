@@ -1,140 +1,69 @@
 ---
 argument_specs:
   main:
-    description: "Manage Windows Subsystem for Linux (WSL) distributions"
+    description: Manage Windows Subsystem for Linux (WSL) distributions
     options:
       wsl_distribution_name:
         type: str
         required: true
-        description: "Name of the WSL distribution to manage"
+        description: Name of the WSL distribution to manage
 
       wsl_distribution_web_download:
         type: bool
         default: true
-        description: "Whether to install the distribution from Microsoft Store"
+        description: Whether to install the distribution from Microsoft Store
 
       wsl_distribution_rootfs_path:
         type: str
         required: false
-        description: "Path or URL to the rootfs archive for custom distribution installation"
+        description: Path or URL to the rootfs archive for custom distribution installation
 
       wsl_distribution_rootfs_download_path:
         type: str
         required: false
-        description: "Directory where the rootfs archive will be downloaded when using URL"
+        description: Directory where the rootfs archive will be downloaded when using URL
 
       wsl_distribution_rootfs_download_checksum:
         type: str
         required: false
-        description: "Checksum for validating downloaded rootfs archive"
+        description: Checksum for validating downloaded rootfs archive
 
       wsl_distribution_rootfs_download_checksum_algorithm:
         type: str
-        default: "sha256"
-        choices: ["md5", "sha1", "sha256", "sha384", "sha512"]
-        description: "Algorithm to use for rootfs checksum validation"
+        default: sha256
+        choices: [md5, sha1, sha256, sha384, sha512]
+        description: Algorithm to use for rootfs checksum validation
 
       wsl_distribution_import_dir_path:
         type: str
         required: false
-        description: "Directory where the WSL distribution will be installed"
+        description: Directory where the WSL distribution will be installed
 
       wsl_distribution_import_bundle:
         type: bool
         default: false
-        description: "Whether the rootfs archive is an Appx bundle that contains the rootfs"
+        description: Whether the rootfs archive is an Appx bundle that contains the rootfs
 
       wsl_distribution_import_vhd:
         type: bool
         default: false
-        description: "Whether to use VHD format when importing the WSL distribution"
+        description: Whether to use VHD format when importing the WSL distribution
 
       wsl_distribution_arch_version:
         type: int
         default: 2
         choices: [1, 2]
-        description: "WSL architecture version to use (1 or 2)"
+        description: WSL architecture version to use (1 or 2)
 
       wsl_distribution_state:
         type: str
-        default: "run"
-        choices: ["run", "stop", "absent"]
-        description: "Desired state of the WSL distribution"
+        default: run
+        choices: [run, stop, absent]
+        description: Desired state of the WSL distribution
 
       wsl_distribution_config:
         type: dict
         required: false
-        description: "WSL distribution configuration settings"
-        options:
-          boot:
-            type: dict
-            required: false
-            options:
-              command:
-                type: str
-                required: false
-                description: "Command to run at WSL startup"
-              systemd:
-                type: bool
-                default: true
-                description: "Whether to enable systemd support"
-          automount:
-            type: dict
-            required: false
-            options:
-              enabled:
-                type: bool
-                default: true
-                description: "Enable automatic mounting of Windows drives"
-              root:
-                type: str
-                default: "/mnt/"
-                description: "Root directory for Windows drives"
-              options:
-                type: str
-                required: false
-                description: "Mount options for Windows drives"
-          network:
-            type: dict
-            required: false
-            options:
-              hostname:
-                type: str
-                required: false
-                description: "Hostname for the WSL distribution"
-              generateHosts:
-                type: bool
-                default: true
-                description: "Whether to generate /etc/hosts"
-              generateResolvConf:
-                type: bool
-                default: true
-                description: "Whether to generate /etc/resolv.conf"
-          interop:
-            type: dict
-            required: false
-            options:
-              enabled:
-                type: bool
-                default: true
-                description: "Enable Windows interoperability"
-              appendWindowsPath:
-                type: bool
-                default: true
-                description: "Append Windows PATH to WSL PATH"
-          user:
-            type: dict
-            required: false
-            options:
-              default:
-                type: str
-                required: false
-                description: "Default user for the WSL distribution"
-
-      wsl_distribution_additional_config:
-        type: dict
-        required: false
-        description: >-
-          Additional configuration sections and keys for wsl.conf. Can be used to add custom sections
-          or extend existing sections with additional keys. Values will be merged with the standard
-          configuration.
+        description: >
+          WSL distribution configuration settings.
+          Config Dictionary is converted to ini format before setting in wsl distribution

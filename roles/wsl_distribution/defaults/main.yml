@@ -1,55 +1,28 @@
-# WSL version to install
-wsl_version: 2.3.26
+# Architecture version (1 or 2)
+wsl_distribution_arch_version: 2
 
 # Default WSL distribution to manage
-wsl_distribution_name: "Ubuntu"
+wsl_distribution_name: Ubuntu
 
 # Installation settings
-wsl_distribution_web_download: true
+wsl_distribution_web_download: false
 wsl_distribution_rootfs_path: ""
 wsl_distribution_rootfs_download_path: ""
-wsl_distribution_rootfs_download_checksum: ""
-wsl_distribution_rootfs_download_checksum_algorithm: "sha256"
 wsl_distribution_import_dir_path: ""
 wsl_distribution_import_bundle: false
 wsl_distribution_import_vhd: false
 
-# Architecture version (1 or 2)
-wsl_distribution_arch_version: 2
-
-# Desired state (run, stop, absent)
-wsl_distribution_state: "present"
-
-# WSL configuration state
-wsl_config_state: present
-
 # WSL distribution configuration
 wsl_distribution_config:
   boot:
-    command: ""
     systemd: true
   automount:
-    enabled: true
-    root: "/mnt/"
-    options: ""
+    enabled: false
   network:
-    hostname: ""
     generateHosts: true
     generateResolvConf: true
   interop:
-    enabled: true
-    appendWindowsPath: true
+    enabled: false
+    appendWindowsPath: false
   user:
-    default: ""
-
-# Additional WSL configuration sections and keys
-# Example:
-# wsl_distribution_additional_config:
-#   custom_section:
-#     key1: value1
-#     key2: value2
-#   boot:
-#     custom_key: value
-wsl_distribution_additional_config: {}
-
-# TODO: add parameter for user
+    default: ubuntu
