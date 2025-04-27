@@ -8,7 +8,7 @@ argument_specs:
         required: true
         description: "Name of the WSL distribution to manage"
 
-      wsl_distribution_install_from_store:
+      wsl_distribution_web_download:
         type: bool
         default: true
         description: "Whether to install the distribution from Microsoft Store"
@@ -130,3 +130,11 @@ argument_specs:
                 type: str
                 required: false
                 description: "Default user for the WSL distribution"
+
+      wsl_distribution_additional_config:
+        type: dict
+        required: false
+        description: >-
+          Additional configuration sections and keys for wsl.conf. Can be used to add custom sections
+          or extend existing sections with additional keys. Values will be merged with the standard
+          configuration.

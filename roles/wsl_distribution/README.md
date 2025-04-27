@@ -15,7 +15,7 @@ This role manages Windows Subsystem for Linux (WSL) distributions on Windows hos
 wsl_distribution_name: "Ubuntu"
 
 # Installation settings
-wsl_distribution_install_from_store: true
+wsl_distribution_web_download: true
 wsl_distribution_rootfs_path: ""
 wsl_distribution_rootfs_download_path: ""
 wsl_distribution_rootfs_download_checksum: ""
@@ -71,7 +71,7 @@ wsl_distribution_config:
         name: wsl_distribution
       vars:
         wsl_distribution_name: "CustomLinux"
-        wsl_distribution_install_from_store: false
+        wsl_distribution_web_download: false
         wsl_distribution_rootfs_path: "path/to/custom.tar.gz"
         wsl_distribution_import_dir_path: "D:\\WSL\\CustomLinux"
         wsl_distribution_state: "run"

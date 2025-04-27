@@ -5,7 +5,7 @@ wsl_version: 2.3.26
 wsl_distribution_name: "Ubuntu"
 
 # Installation settings
-wsl_distribution_install_from_store: true
+wsl_distribution_web_download: true
 wsl_distribution_rootfs_path: ""
 wsl_distribution_rootfs_download_path: ""
 wsl_distribution_rootfs_download_checksum: ""
@@ -41,3 +41,15 @@ wsl_distribution_config:
     appendWindowsPath: true
   user:
     default: ""
+
+# Additional WSL configuration sections and keys
+# Example:
+# wsl_distribution_additional_config:
+#   custom_section:
+#     key1: value1
+#     key2: value2
+#   boot:
+#     custom_key: value
+wsl_distribution_additional_config: {}
+
+# TODO: add parameter for user
