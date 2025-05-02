@@ -26,7 +26,7 @@
   vanduc2514.wsl_automation.wsl_file:
     distribution: "{{ wsl_distribution_name }}"
     path: "/etc/wsl.conf"
-    content: "{{ lookup('ansible.builtin.to_ini', wsl_distribution_config) }}"
+    content: "{{ lookup('community.general.to_ini', wsl_distribution_config) }}"
     state: file
     mode: "0644"
   when: wsl_distribution_state != "absent"
