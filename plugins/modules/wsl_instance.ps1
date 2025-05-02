@@ -18,7 +18,7 @@ $spec = @{
             type        = "str"
         }
         rootfs_download_path = @{
-            type     = "path"
+            type     = "str"
         }
         rootfs_download_checksum = @{
             type     = "str"
@@ -29,7 +29,7 @@ $spec = @{
             default  = "md5"
         }
         import_dir_path = @{
-            type        = "path"
+            type        = "str"
         }
         import_bundle = @{
             type     = "bool"
@@ -51,9 +51,6 @@ $spec = @{
         }
     }
     supports_check_mode = $true
-    mutually_exclusive = @(
-        , @("web_download", "rootfs_path")
-    )
 }
 
 
