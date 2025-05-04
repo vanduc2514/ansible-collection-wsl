@@ -1,6 +1,7 @@
 ---
 argument_specs:
   main:
+    short_description: Manage WSL distributions
     description: Manage Windows Subsystem for Linux (WSL) distributions
     options:
       wsl_distribution_name:
@@ -8,30 +9,30 @@ argument_specs:
         required: true
         description: >
           Name of the WSL distribution to manage.
-          If rootfs is not provided, install the distribution from the MS Store.
-          If the distribution is not available in MS Store, this role will fail
+          If rootfs is not provided, install the distribution from online distribution.
+          If the distribution is not available online, this role will fail
 
-      wsl_distribution_web_download:
+      wsl_distribution_install_web_download:
         type: bool
         default: true
         description: Whether to install the distribution from Microsoft Store
 
-      wsl_distribution_rootfs_path:
+      wsl_distribution_import_rootfs_path:
         type: str
         required: false
         description: Path or URL to the rootfs archive for custom distribution installation
 
-      wsl_distribution_rootfs_download_path:
+      wsl_distribution_import_rootfs_download_path:
         type: str
         required: false
         description: Directory where the rootfs archive will be downloaded when using URL
 
-      wsl_distribution_rootfs_download_checksum:
+      wsl_distribution_import_rootfs_download_checksum:
         type: str
         required: false
         description: Checksum for validating downloaded rootfs archive
 
-      wsl_distribution_rootfs_download_checksum_algorithm:
+      wsl_distribution_import_rootfs_download_checksum_algorithm:
         type: str
         default: sha256
         choices: [md5, sha1, sha256, sha384, sha512]
@@ -70,3 +71,68 @@ argument_specs:
         description: >
           WSL distribution configuration settings.
           Config Dictionary is converted to ini format before setting in wsl distribution
+
+      wsl_distribution_config_user_default:
+        description: Override the default user specified in distribution configuration
+        type: str
+        required: false
+        default: root
+
+      wsl_distribution_config_automount_enabled:
+        description: Enable automatic mounting of Windows drives
+        type: bool
+        default: true
+
+      wsl_distribution_config_automount_mountFsTab:
+        description: Enable mounting via /etc/fstab
+        type: bool
+        default: true
+
+      wsl_distribution_config_automount_root:
+        description: Root directory for Windows drive mounts
+        type: str
+        default: "/mnt/"
+
+      wsl_distribution_config_automount_options:
+        description: Mount options for Windows drives, comma separated value
+        type: str
+        required: false
+
+      wsl_distribution_config_network_generateHosts:
+        description: Enable automatic /etc/hosts generation
+        type: bool
+        default: true
+
+      wsl_distribution_config_network_generateResolvConf:
+        description: Enable automatic /etc/resolv.conf generation
+        type: bool
+        default: true
+
+      wsl_distribution_config_network_hostname:
+        description: Set WSL distribution hostname
+        type: str
+
+      wsl_distribution_config_interop_enabled:
+        description: Enable Windows process interoperability
+        type: bool
+        default: true
+
+      wsl_distribution_config_interop_appendWindowsPath:
+        description: Add Windows PATH to $PATH
+        type: bool
+        default: true
+
+      wsl_distribution_config_boot_command:
+        description: Command to run on WSL startup
+        type: str
+        required: false
+
+      wsl_distribution_config_boot_systemd:
+        description: Enable systemd support
+        type: bool
+        default: true
+
+      wsl_distribution_extra_configs:
+        description: Additional configuration sections and properties to append to wsl.conf
+        type: dict
+        required: false

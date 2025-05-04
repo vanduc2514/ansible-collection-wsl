@@ -29,15 +29,38 @@
       ansible.builtin.set_fact:
         normalized_wsl_conf: "{{ wsl_conf_result.stdout | replace('\u0000', '') }}"
 
-    - name: Verify configuration content
+    - name: Verify standard configuration sections
       ansible.builtin.assert:
         that:
-          - "'automount' in normalized_wsl_conf"
+          - "'[automount]' in normalized_wsl_conf"
           - "'enabled = true' in normalized_wsl_conf"
+          - "'mountFsTab = true' in normalized_wsl_conf"
+          - "'root = /mnt/' in normalized_wsl_conf"
+          - "'options = metadata,uid=1000,gid=1000' in normalized_wsl_conf"
+
+          - "'[boot]' in normalized_wsl_conf"
           - "'systemd = true' in normalized_wsl_conf"
+
+          - "'[interop]' in normalized_wsl_conf"
+          - "'enabled = true' in normalized_wsl_conf"
+          - "'appendWindowsPath = true' in normalized_wsl_conf"
+
+          - "'[user]' in normalized_wsl_conf"
           - "'default = ubuntu' in normalized_wsl_conf"
-        fail_msg: "WSL configuration does not contain expected settings"
-        success_msg: "WSL configuration is correctly set"
+        fail_msg: "Standard WSL configuration sections not found or incorrect"
+        success_msg: "Standard WSL configuration sections are correctly set"
+
+    - name: Verify extra configuration sections
+      ansible.builtin.assert:
+        that:
+          - "'[custom_section]' in normalized_wsl_conf"
+          - "'property1 = value1' in normalized_wsl_conf"
+          - "'property2 = 123' in normalized_wsl_conf"
+
+          - "'[another_section]' in normalized_wsl_conf"
+          - "'setting = true' in normalized_wsl_conf"
+        fail_msg: "Extra configuration sections not found or incorrect"
+        success_msg: "Extra configuration sections are correctly set"
 
     - name: Verify default user exists
       ansible.windows.win_shell: wsl.exe -d Ubuntu-22.04 -- id ubuntu

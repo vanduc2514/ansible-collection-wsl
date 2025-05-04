@@ -5,24 +5,25 @@ wsl_distribution_arch_version: 2
 wsl_distribution_name: Ubuntu
 
 # Installation settings
-wsl_distribution_web_download: false
-wsl_distribution_rootfs_path: ""
-wsl_distribution_rootfs_download_path: ""
-wsl_distribution_import_dir_path: ""
+wsl_distribution_install_web_download: false
 wsl_distribution_import_bundle: false
 wsl_distribution_import_vhd: false
 
 # WSL distribution configuration
-wsl_distribution_config:
-  boot:
-    systemd: true
-  automount:
-    enabled: false
-  network:
-    generateHosts: true
-    generateResolvConf: true
-  interop:
-    enabled: false
-    appendWindowsPath: false
-  user:
-    default: ubuntu
+## Default user
+wsl_distribution_config_user_default: root
+# Boot section
+wsl_distribution_config_boot_systemd: true
+## Automount
+wsl_distribution_config_automount_enabled: true
+wsl_distribution_config_automount_mountFsTab: true
+wsl_distribution_config_automount_root: /mnt/
+## Interop
+wsl_distribution_config_interop_enabled: true
+wsl_distribution_config_interop_appendWindowsPath: true
+## Network
+wsl_distribution_config_network_generateHosts: true
+wsl_distribution_config_network_generateResolvConf: true
+
+# Extra configuration that will be appended to WSL distribution configuration wsl.conf
+wsl_distribution_extra_configs: {}

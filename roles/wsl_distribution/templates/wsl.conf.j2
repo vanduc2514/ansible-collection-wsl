@@ -1,0 +1,37 @@
+[user]
+default = {{ wsl_distribution_config_user_default }}
+
+[boot]
+systemd = {{ wsl_distribution_config_boot_systemd | lower }}
+{% if wsl_distribution_config_boot_command %}
+command = {{ wsl_distribution_config_boot_command }}
+{% endif %}
+
+[automount]
+enabled = {{ wsl_distribution_config_automount_enabled | lower }}
+mountFsTab = {{ wsl_distribution_config_automount_mountFsTab | lower }}
+root = {{ wsl_distribution_config_automount_root }}
+{% if wsl_distribution_config_automount_options %}
+options = {{ wsl_distribution_config_automount_options }}
+{% endif %}
+
+[interop]
+enabled = {{ wsl_distribution_config_interop_enabled | lower }}
+appendWindowsPath = {{ wsl_distribution_config_interop_appendWindowsPath | lower }}
+
+[network]
+generateHosts = {{ wsl_distribution_config_network_generateHosts | lower }}
+generateResolvConf = {{ wsl_distribution_config_network_generateResolvConf | lower }}
+{% if wsl_distribution_config_network_hostname %}
+hostname = {{ wsl_distribution_config_network_hostname }}
+{% endif %}
+
+{% if wsl_distribution_extra_configs %}
+{% for section, properties in wsl_distribution_extra_configs.items() %}
+[{{ section }}]
+{% for property, value in properties.items() %}
+{{ property }} = {{ value }}
+{% endfor %}
+
+{% endfor %}
+{% endif %}
