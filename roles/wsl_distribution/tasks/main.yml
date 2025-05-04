@@ -28,5 +28,5 @@
     path: "/etc/wsl.conf"
     content: "{{ wsl_distribution_config | community.general.to_ini | replace('True', 'true') | replace('False', 'false') }}"
     state: file
-    mode: "0644"
+    mode: 0644
   when: wsl_distribution_state != "absent"

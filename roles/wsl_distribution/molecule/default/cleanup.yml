@@ -1,0 +1,13 @@
+- name: Cleanup
+  hosts: windows
+  gather_facts: false
+  tasks:
+    - name: Check if Ubuntu-22.04 distribution exists
+      ansible.windows.win_shell: wsl.exe -l
+      register: wsl_list
+      changed_when: false
+
+    - name: Unregister Ubuntu-22.04 distribution
+      ansible.windows.win_shell: wsl.exe --unregister Ubuntu-22.04
+      when: "'Ubuntu-22.04' in wsl_list.stdout"
+      changed_when: true
