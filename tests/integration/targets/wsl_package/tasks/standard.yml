@@ -89,7 +89,7 @@
         that:
           - wsl_package_actual is changed
 
-    - name: Test non-idempotency of package cache update
+    - name: Test idempotency of package cache update
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
         name: "{{ current_packages.cache_package }}"
@@ -97,10 +97,10 @@
         state: present
       register: wsl_package_actual
 
-    - name: Assert operation is not idempotent
+    - name: Assert operation is idempotent
       ansible.builtin.assert:
         that:
-          - wsl_package_actual is changed
+          - not wsl_package_actual is changed
 
 - name: Clean up test packages
   block:
