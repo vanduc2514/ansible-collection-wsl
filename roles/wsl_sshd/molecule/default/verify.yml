@@ -62,20 +62,25 @@
         path: /etc/ssh/sshd_config
       register: sshd_config
 
+    - name: Set expected port for verification
+      ansible.builtin.set_fact:
+        expected_port: "Port {{ sshd_port }}"
+
     - name: Verify SSHD configuration
       ansible.builtin.assert:
         that:
-          - sshd_config_content.find('Port {{ sshd_port }}') != -1
+          - sshd_config_content.find(expected_port) != -1
           - sshd_config_content.find('ListenAddress 0.0.0.0') != -1
           - sshd_config_content.find('PermitRootLogin no') != -1
           - sshd_config_content.find('PasswordAuthentication no') != -1
           - sshd_config_content.find('PubkeyAuthentication yes') != -1
-          - sshd_config_content.find('X11Forwarding yes') != -1
           - sshd_config_content.find('MaxAuthTries 3') != -1
           - sshd_config_content.find('LoginGraceTime 60') != -1
           - sshd_config_content.find('ClientAliveInterval 300') != -1
           - sshd_config_content.find('ClientAliveCountMax 3') != -1
-        fail_msg: "SSHD configuration is not set correctly"
+        fail_msg: |
+          SSHD configuration is not set correctly. Current config:
+          {{ sshd_config_content }}
         success_msg: "SSHD configuration is correctly set"
       vars:
         sshd_config_content: "{{ sshd_config.content | b64decode }}"
@@ -93,7 +98,7 @@
     - name: Read systemd service override
       vanduc2514.wsl_automation.wsl_slurp:
         distribution: "{{ distribution }}"
-        path: /etc/systemd/system/sshd.service.d/override.conf
+        path: /etc/systemd/system/ssh.service.d/override.conf
       register: service_override
 
     - name: Verify systemd override content

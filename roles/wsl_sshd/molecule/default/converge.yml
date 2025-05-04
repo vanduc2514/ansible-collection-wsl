@@ -110,3 +110,6 @@
         wsl_sshd_port_forward_enabled: true
         wsl_sshd_port_forward_host_port: "{{ forward_port }}"
         wsl_sshd_port_forward_firewall_rule_name: "WSL SSH Test"
+        wsl_sshd_systemd_service_override: |
+          [Service]
+          Environment=SSH_OPTS=-o TCPKeepAlive=yes
