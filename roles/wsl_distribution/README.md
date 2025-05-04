@@ -53,6 +53,18 @@ The role uses the following configuration structure. For detailed information ab
 | `wsl_distribution_config_interop_appendWindowsPath` | Add Windows PATH to $PATH | `true` |
 | `wsl_distribution_config_user_default` | Default user for WSL distribution | `root` |
 
+### Additional Configuration for default user
+
+These variables control the creation and configuration of the default user in the WSL distribution.
+
+| Configuration Option | Description | Default |
+|----------------------|-------------|---------|
+| `wsl_distribution_config_user_default_uid` | UID for the default user | - |
+| `wsl_distribution_config_user_default_home_path` | Home directory for the default user | Default to `/home/user` |
+| `wsl_distribution_config_user_default_login_shell` | Login shell for the default user | `/bin/sh` |
+| `wsl_distribution_config_user_default_sudo` | Whether to grant sudo privileges to the default user | `false` |
+| `wsl_distribution_config_user_default_password` | Password for the default user in plain text | - |
+
 ### Extra WSL Configuration
 
 `wsl_distribution_extra_configs`: Additional configuration sections and properties to append to wsl.conf
@@ -125,6 +137,24 @@ Import from local `tar` ball
         wsl_distribution_config_boot_systemd: true
         wsl_distribution_config_user_default: "myuser"
         wsl_distribution_state: run
+```
+
+Create a distribution with a custom default user
+
+```yaml
+- name: Install WSL Distribution with custom default user
+  hosts: windows
+  roles:
+    - role: vanduc2514.wsl_automation_wsl_distribution
+      vars:
+        wsl_distribution_name: Ubuntu
+        wsl_distribution_config_boot_systemd: true
+        wsl_distribution_config_user_default_name: "wsluser"
+        wsl_distribution_config_user_default_uid: 1000
+        wsl_distribution_config_user_default_home_path: "/home/wsluser"
+        wsl_distribution_config_user_default_login_shell: "/bin/bash"
+        wsl_distribution_config_user_default_sudo: true
+        wsl_distribution_config_user_default_password: "secure_password"
 ```
 
 ## License

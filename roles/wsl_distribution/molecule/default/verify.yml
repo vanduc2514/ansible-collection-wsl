@@ -77,3 +77,36 @@
           - "'uid=' in normalized_user_result"
         fail_msg: "Default user 'ubuntu' is not properly configured"
         success_msg: "Default user 'ubuntu' is properly configured"
+
+    - name: Get default user details
+      ansible.windows.win_shell: wsl.exe -d Ubuntu-22.04 -- getent passwd ubuntu
+      register: user_details
+      changed_when: false
+
+    - name: Normalize user details output
+      ansible.builtin.set_fact:
+        normalized_user_details: "{{ user_details.stdout | replace('\u0000', '') }}"
+
+    - name: Verify default user configuration
+      ansible.builtin.assert:
+        that:
+          - "normalized_user_details is regex('ubuntu:x:\\d+:\\d+:.*:/home/ubuntu:/bin/bash')"
+        fail_msg: "Default user 'ubuntu' configuration is incorrect"
+        success_msg: "Default user 'ubuntu' configuration is correct"
+
+    - name: Check if default user has sudo privileges
+      ansible.windows.win_shell: wsl.exe --terminate Ubuntu-22.04 ; wsl.exe -d Ubuntu-22.04 -u ubuntu -- sudo -S cat /etc/shadow
+      register: sudo_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: Normalize sudo check output
+      ansible.builtin.set_fact:
+        normalized_sudo_check: "{{ sudo_check.stdout | replace('\u0000', '') }}"
+
+    - name: Verify default user sudo privileges
+      ansible.builtin.assert:
+        that:
+          - "sudo_check.rc == 0"
+        fail_msg: "Default user 'ubuntu' does not have proper sudo privileges"
+        success_msg: "Default user 'ubuntu' has proper sudo privileges"

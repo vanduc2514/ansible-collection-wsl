@@ -16,6 +16,11 @@
   vanduc2514.wsl_automation.wsl_user:
     distribution: "{{ wsl_distribution_name }}"
     name: "{{ wsl_distribution_config_user_default }}"
+    uid: "{{ wsl_distribution_config_user_default_uid | default(omit) }}"
+    home_path: "{{ wsl_distribution_config_user_default_home_path | default(omit) }}"
+    login_shell: "{{ wsl_distribution_config_user_default_login_shell }}"
+    sudo: "{{ wsl_distribution_config_user_default_sudo }}"
+    password: "{{ wsl_distribution_config_user_default_password | default(omit) }}"
     state: present
   when:
     - wsl_distribution_state != "absent"

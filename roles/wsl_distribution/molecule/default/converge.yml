@@ -9,8 +9,11 @@
     wsl_distribution_state: run
     wsl_distribution_arch_version: 2
 
-    # Test default user override
+    # Test default user configuration
     wsl_distribution_config_user_default: "ubuntu"
+    wsl_distribution_config_user_default_uid: 1000
+    wsl_distribution_config_user_default_login_shell: "/bin/bash"
+    wsl_distribution_config_user_default_sudo: true
 
     # Test WSL configuration settings
     ## Automount settings
