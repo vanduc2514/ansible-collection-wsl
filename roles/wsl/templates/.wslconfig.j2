@@ -1,0 +1,102 @@
+[wsl2]
+{% if wsl_config_memory is defined %}
+memory={{ wsl_config_memory }}
+{% endif %}
+{% if wsl_config_processors is defined %}
+processors={{ wsl_config_processors }}
+{% endif %}
+{% if wsl_config_kernel is defined %}
+kernel={{ wsl_config_kernel }}
+{% endif %}
+{% if wsl_config_kernelModules is defined %}
+kernelModules={{ wsl_config_kernelModules }}
+{% endif %}
+{% if wsl_config_kernelCommandLine is defined %}
+kernelCommandLine={{ wsl_config_kernelCommandLine }}
+{% endif %}
+{% if wsl_config_safeMode is defined %}
+safeMode={{ wsl_config_safeMode | lower }}
+{% endif %}
+{% if wsl_config_swap is defined %}
+swap={{ wsl_config_swap }}
+{% endif %}
+{% if wsl_config_swapFile is defined %}
+swapFile={{ wsl_config_swapFile }}
+{% endif %}
+{% if wsl_config_pageReporting is defined %}
+pageReporting={{ wsl_config_pageReporting | lower }}
+{% endif %}
+{% if wsl_config_localhostForwarding is defined %}
+localhostForwarding={{ wsl_config_localhostForwarding | lower }}
+{% endif %}
+{% if wsl_config_guiApplications is defined %}
+guiApplications={{ wsl_config_guiApplications | lower }}
+{% endif %}
+{% if wsl_config_debugConsole is defined %}
+debugConsole={{ wsl_config_debugConsole | lower }}
+{% endif %}
+{% if wsl_config_nestedVirtualization is defined %}
+nestedVirtualization={{ wsl_config_nestedVirtualization | lower }}
+{% endif %}
+{% if wsl_config_vmIdleTimeout is defined %}
+vmIdleTimeout={{ wsl_config_vmIdleTimeout }}
+{% endif %}
+{% if wsl_config_autoProxy is defined %}
+autoProxy={{ wsl_config_autoProxy | lower }}
+{% endif %}
+{% if wsl_config_networkingMode is defined %}
+networkingMode={{ wsl_config_networkingMode }}
+{% endif %}
+{% if wsl_config_firewall is defined %}
+firewall={{ wsl_config_firewall | lower }}
+{% endif %}
+{% if wsl_config_dnsTunneling is defined %}
+dnsTunneling={{ wsl_config_dnsTunneling | lower }}
+{% endif %}
+{% if wsl_config_dnsProxy is defined %}
+dnsProxy={{ wsl_config_dnsProxy | lower }}
+{% endif %}
+{% if wsl_config_defaultVhdSize is defined %}
+defaultVhdSize={{ wsl_config_defaultVhdSize }}
+{% endif %}
+
+{% if wsl_config_experimental_autoMemoryReclaim is defined or
+      wsl_config_experimental_sparseVhd is defined or
+      wsl_config_experimental_bestEffortDnsParsing is defined or
+      wsl_config_experimental_dnsTunnelingIpAddress is defined or
+      wsl_config_experimental_initialAutoProxyTimeout is defined or
+      wsl_config_experimental_ignoredPorts is defined or
+      wsl_config_experimental_hostAddressLoopback is defined %}
+[experimental]
+{% if wsl_config_experimental_autoMemoryReclaim is defined %}
+autoMemoryReclaim={{ wsl_config_experimental_autoMemoryReclaim }}
+{% endif %}
+{% if wsl_config_experimental_sparseVhd is defined %}
+sparseVhd={{ wsl_config_experimental_sparseVhd | lower }}
+{% endif %}
+{% if wsl_config_experimental_bestEffortDnsParsing is defined %}
+bestEffortDnsParsing={{ wsl_config_experimental_bestEffortDnsParsing | lower }}
+{% endif %}
+{% if wsl_config_experimental_dnsTunnelingIpAddress is defined %}
+dnsTunnelingIpAddress={{ wsl_config_experimental_dnsTunnelingIpAddress }}
+{% endif %}
+{% if wsl_config_experimental_initialAutoProxyTimeout is defined %}
+initialAutoProxyTimeout={{ wsl_config_experimental_initialAutoProxyTimeout }}
+{% endif %}
+{% if wsl_config_experimental_ignoredPorts is defined %}
+ignoredPorts={{ wsl_config_experimental_ignoredPorts }}
+{% endif %}
+{% if wsl_config_experimental_hostAddressLoopback is defined %}
+hostAddressLoopback={{ wsl_config_experimental_hostAddressLoopback | lower }}
+{% endif %}
+{% endif %}
+
+{% if wsl_config_extra %}
+{% for section, properties in wsl_config_extra.items() %}
+[{{ section }}]
+{% for property, value in properties.items() %}
+{{ property }} = {{ value }}
+{% endfor %}
+
+{% endfor %}
+{% endif %}

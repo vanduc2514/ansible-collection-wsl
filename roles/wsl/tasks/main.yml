@@ -25,15 +25,15 @@
     name: DefaultVersion
     data: "{{ wsl_arch_version }}"
     type: dword
-    state: "{{ 'present' if wsl_binary.rc == 0 else 'absent' }}"
+    state: "{{ 'present' if wsl_binary.rc == 0 or wsl_state == 'present' else 'absent' }}"
 
-- name: Prepare WSL kernel configuration file
+- name: Ensure WSL configuration file
   ansible.windows.win_file:
     path: "{{ wsl_config_path }}"
-    state: "{{ 'absent' if wsl_config_state == 'absent' else 'touch' if wsl_config_state == 'present' }}"
+    state: "{{ 'present' if wsl_binary.rc == 0 or wsl_state == 'present' else 'absent' }}"
 
-- name: Apply WSL kernel configuration
-  ansible.windows.win_copy:
-    content: "{{ wsl_config | community.general.to_ini }}"
+- name: Template WSL configuration
+  ansible.windows.win_template:
+    src: .wslconfig.j2
     dest: "{{ wsl_config_path }}"
-  when: wsl_config is defined and wsl_config_state == 'present'
+  when: wsl_state == 'present'

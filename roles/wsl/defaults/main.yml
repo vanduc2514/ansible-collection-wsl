@@ -1,5 +1,15 @@
+# WSL binary version and state
 wsl_version: 2.3.26
 wsl_arch_version: 2
 wsl_state: present
 
-wsl_config_state: present
+# WSL 2 settings
+wsl_config_localhostForwarding: true
+wsl_config_guiApplications: true
+wsl_config_pageReporting: true
+
+# Extra configurations
+wsl_config_extra: {}
+
+# Path for .wslconfig file
+wsl_config_path: "{{ ansible_facts.env.HOME }}\\.wslconfig"

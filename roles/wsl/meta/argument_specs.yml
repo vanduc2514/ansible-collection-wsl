@@ -1,25 +1,135 @@
 argument_specs:
   main:
+    short_description: Manage WSL kernel
+    description: Manage Windows Subsystem for Linux (WSL) kernel
     options:
       wsl_arch_version:
         default: 2
         description: The WSL architecture version for new distributions (1 or 2).
         type: int
+
       wsl_version:
         default: 2.3.26
         description: The WSL binary version from WSL Github Repository
         type: str
+
       wsl_state:
         default: present
         description: Whether the WSL binary should be installed (present) or removed (absent).
         type: str
-      wsl_config:
-        description: >-
-          Optional WSL configuration settings in YAML format, which will be converted to INI format
-          for .wslconfig. If not defined, WSL will use default values. For detailed configuration
-          options, refer to `Advanced Settings Configuration in WSL` Documentation.
+
+      wsl_config_memory:
+        description: How much memory to assign to the WSL 2 VM (e.g. "4GB").
+        type: str
+
+      wsl_config_processors:
+        description: How many processors to assign to the WSL 2 VM.
+        type: int
+
+      wsl_config_kernel:
+        description: Absolute Windows path to a custom Linux kernel.
+        type: str
+
+      wsl_config_kernelModules:
+        description: Absolute Windows path to custom Linux kernel modules VHD.
+        type: str
+
+      wsl_config_kernelCommandLine:
+        description: Additional kernel command line arguments.
+        type: str
+
+      wsl_config_safeMode:
+        description: Run WSL in Safe Mode which disables many features (Windows 11, WSL 0.66.2+ only).
+        type: bool
+
+      wsl_config_swap:
+        description: How much swap space to add to the WSL 2 VM (e.g. "8GB").
+        type: str
+
+      wsl_config_swapFile:
+        description: Absolute Windows path to the swap virtual hard disk.
+        type: str
+
+      wsl_config_pageReporting:
+        description: Enable Windows to reclaim unused memory from WSL 2.
+        type: bool
+
+      wsl_config_localhostForwarding:
+        description: Enable localhost forwarding from WSL to Windows.
+        type: bool
+
+      wsl_config_guiApplications:
+        description: Enable support for GUI applications (WSLg).
+        type: bool
+
+      wsl_config_debugConsole:
+        description: Show debug console output (Windows 11 only).
+        type: bool
+
+      wsl_config_nestedVirtualization:
+        description: Enable nested virtualization (Windows 11 only).
+        type: bool
+
+      wsl_config_vmIdleTimeout:
+        description: VM idle timeout in milliseconds (Windows 11 only).
+        type: int
+
+      wsl_config_autoProxy:
+        description: Use Windows HTTP proxy settings (Windows 11 only).
+        type: bool
+
+      wsl_config_networkingMode:
+        description: Network mode (NAT/mirrored) (Windows 11 22H2+ only).
+        type: str
+
+      wsl_config_dnsProxy:
+        description: Configure DNS Server in Linux to use NAT on the host (only for NAT networking mode).
+        type: bool
+
+      wsl_config_firewall:
+        description: Enable Windows Firewall rules (Windows 11 22H2+ only).
+        type: bool
+
+      wsl_config_dnsTunneling:
+        description: Enable DNS tunneling (Windows 11 22H2+ only).
+        type: bool
+
+      wsl_config_defaultVhdSize:
+        description: Set the Virtual Hard Disk (VHD) size that stores the Linux distribution file system.
+        type: str
+
+      wsl_config_experimental_sparseVhd:
+        description: Enable sparse VHD for WSL.
+        type: bool
+
+      wsl_config_experimental_autoMemoryReclaim:
+        description: Configure automatic memory reclaim behavior.
+        type: str
+
+      wsl_config_experimental_bestEffortDnsParsing:
+        description: Enable best effort DNS parsing (Windows 11 22H2+ only).
+        type: bool
+
+      wsl_config_experimental_dnsTunnelingIpAddress:
+        description: DNS tunneling IP address (Windows 11 22H2+ only).
+        type: str
+
+      wsl_config_experimental_initialAutoProxyTimeout:
+        description: Initial auto proxy timeout in milliseconds (Windows 11 only).
+        type: int
+
+      wsl_config_experimental_ignoredPorts:
+        description: Comma-separated list of ignored ports (Windows 11 22H2+ only).
+        type: str
+
+      wsl_config_experimental_hostAddressLoopback:
+        description: Enable host address loopback (Windows 11 22H2+ only).
+        type: bool
+
+      wsl_config_extra:
+        description: Additional configuration sections and properties to include in .wslconfig.
         type: dict
-      wsl_config_state:
-        default: present
-        description: Whether the WSL binary configuration should be created (present) or removed (absent).
+
+      wsl_config_path:
+        description: Path to the .wslconfig file.
         type: str
