@@ -5,7 +5,7 @@
 
 - name: Parse WSL distribution IP
   ansible.builtin.set_fact:
-    wsl_ip: "{{ wsl_ip_reg.value.NatIpAddress }}"
+    wsl_ip: "{{ wsl_ip_reg.properties.NatGatewayIpAddress.value }}"
 
 - name: Configure Windows port forwarding
   ansible.windows.win_shell: |
