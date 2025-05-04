@@ -354,7 +354,6 @@ try {
         }
 
         Update-PackageCache @updatePackageCacheParams
-        Set-ModuleChanged -Module $module
     }
 
     if ($state -eq 'absent') {
