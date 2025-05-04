@@ -5,12 +5,15 @@ wsl_sshd_package_name: openssh-server
 wsl_sshd_service_name: ssh
 wsl_sshd_service_type: systemd
 
+# Host key configuration
+wsl_sshd_force_generate_host_key: false
+
 # SSHD Configuration
 wsl_sshd_port: 2222
 wsl_sshd_listen_address: 0.0.0.0
-wsl_sshd_permit_root_login: no
-wsl_sshd_password_authentication: yes
-wsl_sshd_pubkey_authentication: yes
+wsl_sshd_permit_root_login: "no"
+wsl_sshd_password_authentication: "no"
+wsl_sshd_pubkey_authentication: "yes"
 wsl_sshd_authorized_keys_file: .ssh/authorized_keys
 wsl_sshd_x11_forwarding: "no"
 wsl_sshd_subsystem_sftp: /usr/lib/openssh/sftp-server

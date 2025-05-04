@@ -155,15 +155,17 @@
           {{ firewall_rule.stdout }}
         success_msg: "Firewall rule is correctly configured"
 
-    # Verify SSH connectivity
+    # Verify SSH connectivity from controller
     - name: Wait for port to be available
       ansible.windows.win_wait_for:
         port: "{{ forward_port }}"
         timeout: 30
 
-    - name: Test SSH connection
-      ansible.windows.win_shell: |
-        $env:DISPLAY = $null
-        ssh -i "$env:USERPROFILE\.ssh\wsl_test" -p {{ forward_port }} -o "StrictHostKeyChecking=no" {{ test_user }}@localhost "echo 'SSH connection successful'"
+    - name: Test SSH connection from controller
+      ansible.builtin.shell: |
+        ssh -i ~/.ssh/id_ed25519 -p {{ forward_port }} -o "ConnectTimeout=10" -o "StrictHostKeyChecking=no" {{ test_user }}@{{ ansible_host }} "echo 'SSH connection successful'"
       register: ssh_test
+      delegate_to: localhost
       failed_when: "'SSH connection successful' not in ssh_test.stdout"
+      args:
+        executable: /bin/bash

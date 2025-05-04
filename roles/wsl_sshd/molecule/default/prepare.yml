@@ -5,22 +5,16 @@
     distribution: Ubuntu-22.04
     test_user: ansible
   tasks:
-    - name: Generate SSH key pair on Windows
-      ansible.windows.win_powershell:
-        script: |
-          $sshPath = "$env:USERPROFILE\.ssh\wsl_test"
-          if (!(Test-Path "$sshPath")) {
-            ssh-keygen -t ed25519 -f "$sshPath" -N '""'
-          }
-          $pubKey = Get-Content "$sshPath.pub"
-          return $pubKey
-      register: ssh_key
-      changed_when: false
+    - name: Get controller's public key
+      ansible.builtin.set_fact:
+        controller_ssh_key: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
+      delegate_to: localhost
 
     - name: Create test user
       vanduc2514.wsl_automation.wsl_user:
         distribution: "{{ distribution }}"
         name: "{{ test_user }}"
+        password: "{{ test_user }}"
         state: present
 
     - name: Ensure .ssh directory exists
@@ -29,10 +23,12 @@
         path: "/home/{{ test_user }}/.ssh"
         state: directory
         owner: "{{ test_user }}"
+        mode: '700'
 
-    - name: Add SSH public key to authorized_keys
+    - name: Add controller's SSH public key to authorized_keys
       vanduc2514.wsl_automation.wsl_file:
         distribution: "{{ distribution }}"
         path: "/home/{{ test_user }}/.ssh/authorized_keys"
-        content: "{{ ssh_key.output[0] }}"
+        content: "{{ controller_ssh_key }}"
         owner: "{{ test_user }}"
+        mode: '600'

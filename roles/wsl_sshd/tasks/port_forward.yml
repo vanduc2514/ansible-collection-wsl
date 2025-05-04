@@ -1,12 +1,13 @@
 - name: Get WSL distribution IP
   ansible.windows.win_reg_stat:
-    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Lxss
+    path: HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss
   register: wsl_ip_reg
 
 - name: Parse WSL distribution IP
   ansible.builtin.set_fact:
-    wsl_ip: "{{ wsl_ip_reg.properties.NatGatewayIpAddress.value }}"
+    wsl_ip: "{{ wsl_ip_reg.properties.NatIpAddress.value }}"
 
+# TODO: Revert this, because wsl ip is always changed, there is no guarantee that it stays the same
 - name: Get current port proxy configuration
   ansible.windows.win_shell: |
     $proxy = netsh interface portproxy show v4tov4 | Select-String "{{ wsl_sshd_port_forward_host_port }}"

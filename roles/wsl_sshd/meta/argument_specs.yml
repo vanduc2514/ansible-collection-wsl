@@ -24,6 +24,11 @@ argument_specs:
         choices: [systemd, sysvinit]
         description: Type of init system to use for managing the service
 
+      wsl_sshd_force_generate_host_key:
+        type: bool
+        default: false
+        description: Whether to force regenerate SSH host keys even if they already exist
+
       wsl_sshd_systemd_service_override:
         type: str
         required: false
@@ -61,7 +66,7 @@ argument_specs:
 
       wsl_sshd_x11_forwarding:
         type: str
-        default: "no"
+        default: "no" # TODO: convert to boolean
         description: Whether to allow X11 forwarding
 
       wsl_sshd_subsystem_sftp:
@@ -73,20 +78,6 @@ argument_specs:
         type: dict
         default: {}
         description: Additional SSH configuration options to set
-
-      wsl_sshd_host_keys_private:
-        type: dict
-        required: false
-        description: >
-          Dictionary of private host keys to configure.
-          Format should be: { key_type: "private key content" }
-
-      wsl_sshd_host_keys_public:
-        type: dict
-        required: false
-        description: >
-          Dictionary of public host keys to configure.
-          Format should be: { key_type: "public key content" }
 
       wsl_sshd_port_forward_enabled:
         type: bool

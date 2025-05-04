@@ -13,33 +13,35 @@
     mode: "755"
     owner: root
 
- # TODO: change this to other parameter like wsl_sshd_host_keys: name: private: public
-- name: Configure SSH private host keys
-  when: wsl_sshd_host_keys_private is defined and wsl_sshd_host_keys_private | length > 0
-  vanduc2514.wsl_automation.wsl_file:
+- name: Check if host keys need to be generated
+  vanduc2514.wsl_automation.wsl_slurp:
     distribution: "{{ wsl_sshd_distribution_name }}"
-    path: "/etc/ssh/ssh_host_{{ item.key }}_key"
-    content: "{{ item.value }}"
-    mode: "600"
-    owner: root
-  loop: "{{ wsl_sshd_host_keys_private | dict2items }}"
-  loop_control:
-    label: "{{ item.key }}"
-  notify: restart sshd
-  no_log: true
+    path: "/etc/ssh/ssh_host_{{ item }}_key"
+  register: host_key_check
+  failed_when: false
+  loop:
+    - rsa
+    - ecdsa
+    - ed25519
 
-- name: Configure SSH public host keys
-  when: wsl_sshd_host_keys_public is defined and wsl_sshd_host_keys_public | length > 0
-  vanduc2514.wsl_automation.wsl_file:
-    distribution: "{{ wsl_sshd_distribution_name }}"
-    path: "/etc/ssh/ssh_host_{{ item.key }}_key.pub"
-    content: "{{ item.value }}"
-    mode: "644"
-    owner: root
-  loop: "{{ wsl_sshd_host_keys_public | dict2items }}"
-  loop_control:
-    label: "{{ item.key }}"
-  notify: restart sshd
+- name: Generate SSH host keys
+  when: wsl_sshd_force_generate_host_key or host_key_check is failed or host_key_check.results | map(attribute='content') | select | list | length == 0
+  block:
+    - name: Remove existing host keys
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        path: "/etc/ssh/ssh_host_{{ item }}_key{% if public %}{{ '.pub' }}{% endif %}"
+        state: absent
+      with_nested:
+        - ['rsa', 'ecdsa', 'ed25519']
+        - [false, true]
+      loop_control:
+        loop_var: item
+        index_var: public
+
+    - name: Generate host keys
+      ansible.windows.win_shell: wsl --distribution {{ wsl_sshd_distribution_name }} --user root -- ssh-keygen -A
+      notify: restart sshd
 
 - name: Configure SSHD
   vanduc2514.wsl_automation.wsl_file:
