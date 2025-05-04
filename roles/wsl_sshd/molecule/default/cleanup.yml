@@ -3,7 +3,7 @@
   gather_facts: false
   tasks:
     - name: Remove port forwarding rule
-      ansible.windows.win_shell: netsh interface portproxy delete v4tov4 listenport=3333
+      ansible.windows.win_shell: netsh interface portproxy delete v4tov4 listenport=3333 listenaddress=0.0.0.0
 
     - name: Remove firewall rule
       ansible.windows.win_shell: Remove-NetFirewallRule -DisplayName "WSL SSH Test" -ErrorAction SilentlyContinue
