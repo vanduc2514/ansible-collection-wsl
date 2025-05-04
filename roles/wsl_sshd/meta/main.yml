@@ -1,0 +1,16 @@
+collections:
+  - ansible.windows
+
+galaxy_info:
+  namespace: wsl_automation
+  author: vanduc2514 <vanduc2514@gmail.com>
+  description: Configure SSH daemon in Windows Subsystem for Linux (WSL) distribution
+  license: MIT
+  min_ansible_version: 2.15.0
+  galaxy_tags:
+    - windows
+    - subsystem
+    - linux
+    - wsl
+    - ssh
+    - sshd

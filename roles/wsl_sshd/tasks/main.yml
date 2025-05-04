@@ -1,0 +1,6 @@
+- name: Configure SSH daemon
+  ansible.builtin.import_tasks: sshd.yml
+
+- name: Configure port forwarding
+  ansible.builtin.import_tasks: port_forward.yml
+  when: wsl_sshd_port_forward_enabled

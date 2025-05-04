@@ -1,0 +1,120 @@
+- name: Verify
+  hosts: windows
+  gather_facts: false
+  vars:
+    test_user: ansible
+    sshd_port: 2222
+    forward_port: 3333
+    distribution: Ubuntu-22.04
+    firewall_rule_name: "WSL SSH Test"
+
+  tasks:
+    # Verify SSHD installation and configuration
+    - name: Verify SSHD package is installed
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ distribution }}"
+        name: openssh-server
+        state: present
+      check_mode: true
+      register: package_result
+      failed_when: package_result is changed
+
+    - name: Read SSHD configuration
+      vanduc2514.wsl_automation.wsl_slurp:
+        distribution: "{{ distribution }}"
+        path: /etc/ssh/sshd_config
+      register: sshd_config
+
+    - name: Verify SSHD configuration
+      ansible.builtin.assert:
+        that:
+          - sshd_config_content.find('Port {{ sshd_port }}') != -1
+          - sshd_config_content.find('ListenAddress 0.0.0.0') != -1
+          - sshd_config_content.find('PermitRootLogin no') != -1
+          - sshd_config_content.find('PasswordAuthentication no') != -1
+          - sshd_config_content.find('PubkeyAuthentication yes') != -1
+          - sshd_config_content.find('X11Forwarding yes') != -1
+          - sshd_config_content.find('MaxAuthTries 3') != -1
+          - sshd_config_content.find('LoginGraceTime 60') != -1
+          - sshd_config_content.find('ClientAliveInterval 300') != -1
+          - sshd_config_content.find('ClientAliveCountMax 3') != -1
+        fail_msg: "SSHD configuration is not set correctly"
+        success_msg: "SSHD configuration is correctly set"
+      vars:
+        sshd_config_content: "{{ sshd_config.content | b64decode }}"
+
+    # Verify systemd service configuration
+    - name: Read systemd override directory
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ distribution }}"
+        path: /etc/systemd/system/sshd.service.d
+        state: directory
+      check_mode: true
+      register: override_dir
+      failed_when: override_dir is changed
+
+    - name: Read systemd service override
+      vanduc2514.wsl_automation.wsl_slurp:
+        distribution: "{{ distribution }}"
+        path: /etc/systemd/system/sshd.service.d/override.conf
+      register: service_override
+
+    - name: Verify systemd override content
+      ansible.builtin.assert:
+        that:
+          - override_content.find('[Service]') != -1
+          - override_content.find('Environment=SSH_OPTS=-o TCPKeepAlive=yes') != -1
+        fail_msg: "Systemd override configuration is not set correctly"
+        success_msg: "Systemd override configuration is correctly set"
+      vars:
+        override_content: "{{ service_override.content | b64decode }}"
+
+    # Verify service status
+    - name: Verify SSHD service is running
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ distribution }}"
+        name: sshd
+        state: started
+      check_mode: true
+      register: service_result
+      failed_when: service_result is changed
+
+    # Verify port forwarding and firewall
+    - name: Check port forwarding configuration
+      ansible.windows.win_shell: netsh interface portproxy show v4tov4
+      register: portproxy_config
+
+    - name: Verify port forwarding
+      ansible.builtin.assert:
+        that:
+          - portproxy_config.stdout is search('[0-9.]+\s+{{ forward_port }}\s+[0-9.]+\s+{{ sshd_port }}')
+        fail_msg: "Port forwarding is not configured correctly"
+        success_msg: "Port forwarding is correctly configured"
+
+    - name: Check firewall rule
+      ansible.windows.win_shell: Get-NetFirewallRule -DisplayName "{{ firewall_rule_name }}" | Select-Object DisplayName, Direction, Action, Protocol, LocalPort
+      register: firewall_rule
+
+    - name: Verify firewall rule
+      ansible.builtin.assert:
+        that:
+          - firewall_rule.stdout is search('{{ firewall_rule_name }}')
+          - firewall_rule.stdout is search('Inbound')
+          - firewall_rule.stdout is search('Allow')
+          - firewall_rule.stdout is search('TCP')
+          - firewall_rule.stdout is search('{{ forward_port }}')
+        fail_msg: "Firewall rule is not configured correctly"
+        success_msg: "Firewall rule is correctly configured"
+
+    # Verify SSH connectivity
+    - name: Wait for port to be available
+      ansible.windows.win_wait_for:
+        port: "{{ forward_port }}"
+        timeout: 30
+
+    - name: Test SSH connection
+      ansible.windows.win_shell: |
+        $env:DISPLAY = $null
+        ssh -i "$env:USERPROFILE\.ssh\wsl_test" -p {{ forward_port }} -o "StrictHostKeyChecking=no" {{ test_user }}@localhost "echo 'SSH connection successful'"
+      register: ssh_test
+      failed_when: "'SSH connection successful' not in ssh_test.stdout"

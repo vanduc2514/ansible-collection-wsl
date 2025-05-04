@@ -1,0 +1,104 @@
+argument_specs:
+  main:
+    short_description: Configure SSH daemon in WSL distributions
+    description: Configure and manage SSH daemon in Windows Subsystem for Linux (WSL) distributions
+    options:
+      wsl_sshd_distribution_name:
+        type: str
+        required: true
+        description: Name of the WSL distribution to configure SSHD in
+
+      wsl_sshd_package_name:
+        type: str
+        default: openssh-server
+        description: Name of the SSH server package to install
+
+      wsl_sshd_service_name:
+        type: str
+        default: sshd
+        description: Name of the SSH service
+
+      wsl_sshd_service_type:
+        type: str
+        default: systemd
+        choices: [systemd, sysvinit]
+        description: Type of init system to use for managing the service
+
+      wsl_sshd_systemd_service_override:
+        type: str
+        required: false
+        description: Override content for systemd service file when using systemd
+
+      wsl_sshd_port:
+        type: int
+        default: 2222
+        description: Port number for SSH daemon to listen on
+
+      wsl_sshd_listen_address:
+        type: str
+        default: 0.0.0.0
+        description: Address for SSH daemon to listen on
+
+      wsl_sshd_permit_root_login:
+        type: str
+        default: "no"
+        description: Whether to allow root login via SSH
+
+      wsl_sshd_password_authentication:
+        type: str
+        default: "yes"
+        description: Whether to allow password authentication
+
+      wsl_sshd_pubkey_authentication:
+        type: str
+        default: "yes"
+        description: Whether to allow public key authentication
+
+      wsl_sshd_authorized_keys_file:
+        type: str
+        default: .ssh/authorized_keys
+        description: Location of the authorized keys file
+
+      wsl_sshd_x11_forwarding:
+        type: str
+        default: "no"
+        description: Whether to allow X11 forwarding
+
+      wsl_sshd_subsystem_sftp:
+        type: str
+        default: /usr/lib/openssh/sftp-server
+        description: Path to SFTP server subsystem
+
+      wsl_sshd_extra_config:
+        type: dict
+        default: {}
+        description: Additional SSH configuration options to set
+
+      wsl_sshd_host_keys_private:
+        type: dict
+        required: false
+        description: >
+          Dictionary of private host keys to configure.
+          Format should be: { key_type: "private key content" }
+
+      wsl_sshd_host_keys_public:
+        type: dict
+        required: false
+        description: >
+          Dictionary of public host keys to configure.
+          Format should be: { key_type: "public key content" }
+
+      wsl_sshd_port_forward_enabled:
+        type: bool
+        default: true
+        description: Whether to enable port forwarding from Windows host to WSL
+
+      wsl_sshd_port_forward_host_port:
+        type: int
+        default: 9022
+        description: Port on Windows host to forward to WSL SSH port
+
+      wsl_sshd_port_forward_firewall_rule_name:
+        type: str
+        default: "WSL SSH"
+        description: Name of the Windows Firewall rule to create

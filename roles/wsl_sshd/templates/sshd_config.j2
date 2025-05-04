@@ -1,0 +1,19 @@
+# This file is managed by Ansible, do not edit manually
+
+Port {{ wsl_sshd_port }}
+ListenAddress {{ wsl_sshd_listen_address }}
+
+PermitRootLogin {{ wsl_sshd_permit_root_login }}
+PasswordAuthentication {{ wsl_sshd_password_authentication }}
+PubkeyAuthentication {{ wsl_sshd_pubkey_authentication }}
+AuthorizedKeysFile {{ wsl_sshd_authorized_keys_file }}
+
+X11Forwarding {{ wsl_sshd_x11_forwarding }}
+
+Subsystem sftp {{ wsl_sshd_subsystem_sftp }}
+
+{% if wsl_sshd_extra_config %}
+{% for key, value in wsl_sshd_extra_config.items() %}
+{{ key }} {{ value }}
+{% endfor %}
+{% endif %}

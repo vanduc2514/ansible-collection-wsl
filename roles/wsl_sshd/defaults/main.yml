@@ -1,0 +1,21 @@
+# Package configuration
+wsl_sshd_package_name: openssh-server
+
+# Service configuration
+wsl_sshd_service_name: sshd
+wsl_sshd_service_type: systemd  # Can be 'systemd' or 'sysvinit'
+
+# SSHD Configuration
+wsl_sshd_port: 2222
+wsl_sshd_listen_address: 0.0.0.0
+wsl_sshd_permit_root_login: no
+wsl_sshd_password_authentication: yes
+wsl_sshd_pubkey_authentication: yes
+wsl_sshd_authorized_keys_file: .ssh/authorized_keys
+wsl_sshd_x11_forwarding: "no"
+wsl_sshd_extra_config: {}
+
+# Port forwarding configuration
+wsl_sshd_port_forward_enabled: true
+wsl_sshd_port_forward_host_port: 9022  # The port on Windows host to forward to
+wsl_sshd_port_forward_firewall_rule_name: "WSL SSH ({{ wsl_sshd_distribution_name }})"

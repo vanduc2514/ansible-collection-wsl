@@ -1,0 +1,32 @@
+dependency:
+  name: galaxy
+platforms:
+  - name: windows
+provisioner:
+  name: ansible
+  inventory:
+    links:
+      hosts: ${MOLECULE_PROJECT_DIRECTORY}/molecule/inventory.yml
+  playbooks:
+    create: create.yml
+    prepare: prepare.yml
+    converge: converge.yml
+    verify: verify.yml
+    cleanup: cleanup.yml
+    destroy: destroy.yml
+verifier:
+  name: ansible
+lint: |
+  set -e
+  yamllint .
+  ansible-lint
+scenario:
+  name: default
+  test_sequence:
+    - syntax
+    - create
+    - converge
+    - idempotence
+    - verify
+    - cleanup
+    - destroy

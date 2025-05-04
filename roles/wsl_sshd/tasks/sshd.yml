@@ -1,0 +1,82 @@
+- name: Install SSH server
+  vanduc2514.wsl_automation.wsl_package:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    name: "{{ wsl_sshd_package_name }}"
+    state: present
+    update_cache: true
+
+- name: Create SSH directory
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    path: /etc/ssh
+    state: directory
+    mode: '0755'
+
+- name: Configure SSH private host keys
+  when: wsl_sshd_host_keys_private is defined and wsl_sshd_host_keys_private | length > 0
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    path: "/etc/ssh/ssh_host_{{ item.key }}_key"
+    content: "{{ item.value }}"
+    mode: "0600"
+  loop: "{{ wsl_sshd_host_keys_private | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  notify: restart sshd
+  no_log: true
+
+- name: Configure SSH public host keys
+  when: wsl_sshd_host_keys_public is defined and wsl_sshd_host_keys_public | length > 0
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    path: "/etc/ssh/ssh_host_{{ item.key }}_key.pub"
+    content: "{{ item.value }}"
+    mode: "0644"
+  loop: "{{ wsl_sshd_host_keys_public | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  notify: restart sshd
+
+- name: Configure SSHD
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    path: /etc/ssh/sshd_config
+    content: "{{ lookup('ansible.builtin.template', 'sshd_config.j2') }}"
+    mode: '0644'
+  notify: restart sshd
+
+- name: Configure systemd service override
+  when:
+    - wsl_sshd_service_type == "systemd"
+    - wsl_sshd_systemd_service_override is defined
+  block:
+    - name: Create systemd override directory
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        path: /etc/systemd/system/{{ wsl_sshd_service_name }}.service.d
+        state: directory
+        mode: '0755'
+
+    - name: Configure systemd override
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        path: /etc/systemd/system/{{ wsl_sshd_service_name }}.service.d/override.conf
+        content: "{{ wsl_sshd_systemd_service_override }}"
+        mode: '0644'
+      notify: restart sshd
+
+- name: Start and enable SSHD service via systemd
+  vanduc2514.wsl_automation.wsl_systemd:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    name: "{{ wsl_sshd_service_name }}"
+    state: started
+    enabled: yes
+    daemon_reload: true
+  when: wsl_sshd_service_type == "systemd"
+
+- name: Start SSHD service via sysvinit
+  vanduc2514.wsl_automation.wsl_sysvinit:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    name: "{{ wsl_sshd_service_name }}"
+    state: started
+  when: wsl_sshd_service_type == "sysvinit"

@@ -1,0 +1,20 @@
+- name: Converge
+  hosts: windows
+  gather_facts: false
+  vars:
+    sshd_port: 2222
+    forward_port: 3333
+    distribution: Ubuntu-22.04
+
+  roles:
+    - role: vanduc2514.wsl_automation.wsl_sshd
+      vars:
+        wsl_sshd_distribution_name: "{{ distribution }}"
+        wsl_sshd_port: "{{ sshd_port }}"
+        wsl_sshd_listen_address: "0.0.0.0"
+        wsl_sshd_permit_root_login: "no"
+        wsl_sshd_password_authentication: "no"
+        wsl_sshd_pubkey_authentication: "yes"
+        wsl_sshd_port_forward_enabled: true
+        wsl_sshd_port_forward_host_port: "{{ forward_port }}"
+        wsl_sshd_port_forward_firewall_rule_name: "WSL SSH Test"

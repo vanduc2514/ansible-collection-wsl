@@ -1,0 +1,26 @@
+- name: Get WSL distribution IP
+  ansible.windows.win_reg_stat:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Lxss
+  register: wsl_ip_reg
+
+- name: Parse WSL distribution IP
+  ansible.builtin.set_fact:
+    wsl_ip: "{{ wsl_ip_reg.value.NatIpAddress }}"
+
+- name: Configure Windows port forwarding
+  ansible.windows.win_shell: |
+    # Remove existing port proxy if any
+    netsh interface portproxy delete v4tov4 listenport={{ wsl_sshd_port_forward_host_port }} listenaddress=0.0.0.0
+    # Add new port proxy
+    netsh interface portproxy add v4tov4 listenport={{ wsl_sshd_port_forward_host_port }} listenaddress=0.0.0.0 connectport={{ wsl_sshd_port }} connectaddress={{ wsl_ip }}
+  when: wsl_sshd_port_forward_enabled
+
+- name: Configure Windows Firewall rule
+  ansible.windows.win_firewall_rule:
+    name: "{{ wsl_sshd_port_forward_firewall_rule_name }}"
+    localport: "{{ wsl_sshd_port_forward_host_port }}"
+    action: allow
+    direction: in
+    protocol: tcp
+    state: "{{ 'present' if wsl_sshd_port_forward_enabled else 'absent' }}"
+    enabled: yes
