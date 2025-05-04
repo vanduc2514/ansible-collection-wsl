@@ -45,18 +45,18 @@ argument_specs:
         description: Address for SSH daemon to listen on
 
       wsl_sshd_permit_root_login:
-        type: str
-        default: "no"
+        type: bool
+        default: false
         description: Whether to allow root login via SSH
 
       wsl_sshd_password_authentication:
-        type: str
-        default: "yes"
+        type: bool
+        default: false
         description: Whether to allow password authentication
 
       wsl_sshd_pubkey_authentication:
-        type: str
-        default: "yes"
+        type: bool
+        default: true
         description: Whether to allow public key authentication
 
       wsl_sshd_authorized_keys_file:
@@ -65,8 +65,8 @@ argument_specs:
         description: Location of the authorized keys file
 
       wsl_sshd_x11_forwarding:
-        type: str
-        default: "no" # TODO: convert to boolean
+        type: bool
+        default: false
         description: Whether to allow X11 forwarding
 
       wsl_sshd_subsystem_sftp:

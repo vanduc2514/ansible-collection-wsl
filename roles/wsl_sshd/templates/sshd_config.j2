@@ -3,17 +3,21 @@
 Port {{ wsl_sshd_port }}
 ListenAddress {{ wsl_sshd_listen_address }}
 
-PermitRootLogin {{ wsl_sshd_permit_root_login }}
-PasswordAuthentication {{ wsl_sshd_password_authentication }}
-PubkeyAuthentication {{ wsl_sshd_pubkey_authentication }}
+PermitRootLogin {{ wsl_sshd_permit_root_login | bool | ternary('yes', 'no') }}
+PasswordAuthentication {{ wsl_sshd_password_authentication | bool | ternary('yes', 'no') }}
+PubkeyAuthentication {{ wsl_sshd_pubkey_authentication | bool | ternary('yes', 'no') }}
 AuthorizedKeysFile {{ wsl_sshd_authorized_keys_file }}
 
-X11Forwarding {{ wsl_sshd_x11_forwarding }}
+X11Forwarding {{ wsl_sshd_x11_forwarding | bool | ternary('yes', 'no') }}
 
 Subsystem sftp {{ wsl_sshd_subsystem_sftp }}
 
 {% if wsl_sshd_extra_configs %}
 {% for key, value in wsl_sshd_extra_configs.items() %}
+{% if value is boolean %}
+{{ key }} {{ value | ternary('yes', 'no') }}
+{% else %}
 {{ key }} {{ value }}
+{% endif %}
 {% endfor %}
 {% endif %}
