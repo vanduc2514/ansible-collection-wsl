@@ -10,7 +10,7 @@
     distribution: "{{ wsl_sshd_distribution_name }}"
     path: /etc/ssh
     state: directory
-    mode: "0755"
+    mode: "755"
     owner: root
 
  # TODO: change this to other parameter like wsl_sshd_host_keys: name: private: public
@@ -20,7 +20,7 @@
     distribution: "{{ wsl_sshd_distribution_name }}"
     path: "/etc/ssh/ssh_host_{{ item.key }}_key"
     content: "{{ item.value }}"
-    mode: "0600"
+    mode: "600"
     owner: root
   loop: "{{ wsl_sshd_host_keys_private | dict2items }}"
   loop_control:
@@ -34,7 +34,7 @@
     distribution: "{{ wsl_sshd_distribution_name }}"
     path: "/etc/ssh/ssh_host_{{ item.key }}_key.pub"
     content: "{{ item.value }}"
-    mode: "0644"
+    mode: "644"
     owner: root
   loop: "{{ wsl_sshd_host_keys_public | dict2items }}"
   loop_control:
@@ -46,7 +46,7 @@
     distribution: "{{ wsl_sshd_distribution_name }}"
     path: /etc/ssh/sshd_config
     content: "{{ lookup('ansible.builtin.template', 'sshd_config.j2') }}"
-    mode: '0644'
+    mode: '644'
   notify: restart sshd
 
 - name: Configure systemd service override
@@ -59,7 +59,7 @@
         distribution: "{{ wsl_sshd_distribution_name }}"
         path: /etc/systemd/system/{{ wsl_sshd_service_name }}.service.d
         state: directory
-        mode: '0755'
+        mode: '755'
 
     - name: Configure systemd override
       vanduc2514.wsl_automation.wsl_file:

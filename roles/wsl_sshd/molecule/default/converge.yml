@@ -14,59 +14,82 @@
           if (!(Test-Path $keyDir)) {
               New-Item -ItemType Directory -Path $keyDir | Out-Null
           }
+      changed_when: false
+
+    - name: Check if host keys exist
+      ansible.windows.win_stat:
+        path: "{{ item }}"
+      register: key_stat
+      loop:
+        - '%TEMP%\ssh_host_keys\ssh_host_rsa_key'
+        - '%TEMP%\ssh_host_keys\ssh_host_ecdsa_key'
+        - '%TEMP%\ssh_host_keys\ssh_host_ed25519_key'
 
     - name: Generate RSA host key
       ansible.windows.win_powershell:
         script: |
           ssh-keygen -t rsa -b 4096 -f "$env:TEMP\ssh_host_keys\ssh_host_rsa_key" -N '""'
+      when: not key_stat.results[0].stat.exists
       register: rsa_key
 
     - name: Generate ECDSA host key
       ansible.windows.win_powershell:
         script: |
           ssh-keygen -t ecdsa -b 521 -f "$env:TEMP\ssh_host_keys\ssh_host_ecdsa_key" -N '""'
+      when: not key_stat.results[1].stat.exists
       register: ecdsa_key
 
     - name: Generate ED25519 host key
       ansible.windows.win_powershell:
         script: |
           ssh-keygen -t ed25519 -f "$env:TEMP\ssh_host_keys\ssh_host_ed25519_key" -N '""'
+      when: not key_stat.results[2].stat.exists
       register: ed25519_key
 
     - name: Read RSA private key
       ansible.windows.win_shell: Get-Content "$env:TEMP\ssh_host_keys\ssh_host_rsa_key"
       register: rsa_private
+      when: not key_stat.results[0].stat.exists or rsa_key is changed
 
     - name: Read ECDSA private key
       ansible.windows.win_shell: Get-Content "$env:TEMP\ssh_host_keys\ssh_host_ecdsa_key"
       register: ecdsa_private
+      when: not key_stat.results[1].stat.exists or ecdsa_key is changed
 
     - name: Read ED25519 private key
       ansible.windows.win_shell: Get-Content "$env:TEMP\ssh_host_keys\ssh_host_ed25519_key"
       register: ed25519_private
+      when: not key_stat.results[2].stat.exists or ed25519_key is changed
 
     - name: Read RSA public key
       ansible.windows.win_shell: Get-Content "$env:TEMP\ssh_host_keys\ssh_host_rsa_key.pub"
       register: rsa_public
+      when: not key_stat.results[0].stat.exists or rsa_key is changed
 
     - name: Read ECDSA public key
       ansible.windows.win_shell: Get-Content "$env:TEMP\ssh_host_keys\ssh_host_ecdsa_key.pub"
       register: ecdsa_public
+      when: not key_stat.results[1].stat.exists or ecdsa_key is changed
 
     - name: Read ED25519 public key
       ansible.windows.win_shell: Get-Content "$env:TEMP\ssh_host_keys\ssh_host_ed25519_key.pub"
       register: ed25519_public
+      when: not key_stat.results[2].stat.exists or ed25519_key is changed
 
     - name: Set host keys facts
       ansible.builtin.set_fact:
-        host_keys_private:
-          rsa: "{{ rsa_private.stdout_lines | join('\n') }}"
-          ecdsa: "{{ ecdsa_private.stdout_lines | join('\n') }}"
-          ed25519: "{{ ed25519_private.stdout_lines | join('\n') }}"
-        host_keys_public:
-          rsa: "{{ rsa_public.stdout_lines[0] }}"
-          ecdsa: "{{ ecdsa_public.stdout_lines[0] }}"
-          ed25519: "{{ ed25519_public.stdout_lines[0] }}"
+        host_keys_private: "{{ host_keys_private_temp | default({}) }}"
+        host_keys_public: "{{ host_keys_public_temp | default({}) }}"
+      vars:
+        host_keys_private_temp:
+          rsa: "{{ rsa_private.stdout_lines | join('\n') if rsa_private is defined and rsa_private.stdout_lines is defined }}"
+          ecdsa: "{{ ecdsa_private.stdout_lines | join('\n') if ecdsa_private is defined and ecdsa_private.stdout_lines is defined }}"
+          ed25519: "{{ ed25519_private.stdout_lines | join('\n') if ed25519_private is defined and ed25519_private.stdout_lines is defined }}"
+        host_keys_public_temp:
+          rsa: "{{ rsa_public.stdout_lines[0] if rsa_public is defined and rsa_public.stdout_lines }}"
+          ecdsa: "{{ ecdsa_public.stdout_lines[0] if ecdsa_public is defined and ecdsa_public.stdout_lines }}"
+          ed25519: "{{ ed25519_public.stdout_lines[0] if ed25519_public is defined and ed25519_public.stdout_lines }}"
+      when: rsa_private is defined or ecdsa_private is defined or ed25519_private is defined
 
   roles:
     - role: vanduc2514.wsl_automation.wsl_sshd
@@ -77,8 +100,8 @@
         wsl_sshd_permit_root_login: "no"
         wsl_sshd_password_authentication: "no"
         wsl_sshd_pubkey_authentication: "yes"
-        wsl_sshd_host_keys_private: "{{ host_keys_private }}"
-        wsl_sshd_host_keys_public: "{{ host_keys_public }}"
+        wsl_sshd_host_keys_private: "{{ host_keys_private | default(omit) }}"
+        wsl_sshd_host_keys_public: "{{ host_keys_public | default(omit) }}"
         wsl_sshd_extra_configs:
           MaxAuthTries: "3"
           LoginGraceTime: "60"
