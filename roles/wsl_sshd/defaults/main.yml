@@ -13,7 +13,7 @@ wsl_sshd_password_authentication: yes
 wsl_sshd_pubkey_authentication: yes
 wsl_sshd_authorized_keys_file: .ssh/authorized_keys
 wsl_sshd_x11_forwarding: "no"
-wsl_sshd_extra_config: {}
+wsl_sshd_extra_configs: {}
 
 # Port forwarding configuration
 wsl_sshd_port_forward_enabled: true

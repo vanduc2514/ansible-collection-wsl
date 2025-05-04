@@ -12,8 +12,8 @@ X11Forwarding {{ wsl_sshd_x11_forwarding }}
 
 Subsystem sftp {{ wsl_sshd_subsystem_sftp }}
 
-{% if wsl_sshd_extra_config %}
-{% for key, value in wsl_sshd_extra_config.items() %}
+{% if wsl_sshd_extra_configs %}
+{% for key, value in wsl_sshd_extra_configs.items() %}
 {{ key }} {{ value }}
 {% endfor %}
 {% endif %}
