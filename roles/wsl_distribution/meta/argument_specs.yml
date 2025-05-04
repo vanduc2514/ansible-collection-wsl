@@ -6,7 +6,10 @@ argument_specs:
       wsl_distribution_name:
         type: str
         required: true
-        description: Name of the WSL distribution to manage
+        description: >
+          Name of the WSL distribution to manage.
+          If rootfs is not provided, install the distribution from the MS Store.
+          If the distribution is not available in MS Store, this role will fail
 
       wsl_distribution_web_download:
         type: bool
