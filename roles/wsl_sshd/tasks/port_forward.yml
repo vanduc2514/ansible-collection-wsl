@@ -16,7 +16,7 @@
   when: wsl_sshd_port_forward_enabled
 
 - name: Configure Windows Firewall rule
-  ansible.windows.win_firewall_rule:
+  community.windows.win_firewall_rule:
     name: "{{ wsl_sshd_port_forward_firewall_rule_name }}"
     localport: "{{ wsl_sshd_port_forward_host_port }}"
     action: allow
