@@ -30,7 +30,7 @@
 - name: Ensure WSL configuration file
   ansible.windows.win_file:
     path: "{{ wsl_config_path }}"
-    state: "{{ 'present' if wsl_binary.rc == 0 or wsl_state == 'present' else 'absent' }}"
+    state: "{{ 'touch' if wsl_binary.rc == 0 or wsl_state == 'present' else 'absent' }}"
 
 - name: Template WSL configuration
   ansible.windows.win_template:
