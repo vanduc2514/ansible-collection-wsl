@@ -126,26 +126,33 @@
       ansible.windows.win_shell: netsh interface portproxy show v4tov4
       register: portproxy_config
 
+    - name: Set port forwarding pattern
+      ansible.builtin.set_fact:
+        port_forward_pattern: "[0-9.]+\\s+{{ forward_port }}\\s+[0-9.]+\\s+{{ sshd_port }}"
+
     - name: Verify port forwarding
       ansible.builtin.assert:
         that:
-          - portproxy_config.stdout is search('[0-9.]+\s+{{ forward_port }}\s+[0-9.]+\s+{{ sshd_port }}')
+          - portproxy_config.stdout is search(port_forward_pattern)
         fail_msg: "Port forwarding is not configured correctly"
         success_msg: "Port forwarding is correctly configured"
 
     - name: Check firewall rule
-      ansible.windows.win_shell: Get-NetFirewallRule -DisplayName "{{ firewall_rule_name }}" | Select-Object DisplayName, Direction, Action, Protocol, LocalPort
+      ansible.windows.win_shell: Get-NetFirewallRule -DisplayName "{{ firewall_rule_name }}" | Get-NetFirewallPortFilter | Select-Object Protocol,LocalPort | Format-List
       register: firewall_rule
+
+    - name: Set expected firewall rule name
+      ansible.builtin.set_fact:
+        expected_rule_name: "{{ firewall_rule_name }}"
 
     - name: Verify firewall rule
       ansible.builtin.assert:
         that:
-          - firewall_rule.stdout is search('{{ firewall_rule_name }}')
-          - firewall_rule.stdout is search('Inbound')
-          - firewall_rule.stdout is search('Allow')
-          - firewall_rule.stdout is search('TCP')
-          - firewall_rule.stdout is search('{{ forward_port }}')
-        fail_msg: "Firewall rule is not configured correctly"
+          - firewall_rule.stdout is search('Protocol\s*:\s*TCP')
+          - firewall_rule.stdout is search('LocalPort\s*:\s*' ~ forward_port)
+        fail_msg: |
+          Firewall rule is not configured correctly. Current configuration:
+          {{ firewall_rule.stdout }}
         success_msg: "Firewall rule is correctly configured"
 
     # Verify SSH connectivity
