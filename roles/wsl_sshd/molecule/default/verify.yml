@@ -9,6 +9,45 @@
     firewall_rule_name: "WSL SSH Test"
 
   tasks:
+    # First verify host keys were generated correctly
+    - name: Verify SSH host keys in WSL
+      block:
+        - name: Read host private keys from WSL
+          vanduc2514.wsl_automation.wsl_slurp:
+            distribution: "{{ distribution }}"
+            path: "/etc/ssh/ssh_host_{{ item }}_key"
+          register: wsl_private_keys
+          loop:
+            - rsa
+            - ecdsa
+            - ed25519
+          no_log: true
+
+        - name: Read host public keys from WSL
+          vanduc2514.wsl_automation.wsl_slurp:
+            distribution: "{{ distribution }}"
+            path: "/etc/ssh/ssh_host_{{ item }}_key.pub"
+          register: wsl_public_keys
+          loop:
+            - rsa
+            - ecdsa
+            - ed25519
+
+        - name: Verify host keys match
+          ansible.builtin.assert:
+            that:
+              - (wsl_private_keys.results[idx].content | b64decode) == (host_keys_private[item] | string)
+              - (wsl_public_keys.results[idx].content | b64decode) == (host_keys_public[item] | string)
+            fail_msg: "Host keys in WSL do not match generated keys"
+            success_msg: "Host keys in WSL match generated keys"
+          loop:
+            - rsa
+            - ecdsa
+            - ed25519
+          loop_control:
+            index_var: idx
+          no_log: true
+
     # Verify SSHD installation and configuration
     - name: Verify SSHD package is installed
       vanduc2514.wsl_automation.wsl_package:

@@ -26,3 +26,20 @@
         name: ansible
         state: absent
         remove_home: true
+
+    - name: Remove SSH host keys from WSL
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: Ubuntu-22.04
+        path: "/etc/ssh/ssh_host_{{ item }}_key{% if public %}{{ '.pub' }}{% endif %}"
+        state: absent
+      with_nested:
+        - ['rsa', 'ecdsa', 'ed25519']
+        - [false, true]
+      loop_control:
+        loop_var: item
+        index_var: public
+
+    - name: Cleanup temporary key files
+      ansible.windows.win_powershell:
+        script: |
+          Remove-Item -Path "$env:TEMP\ssh_host_keys" -Recurse -Force

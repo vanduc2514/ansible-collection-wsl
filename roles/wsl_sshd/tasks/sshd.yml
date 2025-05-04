@@ -10,8 +10,10 @@
     distribution: "{{ wsl_sshd_distribution_name }}"
     path: /etc/ssh
     state: directory
-    mode: '0755'
+    mode: "0755"
+    owner: root
 
+ # TODO: change this to other parameter like wsl_sshd_host_keys: name: private: public
 - name: Configure SSH private host keys
   when: wsl_sshd_host_keys_private is defined and wsl_sshd_host_keys_private | length > 0
   vanduc2514.wsl_automation.wsl_file:
@@ -19,6 +21,7 @@
     path: "/etc/ssh/ssh_host_{{ item.key }}_key"
     content: "{{ item.value }}"
     mode: "0600"
+    owner: root
   loop: "{{ wsl_sshd_host_keys_private | dict2items }}"
   loop_control:
     label: "{{ item.key }}"
@@ -32,6 +35,7 @@
     path: "/etc/ssh/ssh_host_{{ item.key }}_key.pub"
     content: "{{ item.value }}"
     mode: "0644"
+    owner: root
   loop: "{{ wsl_sshd_host_keys_public | dict2items }}"
   loop_control:
     label: "{{ item.key }}"
