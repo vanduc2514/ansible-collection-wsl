@@ -28,4 +28,3 @@ scenario:
     - idempotence
     - verify
     - cleanup
-    - destroy
