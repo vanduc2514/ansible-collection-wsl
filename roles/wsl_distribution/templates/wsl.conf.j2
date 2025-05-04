@@ -1,9 +1,11 @@
+# This file is managed by Ansible, do not edit manually
+
 [user]
 default = {{ wsl_distribution_config_user_default }}
 
 [boot]
 systemd = {{ wsl_distribution_config_boot_systemd | lower }}
-{% if wsl_distribution_config_boot_command %}
+{% if wsl_distribution_config_boot_command is defined %}
 command = {{ wsl_distribution_config_boot_command }}
 {% endif %}
 
@@ -11,7 +13,7 @@ command = {{ wsl_distribution_config_boot_command }}
 enabled = {{ wsl_distribution_config_automount_enabled | lower }}
 mountFsTab = {{ wsl_distribution_config_automount_mountFsTab | lower }}
 root = {{ wsl_distribution_config_automount_root }}
-{% if wsl_distribution_config_automount_options %}
+{% if wsl_distribution_config_automount_options is defined %}
 options = {{ wsl_distribution_config_automount_options }}
 {% endif %}
 
@@ -22,11 +24,11 @@ appendWindowsPath = {{ wsl_distribution_config_interop_appendWindowsPath | lower
 [network]
 generateHosts = {{ wsl_distribution_config_network_generateHosts | lower }}
 generateResolvConf = {{ wsl_distribution_config_network_generateResolvConf | lower }}
-{% if wsl_distribution_config_network_hostname %}
+{% if wsl_distribution_config_network_hostname is defined %}
 hostname = {{ wsl_distribution_config_network_hostname }}
 {% endif %}
 
-{% if wsl_distribution_extra_configs %}
+{% if wsl_distribution_extra_configs is defined %}
 {% for section, properties in wsl_distribution_extra_configs.items() %}
 [{{ section }}]
 {% for property, value in properties.items() %}
