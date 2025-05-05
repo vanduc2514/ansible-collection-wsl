@@ -1,4 +1,12 @@
-- name: Restart sshd via systemd
+- name: Stop sshd via systemd
+  vanduc2514.wsl_automation.wsl_systemd:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    name: "{{ wsl_sshd_service_name }}"
+    state: stopped
+  when: wsl_sshd_service_type == "systemd"
+  listen: restart sshd
+
+- name: Start sshd via systemd
   vanduc2514.wsl_automation.wsl_systemd:
     distribution: "{{ wsl_sshd_distribution_name }}"
     name: "{{ wsl_sshd_service_name }}"

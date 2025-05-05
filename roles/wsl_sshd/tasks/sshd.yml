@@ -76,7 +76,6 @@
     distribution: "{{ wsl_sshd_distribution_name }}"
     name: "{{ wsl_sshd_service_name }}"
     state: started
-    enabled: yes
     daemon_reload: true
   when: wsl_sshd_service_type == "systemd"
 

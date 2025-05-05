@@ -20,6 +20,6 @@ wsl_sshd_subsystem_sftp: /usr/lib/openssh/sftp-server
 wsl_sshd_extra_configs: {}
 
 # Port forwarding configuration
-wsl_sshd_port_forward_enabled: true
+wsl_sshd_port_forward_enabled: false
 wsl_sshd_port_forward_host_port: 9022
 wsl_sshd_port_forward_firewall_rule_name: "WSL SSH ({{ wsl_sshd_distribution_name }})"
