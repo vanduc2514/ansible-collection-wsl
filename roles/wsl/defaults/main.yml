@@ -5,8 +5,6 @@ wsl_state: present
 
 # WSL 2 settings
 wsl_config_localhostForwarding: true
-wsl_config_guiApplications: true
-wsl_config_pageReporting: true
 
 # Extra configurations
 wsl_config_extra: {}
