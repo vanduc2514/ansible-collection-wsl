@@ -155,3 +155,55 @@
       ansible.builtin.assert:
         that:
           - not wsl_file_actual is changed
+
+- name: Test basic file creation with group scenario
+  block:
+    - name: Test basic file creation with group in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_testfile.txt
+        owner: root
+        group: adm
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test basic file creation with group
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_testfile.txt
+        owner: root
+        group: adm
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation changed and group is set
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+          - wsl_file_actual.path == "/tmp/group_testfile.txt"
+
+    - name: Test idempotency of basic file creation with group
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_testfile.txt
+        owner: root
+        group: adm
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Clean up group test file
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_testfile.txt
+        distribution: "{{ wsl_distribution }}"
+        state: absent

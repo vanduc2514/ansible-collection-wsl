@@ -53,6 +53,12 @@ options:
             - Owner of the file or directory.
         type: str
         required: false
+    group:
+        description:
+            - Group of the file or directory.
+            - If not specified, defaults to same as owner.
+        type: str
+        required: false
     mode:
         description:
             - Permission mode of the file or directory.
@@ -114,6 +120,33 @@ EXAMPLES = r'''
     state: absent
     recursive: true
     force: true
+
+- name: Create a file with content and group
+  wsl_file:
+    distribution: Ubuntu
+    path: /home/user/test.txt
+    content: "Hello, World!"
+    state: file
+    owner: user
+    group: users
+    mode: '644'
+
+- name: Create a directory with specific group
+  wsl_file:
+    distribution: Ubuntu
+    path: /home/user/testdir
+    state: directory
+    owner: user
+    group: developers
+    mode: '775'
+
+- name: Create file with owner but default group
+  wsl_file:
+    distribution: Ubuntu
+    path: /home/user/testfile.txt
+    owner: www-data
+    mode: '644'
+    state: file
 '''
 
 RETURN = r'''

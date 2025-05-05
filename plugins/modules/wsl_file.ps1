@@ -33,6 +33,10 @@ $spec = @{
             type     = "str"
             required = $false
         }
+        group = @{
+            type     = "str"
+            required = $false
+        }
         mode = @{
             type     = "str"
             required = $false
@@ -68,6 +72,10 @@ function Get-FileInfo {
     $ownerCmd = "stat -c '%U' '$Path' 2>/dev/null || echo ''"
     $owner = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $ownerCmd).Trim()
 
+    # Get group
+    $groupCmd = "stat -c '%G' '$Path' 2>/dev/null || echo ''"
+    $group = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $groupCmd).Trim()
+
     # Get mode
     $modeCmd = "stat -c '%a' '$Path' 2>/dev/null || echo ''"
     $mode = (Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $modeCmd).Trim()
@@ -76,6 +84,7 @@ function Get-FileInfo {
         path = $Path
         is_directory = $isDirectory
         owner = $owner
+        group = $group
         mode = $mode
     }
 }
@@ -211,6 +220,9 @@ function Set-WSLFileAttributes {
         $Owner,
 
         [string]
+        $Group,
+
+        [string]
         $Mode,
 
         [bool]
@@ -219,25 +231,21 @@ function Set-WSLFileAttributes {
 
     if ($PSCmdlet.ShouldProcess($DistributionName, "Update attributes for: $Path")) {
         try {
-            if ($Owner) {
-                $changeOwnerCommandArguments = @{
-                    DistributionName = $DistributionName
-                    DistributionUser = 'root'
-                    LinuxCommand = if ($Recursive) { "chown --recursive $Owner $Path" } else { "chown $Owner $Path" }
-                }
-
-                Invoke-LinuxCommand @changeOwnerCommandArguments
+            $changeOwnerCommandArguments = @{
+                DistributionName = $DistributionName
+                DistributionUser = 'root'
+                LinuxCommand = if ($Recursive) { "chown --recursive ${Owner}:${Group} $Path" } else { "chown ${Owner}:${Group} $Path" }
             }
 
-            if ($Mode) {
-                $changeModeCommandArguments = @{
-                    DistributionName = $DistributionName
-                    DistributionUser = 'root'
-                    LinuxCommand = if ($Recursive) { "chmod --recursive $Mode $Path" } else { "chmod $Mode $Path" }
-                }
+            Invoke-LinuxCommand @changeOwnerCommandArguments
 
-                Invoke-LinuxCommand @changeModeCommandArguments
+            $changeModeCommandArguments = @{
+                DistributionName = $DistributionName
+                DistributionUser = 'root'
+                LinuxCommand = if ($Recursive) { "chmod --recursive $Mode $Path" } else { "chmod $Mode $Path" }
             }
+
+            Invoke-LinuxCommand @changeModeCommandArguments
         } catch {
             throw "Failed to update attributes for '$Path' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
@@ -325,6 +333,7 @@ $append = $module.Params.append
 $recursive = $module.Params.recursive
 $force = $module.Params.force
 $owner = $module.Params.owner
+$group = $module.Params.group
 $mode = $module.Params.mode
 $state = $module.Params.state
 $check_mode = $module.CheckMode
@@ -343,6 +352,12 @@ $mode = if ($mode) {
     '755'
 } else {
     $null
+}
+# default group to owner if not specified
+$group = if ($group) {
+    $group
+} else {
+    $owner
 }
 
 try {
@@ -433,12 +448,14 @@ try {
     }
 
     $ownerChanged = $owner -and $file_info.owner -ne $owner
+    $groupChanged = $group -and $file_info.group -ne $group
     $modeChanged = $mode -and $file_info.mode -ne $mode
-    if ($ownerChanged -or $modeChanged) {
+    if ($ownerChanged -or $groupChanged -or $modeChanged) {
         $updateWSLFileAttributesParams = @{
             DistributionName = $distribution_name
             Path = $path
             Owner = $owner
+            Group = $group
             Mode = $mode
             Recursive = $recursive
             WhatIf = $check_mode

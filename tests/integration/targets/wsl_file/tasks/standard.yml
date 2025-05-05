@@ -279,6 +279,106 @@
         that:
           - not wsl_file_actual is changed
 
+- name: Test group modification scenario
+  block:
+    - name: Create file with initial group
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_mod_file.txt
+        content: "Group modification test"
+        owner: root
+        group: root
+        mode: "644"
+        distribution: "{{ wsl_distribution }}"
+        state: file
+
+    - name: Test group modification in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_mod_file.txt
+        group: adm
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test group modification
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_mod_file.txt
+        group: adm
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+
+    - name: Test idempotency of group modification
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_mod_file.txt
+        group: adm
+        distribution: "{{ wsl_distribution }}"
+        state: file
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+- name: Test directory with owner and group scenario
+  block:
+    - name: Test creating directory with owner and group in check_mode
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_permission_dir
+        owner: root
+        group: adm
+        mode: "775"
+        distribution: "{{ wsl_distribution }}"
+        state: directory
+      check_mode: true
+      register: wsl_file_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
+    - name: Test creating directory with owner and group
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_permission_dir
+        owner: root
+        group: adm
+        mode: "775"
+        distribution: "{{ wsl_distribution }}"
+        state: directory
+      register: wsl_file_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_file_actual is changed
+
+    - name: Test idempotency of creating directory with owner and group
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_permission_dir
+        owner: root
+        group: adm
+        mode: "775"
+        distribution: "{{ wsl_distribution }}"
+        state: directory
+      register: wsl_file_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_file_actual is changed
+
 - name: Clean up test files
   block:
     - name: Remove content file
@@ -296,5 +396,17 @@
     - name: Remove permission dir
       vanduc2514.wsl_automation.wsl_file:
         path: /tmp/permission_dir
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+
+    - name: Remove group modification test file
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_mod_file.txt
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+
+    - name: Remove group permission directory
+      vanduc2514.wsl_automation.wsl_file:
+        path: /tmp/group_permission_dir
         distribution: "{{ wsl_distribution }}"
         state: absent
