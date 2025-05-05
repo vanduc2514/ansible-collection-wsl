@@ -246,4 +246,4 @@ MIT
 
 ## Author
 
-Made with ❤️ by [vanduc2514](https://github.com/vanduc2514)
+Made with ❤️ by [Duc Nguyen (@vanduc2514)](https://github.com/vanduc2514)

@@ -3,7 +3,7 @@ name: wsl_automation
 version: 1.0.0
 readme: README.md
 authors:
-  - vanduc2514 <vanduc2514@gmail.com>
+  - Duc Nguyen (@vanduc2514) <vanduc2514@gmail.com>
 description: Install WSL and provision WSL Instances
 license_file: LICENSE
 tags:

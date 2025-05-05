@@ -3,8 +3,8 @@ collections:
 
 galaxy_info:
   namespace: wsl_automation
-  author: vanduc2514 <vanduc2514@gmail.com>
-  description: Manage Windows Subsystem for Linux (WSL) distribution
+  author: Duc Nguyen (@vanduc2514)
+  description: Manage WSL distributions
   license: MIT
   min_ansible_version: 2.15.0
   galaxy_tags:

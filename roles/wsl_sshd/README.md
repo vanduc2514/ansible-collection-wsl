@@ -120,4 +120,4 @@ MIT
 
 ## Author Information
 
-Duc Nguyen (@vanduc2514)
+Duc Nguyen ([@vanduc2514](https://github.com/vanduc2514))

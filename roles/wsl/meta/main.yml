@@ -3,7 +3,7 @@ collections:
 
 galaxy_info:
   namespace: wsl_automation
-  author: vanduc2514 <vanduc2514@gmail.com>
+  author: Duc Nguyen (@vanduc2514)
   description: Enable Windows Subsystem for Linux features and Install WSL kernel
   license: MIT
   min_ansible_version: 2.15.0
