@@ -12,8 +12,9 @@ wsl_distribution_import_vhd: false
 # WSL distribution configuration
 ## Default user
 wsl_distribution_config_user_default: root
-wsl_distribution_config_user_default_login_shell: /bin/sh
+wsl_distribution_config_user_default_login_shell: /bin/bash
 wsl_distribution_config_user_default_sudo: false
+wsl_distribution_config_user_default_authorized_keys: []
 # Boot section
 wsl_distribution_config_boot_systemd: true
 ## Automount

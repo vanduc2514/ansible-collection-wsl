@@ -64,6 +64,7 @@ These variables control the creation and configuration of the default user in th
 | `wsl_distribution_config_user_default_login_shell` | Login shell for the default user | `/bin/sh` |
 | `wsl_distribution_config_user_default_sudo` | Whether to grant sudo privileges to the default user | `false` |
 | `wsl_distribution_config_user_default_password` | Password for the default user in plain text | - |
+| `wsl_distribution_config_user_default_authorized_keys` | List of SSH public keys to add to authorized_keys for the default user | `[]` |
 
 ### Extra WSL Configuration
 
@@ -155,6 +156,23 @@ Create a distribution with a custom default user
         wsl_distribution_config_user_default_login_shell: "/bin/bash"
         wsl_distribution_config_user_default_sudo: true
         wsl_distribution_config_user_default_password: "secure_password"
+```
+
+Create a distribution with SSH authorized keys:
+
+```yaml
+- name: Install WSL Distribution with SSH authorized keys
+  hosts: windows
+  roles:
+    - role: vanduc2514.wsl_automation_wsl_distribution
+      vars:
+        wsl_distribution_name: Ubuntu
+        wsl_distribution_config_boot_systemd: true
+        wsl_distribution_config_user_default: "wsluser"
+        wsl_distribution_config_user_default_sudo: true
+        wsl_distribution_config_user_default_authorized_keys:
+          - "ssh-rsa AAAAB3NzaC1yc2EAAAADA... user@host"
+          - "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
 ```
 
 ## License

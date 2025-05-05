@@ -65,18 +65,27 @@ argument_specs:
         choices: [run, stop, absent]
         description: Desired state of the WSL distribution
 
-      wsl_distribution_config:
-        type: dict
-        required: false
-        description: >
-          WSL distribution configuration settings.
-          Config Dictionary is converted to ini format before setting in wsl distribution
-
       wsl_distribution_config_user_default:
         description: Override the default user specified in distribution configuration
         type: str
         required: false
         default: root
+
+      wsl_distribution_config_user_default_login_shell:
+        description: Login shell for the default user
+        type: str
+        default: /bin/bash
+
+      wsl_distribution_config_user_default_sudo:
+        description: Whether to grant sudo privileges to the default user
+        type: bool
+        default: false
+
+      wsl_distribution_config_user_default_authorized_keys:
+        description: List of SSH public keys to add to authorized_keys for the default user
+        type: list
+        elements: str
+        default: []
 
       wsl_distribution_config_automount_enabled:
         description: Enable automatic mounting of Windows drives

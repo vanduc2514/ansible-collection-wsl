@@ -28,6 +28,30 @@
     - wsl_distribution_config_user_default | length > 0
   notify: restart wsl
 
+- name: Create .ssh directory for default user
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ wsl_distribution_name }}"
+    path: "/home/{{ wsl_distribution_config_user_default }}/.ssh"
+    state: directory
+    owner: "{{ wsl_distribution_config_user_default }}"
+    mode: '700'
+  when:
+    - wsl_distribution_state != "absent"
+    - wsl_distribution_config_user_default != "root"
+    - wsl_distribution_config_user_default_authorized_keys | length > 0
+
+- name: Configure authorized keys for default user
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ wsl_distribution_name }}"
+    path: "/home/{{ wsl_distribution_config_user_default }}/.ssh/authorized_keys"
+    content: "{{ wsl_distribution_config_user_default_authorized_keys | join('\n') }}"
+    owner: "{{ wsl_distribution_config_user_default }}"
+    mode: '600'
+  when:
+    - wsl_distribution_state != "absent"
+    - wsl_distribution_config_user_default != "root"
+    - wsl_distribution_config_user_default_authorized_keys | length > 0
+
 - name: Create WSL configuration file
   vanduc2514.wsl_automation.wsl_file:
     distribution: "{{ wsl_distribution_name }}"
