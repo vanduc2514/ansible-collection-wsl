@@ -63,7 +63,7 @@ These variables control the creation and configuration of the default user in th
 | `wsl_distribution_config_user_default_home_path` | Home directory for the default user | Default to `/home/user` |
 | `wsl_distribution_config_user_default_login_shell` | Login shell for the default user | `/bin/sh` |
 | `wsl_distribution_config_user_default_sudo` | Whether to grant sudo privileges to the default user | `false` |
-| `wsl_distribution_config_user_default_password` | Password for the default user in plain text | - |
+| `wsl_distribution_config_user_default_password` | Password for the default user in plain text. Set this value will reset user password for every run | - |
 | `wsl_distribution_config_user_default_authorized_keys` | List of SSH public keys to add to authorized_keys for the default user | `[]` |
 
 ### Extra WSL Configuration

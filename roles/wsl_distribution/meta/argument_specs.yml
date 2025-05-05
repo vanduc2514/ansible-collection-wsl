@@ -76,6 +76,11 @@ argument_specs:
         type: str
         default: /bin/bash
 
+      wsl_distribution_config_user_default_password:
+        description: Password to set for the default user. Setting this will make this role non-idempotence
+        type: str
+        no_log: true
+
       wsl_distribution_config_user_default_sudo:
         description: Whether to grant sudo privileges to the default user
         type: bool
