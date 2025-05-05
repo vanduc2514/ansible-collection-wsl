@@ -2,10 +2,12 @@
   ansible.windows.win_reg_stat:
     path: HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss
   register: wsl_ip_reg
+  when: wsl_sshd_state != 'absent'
 
 - name: Parse WSL distribution IP
   ansible.builtin.set_fact:
     wsl_ip: "{{ wsl_ip_reg.properties.NatIpAddress.value }}"
+  when: wsl_sshd_state != 'absent'
 
 - name: Configure Windows port forwarding
   ansible.windows.win_shell: |
@@ -19,5 +21,5 @@
     action: allow
     direction: in
     protocol: tcp
-    state: "{{ 'present' if wsl_sshd_port_forward_enabled else 'absent' }}"
+    state: "{{ 'present' if wsl_sshd_state != 'absent' else 'absent' }}"
     enabled: yes

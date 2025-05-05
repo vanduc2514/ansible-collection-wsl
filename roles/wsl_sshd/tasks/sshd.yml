@@ -2,7 +2,7 @@
   vanduc2514.wsl_automation.wsl_package:
     distribution: "{{ wsl_sshd_distribution_name }}"
     name: "{{ wsl_sshd_package_name }}"
-    state: present
+    state: "{{ wsl_sshd_state | regex_replace('stopped', 'present') | regex_replace('started', 'present') }}"
     update_cache: true
 
 - name: Create SSH directory
@@ -12,6 +12,7 @@
     state: directory
     mode: "755"
     owner: root
+  when: wsl_sshd_state != 'absent'
 
 - name: Check if host keys need to be generated
   vanduc2514.wsl_automation.wsl_slurp:
@@ -23,9 +24,10 @@
     - rsa
     - ecdsa
     - ed25519
+  when: wsl_sshd_state != 'absent'
 
 - name: Generate SSH host keys
-  when: wsl_sshd_force_generate_host_key or host_key_check is failed or host_key_check.results | map(attribute='content') | select | list | length == 0
+  when: (wsl_sshd_state != 'absent') and (wsl_sshd_force_generate_host_key or host_key_check is failed or host_key_check.results | map(attribute='content') | select | list | length == 0)
   block:
     - name: Remove existing host keys
       vanduc2514.wsl_automation.wsl_file:
@@ -50,9 +52,11 @@
     content: "{{ lookup('ansible.builtin.template', 'sshd_config.j2') }}"
     mode: '644'
   notify: restart sshd
+  when: wsl_sshd_state != 'absent'
 
 - name: Configure systemd service override
   when:
+    - wsl_sshd_state != 'absent'
     - wsl_sshd_service_type == "systemd"
     - wsl_sshd_systemd_service_override is defined
   block:
@@ -75,7 +79,7 @@
   vanduc2514.wsl_automation.wsl_systemd:
     distribution: "{{ wsl_sshd_distribution_name }}"
     name: "{{ wsl_sshd_service_name }}"
-    state: started
+    state: "{{ wsl_sshd_state }}"
     daemon_reload: true
   when: wsl_sshd_service_type == "systemd"
 
@@ -83,5 +87,5 @@
   vanduc2514.wsl_automation.wsl_sysvinit:
     distribution: "{{ wsl_sshd_distribution_name }}"
     name: "{{ wsl_sshd_service_name }}"
-    state: started
+    state: "{{ wsl_sshd_state }}"
   when: wsl_sshd_service_type == "sysvinit"

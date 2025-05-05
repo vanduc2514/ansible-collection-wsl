@@ -24,6 +24,12 @@ argument_specs:
         choices: [systemd, sysvinit]
         description: Type of init system to use for managing the service
 
+      wsl_sshd_state:
+        type: str
+        default: started
+        choices: [started, stopped, absent]
+        description: Desired state of the SSH daemon service
+
       wsl_sshd_force_generate_host_key:
         type: bool
         default: false

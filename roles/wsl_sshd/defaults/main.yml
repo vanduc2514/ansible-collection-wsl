@@ -4,6 +4,7 @@ wsl_sshd_package_name: openssh-server
 # Service configuration
 wsl_sshd_service_name: ssh
 wsl_sshd_service_type: systemd
+wsl_sshd_state: started
 
 # Host key configuration
 wsl_sshd_force_generate_host_key: false

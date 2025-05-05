@@ -19,6 +19,7 @@ These variables control the core behavior of the SSH daemon service.
 | `wsl_sshd_distribution_name` | Name of the WSL distribution where sshd will be configured (required) | - |
 | `wsl_sshd_service_name` | Name of the SSH daemon service | `ssh` |
 | `wsl_sshd_service_type` | Type of service management to use (systemd or sysvinit) | `systemd` |
+| `wsl_sshd_state` | Desired state of the SSH daemon service (started, stopped, absent) | `started` |
 
 ### SSH Configuration
 
@@ -57,6 +58,8 @@ LoginGraceTime 60
 
 Setting these variables allows connecting to wsl distribution via ssh from LAN network
 
+**Note**: Port forwarding is non-idempotence because the IP of wsl distribution is dynamically changed between system restart.
+
 | Configuration Option | Description | Default |
 |---------------------|-------------|---------|
 | `wsl_sshd_port_forward_enabled` | Enable port forwarding from Windows to WSL | `false` |
@@ -65,7 +68,7 @@ Setting these variables allows connecting to wsl distribution via ssh from LAN n
 
 ## Example Playbook
 
-Start sshd with systemd
+Basic setup with defaults (started state)
 
 ```yaml
 - hosts: windows
@@ -75,7 +78,7 @@ Start sshd with systemd
         wsl_sshd_distribution_name: Ubuntu-22.04
 ```
 
-Setup with port forwarding
+Stop SSH daemon
 
 ```yaml
 - hosts: windows
@@ -83,9 +86,32 @@ Setup with port forwarding
     - role: vanduc2514.wsl_automation.wsl_sshd
       vars:
         wsl_sshd_distribution_name: Ubuntu-22.04
+        wsl_sshd_state: stopped
+```
+
+Remove SSH daemon and configuration
+
+```yaml
+- hosts: windows
+  roles:
+    - role: vanduc2514.wsl_automation.wsl_sshd
+      vars:
+        wsl_sshd_distribution_name: Ubuntu-22.04
+        wsl_sshd_state: absent
+```
+
+Setup with custom port and port forwarding
+
+```yaml
+- hosts: windows
+  roles:
+    - role: vanduc2514.wsl_automation.wsl_sshd
+      vars:
+        wsl_sshd_distribution_name: Ubuntu-22.04
+        wsl_sshd_state: started
         wsl_sshd_port: 2220
         wsl_sshd_port_forward_enabled: true
-        wsl_sshd_port_forward_windows_port: 3320
+        wsl_sshd_port_forward_host_port: 3320
 ```
 
 ## License
