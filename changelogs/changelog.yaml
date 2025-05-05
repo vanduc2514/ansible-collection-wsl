@@ -2,4 +2,4 @@ releases:
   1.0.0:
     changes:
       release_summary: 'First stable release of `wsl_automation`` collection'
-    release_date: '2024-11-30'
+    release_date: '2025-05-06'
