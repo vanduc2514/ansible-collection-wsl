@@ -46,11 +46,11 @@ Just your trusty old PC and a dream of Linux glory!
 
 ## ✨ The Easy Path: Roles
 
-Want to get started quickly? These roles are like pre-packed recipes for your WSL automation needs.
+Want to get started quickly? These roles provide core functionality for WSL automation.
 
 ### wsl
 
-The foundation of your WSL kingdom:
+Configures the WSL system environment:
 
 ```yaml
 - role: vanduc2514.wsl_automation.wsl
@@ -59,13 +59,13 @@ The foundation of your WSL kingdom:
     wsl_config_processors: 4
 ```
 
-This role ensure `wsl` kernel and features are installed in your system. Without this, wsl distribution cannot be created. After executing this role, the windows machine will have `wsl` command available.
+This role installs and configures the WSL2 kernel and required Windows features. It handles system-wide WSL configurations and ensures your Windows system is properly set up to run WSL distributions.
 
-[Full recipe book here](roles/wsl/README.md)
+[Role documentation](roles/wsl/README.md)
 
 ### wsl_distribution
 
-Your Linux distribution, your rules:
+Manages WSL distributions:
 
 ```yaml
 - role: vanduc2514.wsl_automation.wsl_distribution
@@ -74,13 +74,15 @@ Your Linux distribution, your rules:
     wsl_distribution_config_user_default: "wslmaster"
 ```
 
-This role install a wsl distribution in your system with additional configurations. It can also keep the wsl distribution running in the background like a windows process.
+This role handles the installation and configuration of WSL distributions. It provides options for customizing the distribution settings, managing user accounts, and configuring the distribution to run as a background service.
 
-[Detailed configuration guide](roles/wsl_distribution/README.md)
+[Role Documentation](roles/wsl_distribution/README.md)
 
 ### wsl_sshd
 
-This role makes sure OpenSSH Server `sshd`  is installed and running in a wsl distribution. This allows accessing wsl distribution via SSH connection from a remote machine.
+Configures SSH access for WSL distributions:
+
+This role installs and configures OpenSSH Server (sshd) in the specified WSL distribution, enabling secure remote access. It provides options for both local-only access and controlled public access with appropriate security measures.
 
 There are these ways of configuring SSH access but you need to choose your networking adventure (wisely):
 
@@ -101,7 +103,7 @@ To connect, you'll use Windows as your secret entrance:
 ssh -J windows_host wsl_user@localhost -p 2222
 ```
 
-#### 🌍 The Public Server Path
+#### 🌍 The Public Access Path
 
 ⚠️ **WARNING**: Exposing your WSL to the internet is like opening Pandora's box - make sure you know what you're doing! This is just the beginning of what you need to consider for security. Consult with security experts or your tech-savvy friends before proceeding.
 
@@ -149,9 +151,9 @@ If you're brave enough to venture this path, here's your starter kit for securit
    - Think about DDoS protection
    - And much more...
 
-Remember: The internet is a dangerous place. If you're not sure about security, stick with the [Secret Lair Path](#️-the-secret-lair-path). Your WSL will thank you! 🛡️
+Remember: The internet is a dangerous place. If you're not sure about security, stick with [The Secret Lair Path](#️-the-secret-lair-path). Your WSL will thank you! 🛡️
 
-[SSH adventure manual](roles/wsl_sshd/README.md)
+[Role Documentation](roles/wsl_sshd/README.md)
 
 ## 🧙‍♂️ The Tech Wizard Path: Modules
 
