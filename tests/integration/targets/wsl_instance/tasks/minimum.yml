@@ -241,7 +241,7 @@
   block:
     - name: Test delete MS Store minimum installation in check_mode
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
         state: absent
       check_mode: true
       register: wsl_instance_actual
@@ -253,7 +253,7 @@
 
     - name: Test delete MS Store minimum installation
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
         state: absent
       register: wsl_instance_actual
 
@@ -264,7 +264,7 @@
 
     - name: Test idempotency of delete MS Store minimum installation
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_store_distro }}"
+        distribution: "{{ wsl_instance_minimum_store_distro }}"
         state: absent
       register: wsl_instance_actual
 
@@ -275,15 +275,15 @@
 
     - name: Delete web minimum installation
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_web_distro }}"
+        distribution: "{{ wsl_instance_minimum_web_distro }}"
         state: absent
 
     - name: Delete import minimum installation
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_import_distro }}"
+        distribution: "{{ wsl_instance_minimum_import_distro }}"
         state: absent
 
     - name: Delete import minimum installation
       vanduc2514.wsl_automation.wsl_instance:
-        name: "{{ wsl_instance_minimum_import_bundled_distro }}"
+        distribution: "{{ wsl_instance_minimum_import_bundled_distro }}"
         state: absent

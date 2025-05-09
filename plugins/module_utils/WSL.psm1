@@ -41,29 +41,6 @@ function Get-WSLFileContent {
     return Invoke-LinuxCommand @invokeLinuxCommandArguments
 }
 
-function Invoke-WSLCommand {
-    param(
-        [string[]]
-        $Arguments
-    )
-
-    return $(wsl @Arguments) -join "`n" | Normalize-WSLOutput | Test-CommandOutput
-}
-
-function Invoke-WSLCommandInBackground {
-    param(
-        [string]
-        $Argument
-    )
-
-    $proc = New-Win32Process -CommandLine "wsl $Argument"
-    if ($proc.ReturnValue -ne 0) {
-        throw "Failed to invoke WSL command in win32 process for distribution '$DistributionName'."
-    }
-
-    return $proc
-}
-
 function Invoke-LinuxCommand {
     [OutputType([string])]
     param(
@@ -89,7 +66,7 @@ function Invoke-LinuxCommand {
     return Invoke-WSLCommand -Arguments $wslArguments
 }
 
-function Invoke-LinuxCommandInBackground {
+function Create-LinuxProcess {
     [OutputType([string])]
     param(
         [string]
@@ -106,7 +83,36 @@ function Invoke-LinuxCommandInBackground {
     )
 
     $wslArgument = "--distribution $DistributionName --user $DistributionUser -- $Shell `"$LinuxCommand`""
-    return Invoke-WSLCommandInBackground -Argument $wslArgument
+    return Create-WSLProcess -Argument $wslArgument
+}
+
+function Invoke-WSLCommand {
+    param(
+        [string[]]
+        $Arguments
+    )
+
+    return $(wsl $Arguments) -join "`n" | Normalize-WSLOutput | Test-CommandOutput
+}
+
+function Create-WSLProcess {
+    param(
+        [string]
+        $Argument
+    )
+
+    $processParams = @{
+        CommandLine = "wsl.exe $Argument"
+    }
+
+    $result = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+        CommandLine = "wsl.exe $Argument"
+    }
+    if ($result.ReturnValue -ne 0) {
+        throw "Failed to invoke WSL command in win32 process. Return value: $($result.ReturnValue)"
+    }
+
+    return $result
 }
 
 function Test-CommandOutput {
@@ -127,10 +133,10 @@ $export_members = @{
     Function = @(
         'Test-WSLFileExist',
         'Get-WSLFileContent',
-        'Invoke-WSLCommand',
-        'Invoke-WSLCommandInBackground',
         'Invoke-LinuxCommand',
-        'Invoke-LinuxCommandInBackground'
+        'Create-LinuxProcess',
+        'Invoke-WSLCommand',
+        'Create-WSLProcess'
     )
 }
 Export-ModuleMember @export_members

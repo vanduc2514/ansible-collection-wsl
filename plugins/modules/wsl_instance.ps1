@@ -15,7 +15,7 @@ $spec = @{
             default     = $false
         }
         rootfs_path = @{
-            type        = "str"
+            type     = "str"
         }
         rootfs_download_path = @{
             type     = "str"
@@ -166,10 +166,11 @@ function Install-WSLDistribution {
 
     if ($PSCmdlet.ShouldProcess($DistributionName, 'Install WSL distribution')) {
         $wslArgument = "--install $DistributionName $extraArgument"
-        Invoke-WSLCommandInBackground -Argument $wslArgument
+        $installProcess = Create-WSLProcess -Argument $wslArgument
 
         WaitFor-WSLDistributionState -DistributionName $DistributionName -TimeoutSeconds 600
         Stop-WSLDistribution -DistributionName $DistributionName
+        $installProcess.terminate
     }
 }
 
@@ -335,7 +336,7 @@ function Start-WSLDistribution {
 
     if ($PSCmdlet.ShouldProcess($DistributionName, 'Start WSL distribution')) {
         $linuxCommand = "sleep infinity"
-        Invoke-LinuxCommandInBackground -DistributionName $DistributionName -LinuxCommand $linuxCommand
+        Create-LinuxProcess -DistributionName $DistributionName -LinuxCommand $linuxCommand
         WaitFor-WSLDistributionState -DistributionName $DistributionName
     }
 }
@@ -350,8 +351,16 @@ function Stop-WSLDistribution {
 
     if ($PSCmdlet.ShouldProcess($DistributionName, 'Stop WSL distribution')) {
         try {
-            $wslArguments = @("--terminate", $DistributionName) # also remove Win32 running process
+            # Find and kill any Win32 processes running the WSL distribution
+            $processes = Get-CimInstance -ClassName Win32_Process -Filter "CommandLine LIKE '%--distribution $DistributionName%'"
+            foreach ($process in $processes) {
+                $($process.terminate)
+            }
+
+            $wslArguments = @("--terminate", $DistributionName)
             Invoke-WSLCommand -Arguments $wslArguments | Out-Null
+
+            WaitFor-WSLDistributionState -DistributionName $DistributionName -State 'Stopped'
         } catch {
             throw "Failed to stop WSL distribution '$DistributionName': $($_.Exception.Message)"
         }

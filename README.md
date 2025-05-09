@@ -74,7 +74,7 @@ Manages WSL distributions:
     wsl_distribution_config_user_default: "wslmaster"
 ```
 
-This role handles the installation and configuration of WSL distributions. It provides options for customizing the distribution settings, managing user accounts, and configuring the distribution to run as a background service.
+This role handles the installation and configuration of WSL distributions. It provides options for customizing the distribution settings, managing user accounts, and configuring the distribution to run as a background process.
 
 [Role Documentation](roles/wsl_distribution/README.md)
 

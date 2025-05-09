@@ -1,8 +1,8 @@
-wsl_instance_minimum_store_distro: Ubuntu
-wsl_instance_minimum_web_distro: Ubuntu-18.04
+wsl_instance_minimum_store_distro: Ubuntu-18.04
+wsl_instance_minimum_web_distro: Ubuntu-20.04
 
 wsl_instance_minimum_import_distro: Import-Ubuntu-22.04
-wsl_instance_minimum_import_rootfs_path: https://cloud-images.ubuntu.com/wsl/jammy/20250226/ubuntu-jammy-wsl-amd64-ubuntu22.04lts.rootfs.tar.gz
+wsl_instance_minimum_import_rootfs_path: https://cloud-images.ubuntu.com/wsl/jammy/current/ubuntu-jammy-wsl-amd64-ubuntu22.04lts.rootfs.tar.gz
 
 wsl_instance_minimum_import_bundled_distro: Bundled-Import-Alpine-3.18.4
 wsl_instance_minimum_import_bundled_rootfs_path: https://github.com/yuk7/AlpineWSL/releases/download/3.18.4-0/Alpine.zip
