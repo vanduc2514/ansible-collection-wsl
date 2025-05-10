@@ -2,51 +2,28 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🤔 The Story
+The `vanduc2514.wsl_automation` collection provides Ansible modules and roles for managing Windows Subsystem for Linux (WSL) environments. It uses PowerShell modules to execute WSL commands, enabling automation of WSL distribution management and configuration.
 
-Picture this: You have an old laptop gathering dust in your closet. It's not quite ready for retirement, but Windows is making it wheeze like it just ran a marathon. Your tech-savvy friend suggests Linux, but the thought of diving into that rabbit hole makes you break into a cold sweat. ("How do I exit Vim?" will haunt your dreams).
+## System Requirements
 
-What if you could have the best of both worlds? Run Linux inside Windows without the commitment? Even better - what if you could turn that old laptop into a 24/7 home server without selling your soul to the cloud providers?
-
-But wait, there's more! Remember that time when you spent weeks perfecting your WSL setup, only to have it vanish into the digital void with one mistaken command ? Or maybe you're just tired of manually configuring the same WSL setup across different machines?
-
-Enter `vanduc2514.wsl_automation` - your gateway to WSL automation nirvana.
-
-## 💡 The Magic Behind It
-
-This collection is deceptively simple yet powerful. It works by executing WSL commands (`wsl`) on Windows hosts through Ansible, turning complex WSL management into repeatable, automated tasks.
-
-## 🎯 What You Need
-
-You probably already have most of what you need! Here's the checklist:
-
-### System Requirements
 | Requirement | Details |
 |------------|---------|
 | Operating System | Windows 10 (version 1903+) or Windows 11 |
-| WSL Feature | Enabled (don't worry, we'll handle this for you!) |
-| Hardware | Any PC/laptop that can run Windows 10/11 |
+| WSL Feature | The WSL Windows feature (automatically enabled by this collection) |
+| Hardware | Standard hardware capable of running Windows 10/11 |
 
-### The Ansible Bits
+## Ansible Requirements
 
-Just make sure you have:
+The following Ansible components are required:
 
 - ansible-core >= 2.15.0
 - ansible-galaxy
 
-That's all! Everything else will be handled automatically when you install the collection.
+All other dependencies will be resolved automatically during installation of the collection.
 
-### What You Don't Need
-- Cloud subscriptions
-- Expensive hardware
-- A Computer Science degree
-- The ability to exit Vim
+## Roles
 
-Just your trusty old PC and a dream of Linux glory!
-
-## ✨ The Easy Path: Roles
-
-Want to get started quickly? These roles provide core functionality for WSL automation.
+The following roles provide essential functionality for WSL environment management:
 
 ### wsl
 
@@ -59,70 +36,65 @@ Configures the WSL system environment:
     wsl_config_processors: 4
 ```
 
-This role installs and configures the WSL2 kernel and required Windows features. It handles system-wide WSL configurations and ensures your Windows system is properly set up to run WSL distributions.
+This role handles WSL2 kernel installation, Windows feature configuration, and system-wide WSL parameters to establish the foundation for WSL distributions.
 
 [Role documentation](roles/wsl/README.md)
 
 ### wsl_distribution
 
-Manages WSL distributions:
+Manages WSL distribution lifecycle:
 
 ```yaml
 - role: vanduc2514.wsl_automation.wsl_distribution
   vars:
     wsl_distribution_name: Ubuntu-22.04
-    wsl_distribution_config_user_default: "wslmaster"
+    wsl_distribution_config_user_default: "wsl_admin"
 ```
 
-This role handles the installation and configuration of WSL distributions. It provides options for customizing the distribution settings, managing user accounts, and configuring the distribution to run as a background process.
+This role provides comprehensive distribution management capabilities, including installation, configuration, user account provisioning, and background process configuration.
 
 [Role Documentation](roles/wsl_distribution/README.md)
 
 ### wsl_sshd
 
-Configures SSH access for WSL distributions:
+Implements secure SSH access for WSL distributions:
 
-This role installs and configures OpenSSH Server (sshd) in the specified WSL distribution, enabling secure remote access. It provides options for both local-only access and controlled public access with appropriate security measures.
+This role configures OpenSSH Server in specified WSL distributions with options for local access configuration and controlled remote connectivity. Implementation follows security best practices with configurable authentication parameters.
 
-There are these ways of configuring SSH access but you need to choose your networking adventure (wisely):
+#### Secure Local Access
 
-#### 🕵️ The Secret Lair Path
-
-The safest way - keep your WSL accessible only through your Windows machine as a secure jump host. Perfect for personal use and a peace of mind:
+This configuration implements a security-focused approach that limits SSH access through the Windows host as a secure jump server:
 
 ```yaml
 - role: vanduc2514.wsl_automation.wsl_sshd
   vars:
     wsl_sshd_distribution_name: Ubuntu-22.04
     wsl_sshd_port: 2222
-    wsl_sshd_port_forward_enabled: false
+    # port_forward is disabled by default
 ```
 
-To connect, you'll use Windows as your secret entrance:
+Connection is established through the Windows host:
 ```bash
 ssh -J windows_host wsl_user@localhost -p 2222
 ```
 
-#### 🌍 The Public Access Path
+#### External Access Configuration
 
-⚠️ **WARNING**: Exposing your WSL to the internet is like opening Pandora's box - make sure you know what you're doing! This is just the beginning of what you need to consider for security. Consult with security experts or your tech-savvy friends before proceeding.
+⚠️ **WARNING**: External access configuration requires careful security implementation. The following parameters provide a starting point for secure configuration but should be supplemented with appropriate network security measures.
 
-If you're brave enough to venture this path, here's your starter kit for security:
-
-1. First, set up your WSL with proper security:
+1. Initial distribution security configuration:
 
 ```yaml
 - role: vanduc2514.wsl_automation.wsl_distribution
   vars:
     wsl_distribution_name: Ubuntu-22.04
-    wsl_distribution_config_user_default: "wsluser"
-    wsl_distribution_config_user_default_password: "SuperStrongPassword123!"  # Change this!
+    wsl_distribution_config_user_default: "wsl_admin"
+    wsl_distribution_config_user_default_password: "{{ vault_secure_password }}"
     wsl_distribution_config_user_default_authorized_keys:
-      # Your SSH public key
       - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
 ```
 
-2. Then configure SSH with strict security settings:
+2. SSH server hardening with security parameters:
 
 ```yaml
 - role: vanduc2514.wsl_automation.wsl_sshd
@@ -141,52 +113,66 @@ If you're brave enough to venture this path, here's your starter kit for securit
       LoginGraceTime: 60
 ```
 
-3. This is just the beginning! You'll need to:
-   - Configure your router's port forwarding to the `wsl_sshd_port_forward_host_port`
-   - Set up proper firewall rules
-   - Consider intrusion detection systems
-   - Regularly monitor your logs
-   - Keep your system updated
-   - Consider fail2ban for brute force protection
-   - Think about DDoS protection
-   - And much more...
+3. Additional security measures to consider:
+   - Network firewall configuration
+   - Port forwarding security
+   - Host-based intrusion detection
+   - Security monitoring implementation
+   - System update procedures
+   - Authentication failure monitoring (e.g., fail2ban)
+   - DDoS mitigation strategy
 
-Remember: The internet is a dangerous place. If you're not sure about security, stick with [The Secret Lair Path](#️-the-secret-lair-path). Your WSL will thank you! 🛡️
+When security requirements are stringent, the **Secure Local Access** configuration is recommended.
 
 [Role Documentation](roles/wsl_sshd/README.md)
 
-## 🧙‍♂️ The Tech Wizard Path: Modules
+## Modules
 
-For those who want fine-grained control, our modules let you orchestrate WSL like a symphony:
+For granular control, the collection provides module-level access to WSL functionality:
 
-| Module | Your Power |
-|--------|------------|
-| wsl_instance | Create/destroy WSL instances |
-| wsl_file | Manage WSL file and directory |
-| wsl_package | Install packages, works with difference distribution |
-| wsl_user | Basic management for users |
-| wsl_systemd | Control services with `systemd` |
-| wsl_sysvinit | Control services with legacy `sysvinit` |
-| wsl_slurp | Get content of a file encoded by `base64` |
+| Module | Functionality |
+|--------|--------------|
+| wsl_instance | Distribution lifecycle management |
+| wsl_file | File system operations within WSL |
+| wsl_package | Cross-distribution package management |
+| wsl_user | Basic User account administration |
+| wsl_systemd | Service management for systemd enabled distributions |
+| wsl_sysvinit | Service management for systemd disabled distributions |
+| wsl_slurp | Content retrieval with base64 encoding |
 
-## 🚀 Quick Start
+## Install from ansible-galaxy
 
-Getting started is as easy as:
+Run the following command line
+
 ```bash
 ansible-galaxy collection install vanduc2514.wsl_automation
 ```
 
-### Install from GitHub
+or define it in `requirements.yml`
 
-If you want the latest development version, you can install directly from GitHub:
+```yml
+collections:
+  - name: vanduc2514.wsl_automation
+```
+
+## Install from git
+
+Run the following command line
 
 ```bash
 ansible-galaxy collection install git+https://github.com/vanduc2514/ansible-collection-wsl-automation.git
 ```
 
-That's it! The installation will automatically handle all the dependencies for you. Now you're ready to turn that old laptop into a Linux powerhouse!
+or define it in `requirements.yml`
 
-### The "I Just Want It to Work" Playbook
+```yml
+collections:
+  - name: vanduc2514.wsl_automation
+    source: https://github.com/vanduc2514/ansible-collection-wsl-automation.git
+    type: git
+```
+
+## Example Minimum Playbook
 
 ```yaml
 - hosts: windows
@@ -196,12 +182,13 @@ That's it! The installation will automatically handle all the dependencies for y
     - role: vanduc2514.wsl_automation.wsl_sshd
 ```
 
-### A More Typical Example Playbook
+### Example Recommend Playbook
+
+Store sensitive values such as passwords in an Ansible vault file.
 
 ```yaml
 - hosts: windows
   roles:
-    # Configure WSL system-wide settings
     - role: vanduc2514.wsl_automation.wsl
       vars:
         wsl_config_memory: 4GB
@@ -209,20 +196,14 @@ That's it! The installation will automatically handle all the dependencies for y
         wsl_config_swap: 2GB
         wsl_config_swap_file: "D:\\wsl\\swap.vhdx"
 
-    # Set up an Ubuntu distribution with custom user
     - role: vanduc2514.wsl_automation.wsl_distribution
       vars:
         wsl_distribution_name: Ubuntu-22.04
-        wsl_distribution_config_user_default: "wsluser"
+        wsl_distribution_config_user_default: "wsl_admin"
         wsl_distribution_config_user_default_password: "{{ vault_wsl_user_password }}"
         wsl_distribution_config_user_default_authorized_keys:
           - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
-        wsl_distribution_config_automount_options:
-          enabled: true
-          mountFsTab: true
-          root: "/mnt"
 
-    # Configure SSH access with secure defaults
     - role: vanduc2514.wsl_automation.wsl_sshd
       vars:
         wsl_sshd_distribution_name: Ubuntu-22.04
@@ -230,17 +211,13 @@ That's it! The installation will automatically handle all the dependencies for y
         wsl_sshd_password_authentication: false
         wsl_sshd_permit_root_login: false
         wsl_sshd_port_forward_enabled: false
-        wsl_sshd_authorized_keys:
-          - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
 ```
 
-💡 **Tip**: Store sensitive values like passwords in an Ansible vault file!
+## Additional Resources
 
-## 📚 Learn More
-
-Want to dive deeper? Check out:
-- [Ansible Documenation](https://docs.ansible.com)
-- [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/)
+For further readings:
+- [Ansible Documentation](https://docs.ansible.com)
+- [Windows Subsystem for Linux Documentation](https://docs.microsoft.com/en-us/windows/wsl/)
 
 ## License
 
@@ -248,4 +225,4 @@ MIT
 
 ## Author
 
-Made with ❤️ by [Duc Nguyen (@vanduc2514)](https://github.com/vanduc2514)
+Developed by [Duc Nguyen (@vanduc2514)](https://github.com/vanduc2514)
