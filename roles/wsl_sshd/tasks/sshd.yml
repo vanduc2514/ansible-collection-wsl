@@ -27,7 +27,17 @@
   when: wsl_sshd_state != 'absent'
 
 - name: Generate SSH host keys
-  when: (wsl_sshd_state != 'absent') and (wsl_sshd_force_generate_host_key or host_key_check is failed or host_key_check.results | map(attribute='content') | select | list | length == 0)
+  when:
+  - wsl_sshd_state != 'absent'
+  - wsl_sshd_force_generate_host_key or
+    host_key_check is failed or
+    (
+      host_key_check.results | selectattr('content', 'defined') |
+      map(attribute='content') |
+      select |
+      list |
+      length == 0
+    )
   block:
     - name: Remove existing host keys
       vanduc2514.wsl_automation.wsl_file:
@@ -40,12 +50,13 @@
       loop_control:
         loop_var: item
         index_var: public
+      when: wsl_sshd_force_generate_host_key
 
     - name: Generate host keys
       ansible.windows.win_shell: wsl --distribution {{ wsl_sshd_distribution_name }} --user root -- ssh-keygen -A
       notify: restart sshd
 
-- name: Configure SSHD
+- name: Create and template sshd_config
   vanduc2514.wsl_automation.wsl_file:
     distribution: "{{ wsl_sshd_distribution_name }}"
     path: /etc/ssh/sshd_config
@@ -54,7 +65,7 @@
   notify: restart sshd
   when: wsl_sshd_state != 'absent'
 
-- name: Configure systemd service override
+- name: Create and template systemd service override
   when:
     - wsl_sshd_state != 'absent'
     - wsl_sshd_service_type == "systemd"
@@ -81,6 +92,7 @@
     name: "{{ wsl_sshd_service_name }}"
     state: "{{ wsl_sshd_state }}"
     daemon_reload: true
+    dbus_timeout: "{{ wsl_sshd_dbus_timeout | default(120) }}"
   when: wsl_sshd_service_type == "systemd"
 
 - name: Start SSHD service via sysvinit
