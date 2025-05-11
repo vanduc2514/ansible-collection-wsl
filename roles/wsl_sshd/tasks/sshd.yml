@@ -14,12 +14,11 @@
     owner: root
   when: wsl_sshd_state != 'absent'
 
-- name: Check if host keys need to be generated
-  vanduc2514.wsl_automation.wsl_slurp:
+- name: Check if host keys exist
+  vanduc2514.wsl_automation.wsl_exists:
     distribution: "{{ wsl_sshd_distribution_name }}"
     path: "/etc/ssh/ssh_host_{{ item }}_key"
   register: host_key_check
-  failed_when: false
   loop:
     - rsa
     - ecdsa
@@ -30,13 +29,11 @@
   when:
   - wsl_sshd_state != 'absent'
   - wsl_sshd_force_generate_host_key or
-    host_key_check is failed or
     (
-      host_key_check.results | selectattr('content', 'defined') |
-      map(attribute='content') |
-      select |
+        host_key_check.results | map(attribute='exists') |
+        select('false') |
       list |
-      length == 0
+        length > 0
     )
   block:
     - name: Remove existing host keys
