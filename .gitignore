@@ -2,6 +2,7 @@
 *.retry
 .ansible
 inventory.winrm
+inventory.yml
 
 # ---> Python
 # Byte-compiled / optimized / DLL files
