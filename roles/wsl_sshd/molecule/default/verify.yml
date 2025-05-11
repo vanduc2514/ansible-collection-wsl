@@ -7,7 +7,7 @@
     distribution: Ubuntu-22.04
 
   tasks:
-    # First verify host keys were generated correctly
+    # Verify host keys were generated correctly
     - name: Verify SSH host keys in WSL
       block:
         - name: Read host private keys from WSL

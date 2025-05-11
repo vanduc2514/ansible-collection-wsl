@@ -1,6 +1,6 @@
 - name: Converge
   hosts: windows
-  gather_facts: true
+  gather_facts: false
   vars:
     sshd_port: 2222
     distribution: Ubuntu-22.04

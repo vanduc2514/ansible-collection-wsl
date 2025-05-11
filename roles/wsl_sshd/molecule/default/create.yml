@@ -1,4 +1,4 @@
-- name: Prepare
+- name: Create
   hosts: windows
   gather_facts: true
   tasks:

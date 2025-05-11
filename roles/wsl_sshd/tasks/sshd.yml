@@ -106,18 +106,22 @@
       (create_template_sshd_config is defined and create_template_sshd_config.changed) or
       (configure_systemd_override is defined and configure_systemd_override.changed)
   block:
-    - name: Stop sshd via systemd
+    - name: (Restart) Stop sshd via systemd
       vanduc2514.wsl_automation.wsl_systemd:
         distribution: "{{ wsl_sshd_distribution_name }}"
         name: "{{ wsl_sshd_service_name }}"
         state: stopped
 
-    - name: Start sshd via systemd
+    - name: (Restart) Start sshd via systemd
       vanduc2514.wsl_automation.wsl_systemd:
         distribution: "{{ wsl_sshd_distribution_name }}"
         name: "{{ wsl_sshd_service_name }}"
         state: started
         daemon_reload: true
+
+    - name: Set ansible fact
+      ansible.builtin.set_fact:
+        wsl_sshd_restarted: true
 
 - name: Restart sshd via sysvinit
   when:
@@ -126,14 +130,18 @@
       (create_template_sshd_config is defined and create_template_sshd_config.changed) or
       (configure_systemd_override is defined and configure_systemd_override.changed)
   block:
-    - name: Stop sshd via sysvinit
+    - name: (Restart) Stop sshd via sysvinit
       vanduc2514.wsl_automation.wsl_sysvinit:
         distribution: "{{ wsl_sshd_distribution_name }}"
         name: "{{ wsl_sshd_service_name }}"
         state: stopped
 
-    - name: Start sshd via sysvinit
+    - name: (Restart) Start sshd via sysvinit
       vanduc2514.wsl_automation.wsl_sysvinit:
         distribution: "{{ wsl_sshd_distribution_name }}"
         name: "{{ wsl_sshd_service_name }}"
         state: started
+
+    - name: Set ansible fact
+      ansible.builtin.set_fact:
+        wsl_sshd_restarted: true
