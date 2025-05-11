@@ -25,7 +25,7 @@ The role uses the following configuration structure. For detailed information ab
 |:---------|:------------|:---------|
 |`wsl_config_memory`| How much memory to assign to the WSL 2 VM | `4GB` |
 |`wsl_config_processors`| How many processors to assign to the WSL 2 VM | `2` |
-|`wsl_config_localhostForwarding`| Enable localhost forwarding from WSL to Windows | `true` |
+|`wsl_config_localhostforwarding`| Enable localhost forwarding from WSL to Windows | `true` |
 |`wsl_config_guiApplications`| Enable support for GUI applications (WSLg) | `true` |
 |`wsl_config_pageReporting`| Enable Windows to reclaim unused memory from WSL 2 | `true` |
 |`wsl_config_kernel`| Absolute Windows path to a custom Linux kernel | - |

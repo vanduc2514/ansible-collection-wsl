@@ -54,7 +54,7 @@ argument_specs:
         description: Enable Windows to reclaim unused memory from WSL 2.
         type: bool
 
-      wsl_config_localhostForwarding:
+      wsl_config_localhostforwarding:
         description: Enable localhost forwarding from WSL to Windows.
         type: bool
 

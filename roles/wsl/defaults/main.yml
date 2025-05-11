@@ -3,9 +3,6 @@ wsl_version: 2.3.26
 wsl_arch_version: 2
 wsl_state: present
 
-# WSL 2 settings
-wsl_config_localhostForwarding: true
-
 # Extra configurations
 wsl_config_extra: {}
 
