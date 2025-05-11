@@ -10,11 +10,12 @@ function Test-WSLFileExist {
         $Path
     )
 
+    # The -e flag checks if the path exists regardless of type
+    # But for symlinks (especially broken ones), we need to check specifically with -L
     $invokeLinuxCommandArguments = @{
         DistributionName = $DistributionName
         DistributionUser = 'root'
-        # -e flag checks if the file exists regardless of type
-        LinuxCommand = "test -e '$Path' && echo 'true' || echo 'false'"
+        LinuxCommand = "test -e '$Path' -o -L '$Path' && echo 'true' || echo 'false'"
     }
 
     $result = Invoke-LinuxCommand @invokeLinuxCommandArguments
