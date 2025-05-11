@@ -3,7 +3,7 @@
   gather_facts: false
   tasks:
     - name: Remove WSL test distribution
-      include_role:
+      ansible.builtin.include_role:
         name: vanduc2514.wsl_automation.wsl_distribution
       vars:
         wsl_distribution_name: Ubuntu-22.04

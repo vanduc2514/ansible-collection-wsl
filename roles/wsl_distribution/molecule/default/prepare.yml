@@ -3,5 +3,5 @@
   gather_facts: true
   tasks:
     - name: Ensure WSL is installed and enabled
-      include_role:
+      ansible.builtin.include_role:
         name: vanduc2514.wsl_automation.wsl

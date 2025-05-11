@@ -8,7 +8,7 @@
       register: wsl_slurp_result
 
     - name: Validate check mode result
-      assert:
+      ansible.builtin.assert:
         that:
           - wsl_slurp_result is changed == false
           - wsl_slurp_result.path == '/tmp/ansible_test/test_file.txt'
@@ -32,11 +32,11 @@
       register: wsl_slurp_result
 
     - name: Create expected content variable
-      set_fact:
+      ansible.builtin.set_fact:
         expected_special_content: "Special characters: !@#$%^&*()_+-={}[]|\\:;\"'<>,./?\nUnicode: 你好, こんにちは, 안녕하세요"
 
     - name: Validate special characters handling
-      assert:
+      ansible.builtin.assert:
         that:
           - wsl_slurp_result is changed == false
           - wsl_slurp_result.content | b64decode | trim == expected_special_content
@@ -50,7 +50,7 @@
       register: wsl_slurp_result
 
     - name: Validate binary file reading
-      assert:
+      ansible.builtin.assert:
         that:
           - wsl_slurp_result is changed == false
           - wsl_slurp_result.encoding == 'base64'

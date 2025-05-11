@@ -11,8 +11,15 @@
 
 - name: Configure Windows port forwarding
   ansible.windows.win_shell: |
-    netsh interface portproxy delete v4tov4 listenport={{ wsl_sshd_port_forward_host_port }} listenaddress=0.0.0.0
-    netsh interface portproxy add v4tov4 listenport={{ wsl_sshd_port_forward_host_port }} listenaddress=0.0.0.0 connectport={{ wsl_sshd_port }} connectaddress={{ wsl_ip }}
+    netsh interface portproxy delete v4tov4 `
+      listenport={{ wsl_sshd_port_forward_host_port }} `
+      listenaddress=0.0.0.0
+
+    netsh interface portproxy add v4tov4 `
+      listenport={{ wsl_sshd_port_forward_host_port }} `
+      listenaddress=0.0.0.0 `
+      connectport={{ wsl_sshd_port }} `
+      connectaddress={{ wsl_ip }}
 
 - name: Configure Windows Firewall rule
   community.windows.win_firewall_rule:
@@ -22,4 +29,4 @@
     direction: in
     protocol: tcp
     state: "{{ 'present' if wsl_sshd_state != 'absent' else 'absent' }}"
-    enabled: yes
+    enabled: true
