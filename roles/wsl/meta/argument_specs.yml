@@ -133,3 +133,8 @@ argument_specs:
       wsl_config_path:
         description: Path to the .wslconfig file.
         type: str
+
+      wsl_config_shutdown_when_changed:
+        description: Whether to shutdown wsl when config changed
+        type: bool
+        default: false

@@ -8,3 +8,6 @@ wsl_config_extra: {}
 
 # Path for .wslconfig file
 wsl_config_path: "{{ ansible_facts.env.HOME }}\\.wslconfig"
+
+# Shutdown if config changed
+wsl_config_shutdown_when_changed: false

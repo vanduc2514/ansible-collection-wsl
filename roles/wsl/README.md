@@ -16,6 +16,7 @@ These variables control how `wsl` is installed
 |`wsl_arch_version`| The WSL architecture version for new distributions (1 or 2) | `2` |
 |`wsl_version`| The WSL binary version from WSL Github Repository | `2.3.26` |
 |`wsl_state`| Controls WSL state: 'present' (installed), 'absent' (removed), or 'shutdown' (terminate all WSL instances and VM) | `present` |
+|`wsl_config_shutdown_when_changed` | Whether to shutdown wsl when config changed | `false` |
 
 ### WSL Configuration Variables
 
