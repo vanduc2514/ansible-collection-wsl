@@ -27,14 +27,14 @@
 
 - name: Generate SSH host keys
   when:
-  - wsl_sshd_state != 'absent'
-  - wsl_sshd_force_generate_host_key or
-    (
+    - wsl_sshd_state != 'absent'
+    - wsl_sshd_force_generate_host_key or
+      (
         host_key_check.results | map(attribute='exists') |
         select('false') |
-      list |
+        list |
         length > 0
-    )
+      )
   block:
     - name: Remove existing host keys
       vanduc2514.wsl_automation.wsl_file:
@@ -51,7 +51,7 @@
 
     - name: Generate host keys
       ansible.windows.win_shell: wsl --distribution {{ wsl_sshd_distribution_name }} --user root -- ssh-keygen -A
-      notify: restart sshd
+      register: generate_host_keys
 
 - name: Create and template sshd_config
   vanduc2514.wsl_automation.wsl_file:
@@ -59,7 +59,7 @@
     path: /etc/ssh/sshd_config
     content: "{{ lookup('ansible.builtin.template', 'sshd_config.j2') }}"
     mode: '644'
-  notify: restart sshd
+  register: create_template_sshd_config
   when: wsl_sshd_state != 'absent'
 
 - name: Create and template systemd service override
@@ -81,7 +81,7 @@
         path: /etc/systemd/system/{{ wsl_sshd_service_name }}.service.d/override.conf
         content: "{{ wsl_sshd_systemd_service_override }}"
         mode: '644'
-      notify: restart sshd
+      register: configure_systemd_override
 
 - name: Start and enable SSHD service via systemd
   vanduc2514.wsl_automation.wsl_systemd:
@@ -98,3 +98,42 @@
     name: "{{ wsl_sshd_service_name }}"
     state: "{{ wsl_sshd_state }}"
   when: wsl_sshd_service_type == "sysvinit"
+
+- name: Restart sshd via systemd
+  when:
+    - wsl_sshd_service_type == "systemd"
+    - (generate_host_keys is defined and generate_host_keys.changed) or
+      (create_template_sshd_config is defined and create_template_sshd_config.changed) or
+      (configure_systemd_override is defined and configure_systemd_override.changed)
+  block:
+    - name: Stop sshd via systemd
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        name: "{{ wsl_sshd_service_name }}"
+        state: stopped
+
+    - name: Start sshd via systemd
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        name: "{{ wsl_sshd_service_name }}"
+        state: started
+        daemon_reload: true
+
+- name: Restart sshd via sysvinit
+  when:
+    - wsl_sshd_service_type == "sysvinit"
+    - (generate_host_keys is defined and generate_host_keys.changed) or
+      (create_template_sshd_config is defined and create_template_sshd_config.changed) or
+      (configure_systemd_override is defined and configure_systemd_override.changed)
+  block:
+    - name: Stop sshd via sysvinit
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        name: "{{ wsl_sshd_service_name }}"
+        state: stopped
+
+    - name: Start sshd via sysvinit
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        name: "{{ wsl_sshd_service_name }}"
+        state: started
