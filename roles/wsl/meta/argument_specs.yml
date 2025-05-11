@@ -30,15 +30,15 @@ argument_specs:
         description: Absolute Windows path to a custom Linux kernel.
         type: str
 
-      wsl_config_kernelModules:
+      wsl_config_kernel_modules:
         description: Absolute Windows path to custom Linux kernel modules VHD.
         type: str
 
-      wsl_config_kernelCommandLine:
+      wsl_config_kernel_command_line:
         description: Additional kernel command line arguments.
         type: str
 
-      wsl_config_safeMode:
+      wsl_config_safe_mode:
         description: Run WSL in Safe Mode which disables many features (Windows 11, WSL 0.66.2+ only).
         type: bool
 
@@ -46,43 +46,43 @@ argument_specs:
         description: How much swap space to add to the WSL 2 VM (e.g. "8GB").
         type: str
 
-      wsl_config_swapFile:
+      wsl_config_swap_file:
         description: Absolute Windows path to the swap virtual hard disk.
         type: str
 
-      wsl_config_pageReporting:
+      wsl_config_page_reporting:
         description: Enable Windows to reclaim unused memory from WSL 2.
         type: bool
 
-      wsl_config_localhostforwarding:
+      wsl_config_localhost_forwarding:
         description: Enable localhost forwarding from WSL to Windows.
         type: bool
 
-      wsl_config_guiApplications:
+      wsl_config_gui_applications:
         description: Enable support for GUI applications (WSLg).
         type: bool
 
-      wsl_config_debugConsole:
+      wsl_config_debug_console:
         description: Show debug console output (Windows 11 only).
         type: bool
 
-      wsl_config_nestedVirtualization:
+      wsl_config_nested_virtualization:
         description: Enable nested virtualization (Windows 11 only).
         type: bool
 
-      wsl_config_vmIdleTimeout:
+      wsl_config_vm_idle_timeout:
         description: VM idle timeout in milliseconds (Windows 11 only).
         type: int
 
-      wsl_config_autoProxy:
+      wsl_config_auto_proxy:
         description: Use Windows HTTP proxy settings (Windows 11 only).
         type: bool
 
-      wsl_config_networkingMode:
+      wsl_config_networking_mode:
         description: Network mode (NAT/mirrored) (Windows 11 22H2+ only).
         type: str
 
-      wsl_config_dnsProxy:
+      wsl_config_dns_proxy:
         description: Configure DNS Server in Linux to use NAT on the host (only for NAT networking mode).
         type: bool
 
@@ -90,39 +90,39 @@ argument_specs:
         description: Enable Windows Firewall rules (Windows 11 22H2+ only).
         type: bool
 
-      wsl_config_dnsTunneling:
+      wsl_config_dns_tunneling:
         description: Enable DNS tunneling (Windows 11 22H2+ only).
         type: bool
 
-      wsl_config_defaultVhdSize:
+      wsl_config_default_vhd_size:
         description: Set the Virtual Hard Disk (VHD) size that stores the Linux distribution file system.
         type: str
 
-      wsl_config_experimental_sparseVhd:
+      wsl_config_experimental_sparse_vhd:
         description: Enable sparse VHD for WSL.
         type: bool
 
-      wsl_config_experimental_autoMemoryReclaim:
+      wsl_config_experimental_auto_memory_reclaim:
         description: Configure automatic memory reclaim behavior.
         type: str
 
-      wsl_config_experimental_bestEffortDnsParsing:
+      wsl_config_experimental_best_effort_dns_parsing:
         description: Enable best effort DNS parsing (Windows 11 22H2+ only).
         type: bool
 
-      wsl_config_experimental_dnsTunnelingIpAddress:
+      wsl_config_experimental_dns_tunneling_ip_address:
         description: DNS tunneling IP address (Windows 11 22H2+ only).
         type: str
 
-      wsl_config_experimental_initialAutoProxyTimeout:
+      wsl_config_experimental_initial_auto_proxy_timeout:
         description: Initial auto proxy timeout in milliseconds (Windows 11 only).
         type: int
 
-      wsl_config_experimental_ignoredPorts:
+      wsl_config_experimental_ignored_ports:
         description: Comma-separated list of ignored ports (Windows 11 22H2+ only).
         type: str
 
-      wsl_config_experimental_hostAddressLoopback:
+      wsl_config_experimental_host_address_loopback:
         description: Enable host address loopback (Windows 11 22H2+ only).
         type: bool
 

@@ -43,16 +43,16 @@ The role uses the following configuration structure. For detailed information ab
 | `wsl_distribution_config_boot_command` | Command to run on WSL startup | - |
 | `wsl_distribution_config_boot_systemd` | Enable systemd support | `true` |
 | `wsl_distribution_config_automount_enabled` | Enable automatic mounting of Windows drives | `true` |
-| `wsl_distribution_config_automount_mountFsTab` | Enable mounting via /etc/fstab | - |
+| `wsl_distribution_config_automount_mount_fs_tab` | Enable mounting via /etc/fstab | - |
 | `wsl_distribution_config_automount_root` | Root directory for Windows drive mounts | `/mnt/` |
 | `wsl_distribution_config_automount_options` | Mount options for Windows drives, comma separted value | - |
 | `wsl_distribution_config_network_hostname` | Set WSL distribution hostname | - |
-| `wsl_distribution_config_network_generateHosts` | Enable automatic /etc/hosts generation | `true` |
-| `wsl_distribution_config_network_generateResolvConf` | Enable automatic /etc/resolv.conf generation | `true` |
+| `wsl_distribution_config_network_generate_hosts` | Enable automatic /etc/hosts generation | `true` |
+| `wsl_distribution_config_network_generate_resolv_conf` | Enable automatic /etc/resolv.conf generation | `true` |
 | `wsl_distribution_config_interop_enabled` | Enable Windows process interoperability | `true` |
-| `wsl_distribution_config_interop_appendWindowsPath` | Add Windows PATH to $PATH | `true` |
+| `wsl_distribution_config_interop_append_windows_path` | Add Windows PATH to $PATH | `true` |
 | `wsl_distribution_config_user_default` | Default user for WSL distribution | `root` |
-| `wsl_distribution_config_defaultVhdSize` | Default size of the WSL2 VHD in bytes. | `1099511627776` (1TB) |
+| `wsl_distribution_config_default_vhd_size` | Default size of the WSL2 VHD in bytes. | `1099511627776` (1TB) |
 
 ### Additional Configuration for default user
 

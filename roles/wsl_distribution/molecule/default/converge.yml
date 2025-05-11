@@ -18,18 +18,18 @@
     # Test WSL configuration settings
     ## Automount settings
     wsl_distribution_config_automount_enabled: true
-    wsl_distribution_config_automount_mountFsTab: true
+    wsl_distribution_config_automount_mount_fs_tab: true
     wsl_distribution_config_automount_root: "/mnt/"
     wsl_distribution_config_automount_options: "metadata,uid=1000,gid=1000"
 
     ## Network settings
-    wsl_distribution_config_network_generateHosts: true
-    wsl_distribution_config_network_generateResolvConf: true
+    wsl_distribution_config_network_generate_hosts: true
+    wsl_distribution_config_network_generate_resolv_conf: true
     wsl_distribution_config_network_hostname: "wsl-ubuntu"
 
     ## Interop settings
     wsl_distribution_config_interop_enabled: true
-    wsl_distribution_config_interop_appendWindowsPath: true
+    wsl_distribution_config_interop_append_windows_path: true
 
     ## Boot settings
     wsl_distribution_config_boot_systemd: true

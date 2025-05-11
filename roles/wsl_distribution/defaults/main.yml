@@ -21,14 +21,14 @@ wsl_distribution_config_user_default_authorized_keys: []
 wsl_distribution_config_boot_systemd: true
 ## Automount
 wsl_distribution_config_automount_enabled: true
-wsl_distribution_config_automount_mountFsTab: true
+wsl_distribution_config_automount_mount_fs_tab: true
 wsl_distribution_config_automount_root: /mnt/
 ## Interop
 wsl_distribution_config_interop_enabled: true
-wsl_distribution_config_interop_appendWindowsPath: true
+wsl_distribution_config_interop_append_windows_path: true
 ## Network
-wsl_distribution_config_network_generateHosts: true
-wsl_distribution_config_network_generateResolvConf: true
+wsl_distribution_config_network_generate_hosts: true
+wsl_distribution_config_network_generate_resolv_conf: true
 
 # Extra configuration that will be appended to WSL distribution configuration wsl.conf
 wsl_distribution_extra_configs: {}

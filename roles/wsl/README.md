@@ -25,43 +25,43 @@ The role uses the following configuration structure. For detailed information ab
 |:---------|:------------|:---------|
 |`wsl_config_memory`| How much memory to assign to the WSL 2 VM | `4GB` |
 |`wsl_config_processors`| How many processors to assign to the WSL 2 VM | `2` |
-|`wsl_config_localhostforwarding`| Enable localhost forwarding from WSL to Windows | `true` |
-|`wsl_config_guiApplications`| Enable support for GUI applications (WSLg) | `true` |
-|`wsl_config_pageReporting`| Enable Windows to reclaim unused memory from WSL 2 | `true` |
+|`wsl_config_localhost_forwarding`| Enable localhost forwarding from WSL to Windows | `true` |
+|`wsl_config_gui_applications`| Enable support for GUI applications (WSLg) | `true` |
+|`wsl_config_page_reporting`| Enable Windows to reclaim unused memory from WSL 2 | `true` |
 |`wsl_config_kernel`| Absolute Windows path to a custom Linux kernel | - |
-|`wsl_config_kernelModules`| Absolute Windows path to custom Linux kernel modules VHD | - |
-|`wsl_config_kernelCommandLine`| Additional kernel command line arguments | - |
+|`wsl_config_kernel_modules`| Absolute Windows path to custom Linux kernel modules VHD | - |
+|`wsl_config_kernel_command_line`| Additional kernel command line arguments | - |
 |`wsl_config_swap`| How much swap space to add to the WSL 2 VM | - |
-|`wsl_config_swapFile`| Absolute Windows path to the swap virtual hard disk | - |
+|`wsl_config_swap_file`| Absolute Windows path to the swap virtual hard disk | - |
 
 #### Windows 11 Specific WSL Configuration Variables
 
 | Variable | Description | Default |
 |:---------|:------------|:---------|
-|`wsl_config_debugConsole`| Show debug console output | - |
-|`wsl_config_nestedVirtualization`| Enable nested virtualization | - |
-|`wsl_config_vmIdleTimeout`| VM idle timeout in milliseconds | - |
-|`wsl_config_autoProxy`| Use Windows HTTP proxy settings | - |
+|`wsl_config_debug_console`| Show debug console output | - |
+|`wsl_config_nested_virtualization`| Enable nested virtualization | - |
+|`wsl_config_vm_idle_timeout`| VM idle timeout in milliseconds | - |
+|`wsl_config_auto_proxy`| Use Windows HTTP proxy settings | - |
 
 #### Windows 11 22H2+ Specific WSL Configuration Variables
 
 | Variable | Description | Default |
 |:---------|:------------|:---------|
-|`wsl_config_networkingMode`| Network mode (NAT/mirrored) | - |
+|`wsl_config_networking_mode`| Network mode (NAT/mirrored) | - |
 |`wsl_config_firewall`| Enable Windows Firewall rules | - |
-|`wsl_config_dnsTunneling`| Enable DNS tunneling | - |
+|`wsl_config_dns_tunneling`| Enable DNS tunneling | - |
 
 #### Experimental Features
 
 | Variable | Description | Default |
 |:---------|:------------|:---------|
-|`wsl_config_experimental_sparseVhd`| Enable sparse VHD for WSL | - |
-|`wsl_config_experimental_autoMemoryReclaim`| Configure automatic memory reclaim behavior | - |
-|`wsl_config_experimental_bestEffortDnsParsing`| Enable best effort DNS parsing | - |
-|`wsl_config_experimental_dnsTunnelingIpAddress`| DNS tunneling IP address | - |
-|`wsl_config_experimental_initialAutoProxyTimeout`| Initial auto proxy timeout in milliseconds | - |
-|`wsl_config_experimental_ignoredPorts`| Comma-separated list of ignored ports | - |
-|`wsl_config_experimental_hostAddressLoopback`| Enable host address loopback | - |
+|`wsl_config_experimental_sparse_vhd`| Enable sparse VHD for WSL | - |
+|`wsl_config_experimental_auto_memory_reclaim`| Configure automatic memory reclaim behavior | - |
+|`wsl_config_experimental_best_effort_dns_parsing`| Enable best effort DNS parsing | - |
+|`wsl_config_experimental_dns_tunneling_ip_address`| DNS tunneling IP address | - |
+|`wsl_config_experimental_initial_auto_proxy_timeout`| Initial auto proxy timeout in milliseconds | - |
+|`wsl_config_experimental_ignored_ports`| Comma-separated list of ignored ports | - |
+|`wsl_config_experimental_host_address_loopback`| Enable host address loopback | - |
 
 ### Extra Configuration
 
@@ -93,8 +93,8 @@ Install wsl with configuration
       vars:
         wsl_config_memory: 8GB
         wsl_config_processors: 4
-        wsl_config_experimental_sparseVhd: true
-        wsl_config_experimental_autoMemoryReclaim: dropCache
+        wsl_config_experimental_sparse_vhd: true
+        wsl_config_experimental_auto_memory_reclaim: dropCache
 ```
 
 Shutdown all WSL instances and the WSL 2 VM

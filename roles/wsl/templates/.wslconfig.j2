@@ -10,86 +10,86 @@ processors={{ wsl_config_processors }}
 {% if wsl_config_kernel is defined %}
 kernel={{ wsl_config_kernel }}
 {% endif %}
-{% if wsl_config_kernelModules is defined %}
-kernelModules={{ wsl_config_kernelModules }}
+{% if wsl_config_kernel_modules is defined %}
+kernelModules={{ wsl_config_kernel_modules }}
 {% endif %}
-{% if wsl_config_kernelCommandLine is defined %}
-kernelCommandLine={{ wsl_config_kernelCommandLine }}
+{% if wsl_config_kernel_command_line is defined %}
+kernelCommandLine={{ wsl_config_kernel_command_line }}
 {% endif %}
-{% if wsl_config_safeMode is defined %}
-safeMode={{ wsl_config_safeMode | lower }}
+{% if wsl_config_safe_mode is defined %}
+safeMode={{ wsl_config_safe_mode | lower }}
 {% endif %}
 {% if wsl_config_swap is defined %}
 swap={{ wsl_config_swap }}
 {% endif %}
-{% if wsl_config_swapFile is defined %}
-swapFile={{ wsl_config_swapFile }}
+{% if wsl_config_swap_file is defined %}
+swapFile={{ wsl_config_swap_file }}
 {% endif %}
-{% if wsl_config_pageReporting is defined %}
-pageReporting={{ wsl_config_pageReporting | lower }}
+{% if wsl_config_page_reporting is defined %}
+pageReporting={{ wsl_config_page_reporting | lower }}
 {% endif %}
-{% if wsl_config_localhostforwarding is defined %}
-localhostforwarding={{ wsl_config_localhostforwarding | lower }}
+{% if wsl_config_localhost_forwarding is defined %}
+localhostforwarding={{ wsl_config_localhost_forwarding | lower }}
 {% endif %}
-{% if wsl_config_guiApplications is defined %}
-guiApplications={{ wsl_config_guiApplications | lower }}
+{% if wsl_config_gui_applications is defined %}
+guiApplications={{ wsl_config_gui_applications | lower }}
 {% endif %}
-{% if wsl_config_debugConsole is defined %}
-debugConsole={{ wsl_config_debugConsole | lower }}
+{% if wsl_config_debug_console is defined %}
+debugConsole={{ wsl_config_debug_console | lower }}
 {% endif %}
-{% if wsl_config_nestedVirtualization is defined %}
-nestedVirtualization={{ wsl_config_nestedVirtualization | lower }}
+{% if wsl_config_nested_virtualization is defined %}
+nestedVirtualization={{ wsl_config_nested_virtualization | lower }}
 {% endif %}
-{% if wsl_config_vmIdleTimeout is defined %}
-vmIdleTimeout={{ wsl_config_vmIdleTimeout }}
+{% if wsl_config_vm_idle_timeout is defined %}
+vmIdleTimeout={{ wsl_config_vm_idle_timeout }}
 {% endif %}
-{% if wsl_config_autoProxy is defined %}
-autoProxy={{ wsl_config_autoProxy | lower }}
+{% if wsl_config_auto_proxy is defined %}
+autoProxy={{ wsl_config_auto_proxy | lower }}
 {% endif %}
-{% if wsl_config_networkingMode is defined %}
-networkingMode={{ wsl_config_networkingMode }}
+{% if wsl_config_networking_mode is defined %}
+networkingMode={{ wsl_config_networking_mode }}
 {% endif %}
 {% if wsl_config_firewall is defined %}
 firewall={{ wsl_config_firewall | lower }}
 {% endif %}
-{% if wsl_config_dnsTunneling is defined %}
-dnsTunneling={{ wsl_config_dnsTunneling | lower }}
+{% if wsl_config_dns_tunneling is defined %}
+dnsTunneling={{ wsl_config_dns_tunneling | lower }}
 {% endif %}
-{% if wsl_config_dnsProxy is defined %}
-dnsProxy={{ wsl_config_dnsProxy | lower }}
+{% if wsl_config_dns_proxy is defined %}
+dnsProxy={{ wsl_config_dns_proxy | lower }}
 {% endif %}
-{% if wsl_config_defaultVhdSize is defined %}
-defaultVhdSize={{ wsl_config_defaultVhdSize }}
+{% if wsl_config_default_vhd_size is defined %}
+defaultVhdSize={{ wsl_config_default_vhd_size }}
 {% endif %}
 
-{% if wsl_config_experimental_autoMemoryReclaim is defined or
-      wsl_config_experimental_sparseVhd is defined or
-      wsl_config_experimental_bestEffortDnsParsing is defined or
-      wsl_config_experimental_dnsTunnelingIpAddress is defined or
-      wsl_config_experimental_initialAutoProxyTimeout is defined or
-      wsl_config_experimental_ignoredPorts is defined or
-      wsl_config_experimental_hostAddressLoopback is defined %}
+{% if wsl_config_experimental_auto_memory_reclaim is defined or
+      wsl_config_experimental_sparse_vhd is defined or
+      wsl_config_experimental_best_effort_dns_parsing is defined or
+      wsl_config_experimental_dns_tunneling_ip_address is defined or
+      wsl_config_experimental_initial_auto_proxy_timeout is defined or
+      wsl_config_experimental_ignored_ports is defined or
+      wsl_config_experimental_host_address_loopback is defined %}
 [experimental]
-{% if wsl_config_experimental_autoMemoryReclaim is defined %}
-autoMemoryReclaim={{ wsl_config_experimental_autoMemoryReclaim }}
+{% if wsl_config_experimental_auto_memory_reclaim is defined %}
+autoMemoryReclaim={{ wsl_config_experimental_auto_memory_reclaim }}
 {% endif %}
-{% if wsl_config_experimental_sparseVhd is defined %}
-sparseVhd={{ wsl_config_experimental_sparseVhd | lower }}
+{% if wsl_config_experimental_sparse_vhd is defined %}
+sparseVhd={{ wsl_config_experimental_sparse_vhd | lower }}
 {% endif %}
-{% if wsl_config_experimental_bestEffortDnsParsing is defined %}
-bestEffortDnsParsing={{ wsl_config_experimental_bestEffortDnsParsing | lower }}
+{% if wsl_config_experimental_best_effort_dns_parsing is defined %}
+bestEffortDnsParsing={{ wsl_config_experimental_best_effort_dns_parsing | lower }}
 {% endif %}
-{% if wsl_config_experimental_dnsTunnelingIpAddress is defined %}
-dnsTunnelingIpAddress={{ wsl_config_experimental_dnsTunnelingIpAddress }}
+{% if wsl_config_experimental_dns_tunneling_ip_address is defined %}
+dnsTunnelingIpAddress={{ wsl_config_experimental_dns_tunneling_ip_address }}
 {% endif %}
-{% if wsl_config_experimental_initialAutoProxyTimeout is defined %}
-initialAutoProxyTimeout={{ wsl_config_experimental_initialAutoProxyTimeout }}
+{% if wsl_config_experimental_initial_auto_proxy_timeout is defined %}
+initialAutoProxyTimeout={{ wsl_config_experimental_initial_auto_proxy_timeout }}
 {% endif %}
-{% if wsl_config_experimental_ignoredPorts is defined %}
-ignoredPorts={{ wsl_config_experimental_ignoredPorts }}
+{% if wsl_config_experimental_ignored_ports is defined %}
+ignoredPorts={{ wsl_config_experimental_ignored_ports }}
 {% endif %}
-{% if wsl_config_experimental_hostAddressLoopback is defined %}
-hostAddressLoopback={{ wsl_config_experimental_hostAddressLoopback | lower }}
+{% if wsl_config_experimental_host_address_loopback is defined %}
+hostAddressLoopback={{ wsl_config_experimental_host_address_loopback | lower }}
 {% endif %}
 {% endif %}
 

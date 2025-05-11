@@ -1,4 +1,0 @@
-profile: basic
-
-var_naming_pattern: "^[a-z_](?:[a-z0-9_]*[a-z0-9])?(?:_[a-z](?:[a-zA-Z0-9]+))*$"
-

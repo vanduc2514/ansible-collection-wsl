@@ -14,5 +14,5 @@
         wsl_distribution_state: run
         wsl_distribution_arch_version: 2
         wsl_distribution_config_boot_systemd: true
-        wsl_distribution_config_network_generateResolvConf: true
-        wsl_distribution_config_network_generateHosts: true
+        wsl_distribution_config_network_generate_resolv_conf: true
+        wsl_distribution_config_network_generate_hosts: true

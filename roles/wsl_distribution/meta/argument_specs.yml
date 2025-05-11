@@ -97,7 +97,7 @@ argument_specs:
         type: bool
         default: true
 
-      wsl_distribution_config_automount_mountFsTab:
+      wsl_distribution_config_automount_mount_fs_tab:
         description: Enable mounting via /etc/fstab
         type: bool
         default: true
@@ -112,12 +112,12 @@ argument_specs:
         type: str
         required: false
 
-      wsl_distribution_config_network_generateHosts:
+      wsl_distribution_config_network_generate_hosts:
         description: Enable automatic /etc/hosts generation
         type: bool
         default: true
 
-      wsl_distribution_config_network_generateResolvConf:
+      wsl_distribution_config_network_generate_resolv_conf:
         description: Enable automatic /etc/resolv.conf generation
         type: bool
         default: true
@@ -131,7 +131,7 @@ argument_specs:
         type: bool
         default: true
 
-      wsl_distribution_config_interop_appendWindowsPath:
+      wsl_distribution_config_interop_append_windows_path:
         description: Add Windows PATH to $PATH
         type: bool
         default: true

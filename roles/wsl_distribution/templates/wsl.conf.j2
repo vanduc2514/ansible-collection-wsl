@@ -11,7 +11,7 @@ command = {{ wsl_distribution_config_boot_command }}
 
 [automount]
 enabled = {{ wsl_distribution_config_automount_enabled | lower }}
-mountFsTab = {{ wsl_distribution_config_automount_mountFsTab | lower }}
+mountFsTab = {{ wsl_distribution_config_automount_mount_fs_tab | lower }}
 root = {{ wsl_distribution_config_automount_root }}
 {% if wsl_distribution_config_automount_options is defined %}
 options = {{ wsl_distribution_config_automount_options }}
@@ -19,11 +19,11 @@ options = {{ wsl_distribution_config_automount_options }}
 
 [interop]
 enabled = {{ wsl_distribution_config_interop_enabled | lower }}
-appendWindowsPath = {{ wsl_distribution_config_interop_appendWindowsPath | lower }}
+appendWindowsPath = {{ wsl_distribution_config_interop_append_windows_path | lower }}
 
 [network]
-generateHosts = {{ wsl_distribution_config_network_generateHosts | lower }}
-generateResolvConf = {{ wsl_distribution_config_network_generateResolvConf | lower }}
+generateHosts = {{ wsl_distribution_config_network_generate_hosts | lower }}
+generateResolvConf = {{ wsl_distribution_config_network_generate_resolv_conf | lower }}
 {% if wsl_distribution_config_network_hostname is defined %}
 hostname = {{ wsl_distribution_config_network_hostname }}
 {% endif %}
