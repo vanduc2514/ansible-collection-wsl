@@ -1,7 +1,18 @@
----
 - name: Verify
   hosts: windows
   gather_facts: false
+  vars:
+    test_user_name: ubuntu
+    test_password: TestP@ssW_rd
+
+  pre_tasks:
+    - name: Set password for test user
+      vanduc2514.wsl_automation.wsl_user:
+        distribution: Ubuntu-22.04
+        name: "{{ test_user_name }}"
+        password: "{{ test_password }}"
+        sudo: true
+
   tasks:
     - name: Check WSL distribution exists
       ansible.windows.win_shell: wsl.exe -l -v
@@ -63,7 +74,7 @@
         success_msg: "Extra configuration sections are correctly set"
 
     - name: Verify default user exists
-      ansible.windows.win_shell: wsl.exe -d Ubuntu-22.04 -- id ubuntu
+      ansible.windows.win_shell: wsl.exe -d Ubuntu-22.04 -- id "{{ test_user_name }}"
       register: user_result
       changed_when: false
 
@@ -79,7 +90,7 @@
         success_msg: "Default user 'ubuntu' is properly configured"
 
     - name: Get default user details
-      ansible.windows.win_shell: wsl.exe -d Ubuntu-22.04 -- getent passwd ubuntu
+      ansible.windows.win_shell: wsl.exe -d Ubuntu-22.04 -- getent passwd {{ test_user_name }}
       register: user_details
       changed_when: false
 
@@ -94,19 +105,28 @@
         fail_msg: "Default user 'ubuntu' configuration is incorrect"
         success_msg: "Default user 'ubuntu' configuration is correct"
 
-    - name: Check if default user has sudo privileges
-      ansible.windows.win_shell: wsl.exe --terminate Ubuntu-22.04 ; wsl.exe -d Ubuntu-22.04 -u ubuntu -- sudo -S cat /etc/shadow
+    - name: Check if default user has sudo privileges with password
+      ansible.windows.win_shell: |
+        echo '{{ test_password }}' | wsl.exe -d Ubuntu-22.04 -u {{ test_user_name }} -- sudo -S cat /etc/shadow
       register: sudo_check
       changed_when: false
-      ignore_errors: true
-
-    - name: Normalize sudo check output
-      ansible.builtin.set_fact:
-        normalized_sudo_check: "{{ sudo_check.stdout | replace('\u0000', '') }}"
 
     - name: Verify default user sudo privileges
       ansible.builtin.assert:
         that:
-          - "sudo_check.rc == 0"
+          - sudo_check.rc == 0
         fail_msg: "Default user 'ubuntu' does not have proper sudo privileges"
         success_msg: "Default user 'ubuntu' has proper sudo privileges"
+
+    - name: Check if sudo privileges requires password
+      ansible.windows.win_shell: wsl.exe -d Ubuntu-22.04 -u {{ test_user_name }} -- sudo -S cat /etc/shadow
+      register: sudo_check_empty_password
+      changed_when: false
+      ignore_errors: true
+
+    - name: Verify default user sudo privileges
+      ansible.builtin.assert:
+        that:
+          - sudo_check_empty_password.rc == 1
+        fail_msg: "sudo privileges without password"
+        success_msg: "sudo privileges requires password"
