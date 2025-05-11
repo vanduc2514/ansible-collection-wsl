@@ -147,12 +147,12 @@ function Update-PackageCache {
         $PackageManager
     )
 
-    if ($PSCmdlet.ShouldProcess($DistributionName, "Update package cache")) {
+    if ($PSCmdlet.ShouldProcess($DistributionName, 'Update package cache')) {
         try {
             $updateCacheCommand = switch ($PackageManager) {
-                "apt" { "apt-get update" }
-                "dnf" { "LC_ALL=C.UTF-8 dnf update -y || true" }  # dnf returns 100 when updates are available
-                "yum" { "LC_ALL=C.UTF-8 yum update -y || true" }  # yum returns 100 when updates are available
+                "apt" { "apt-get update > /dev/null" }
+                "dnf" { "LC_ALL=C.UTF-8 dnf update -y -q > /dev/null" }
+                "yum" { "LC_ALL=C.UTF-8 yum update -y -q > /dev/null" }
                 "zypper" { "LC_ALL=C.UTF-8 zypper refresh" }
                 "pacman" { "pacman -Sy" }
                 "apk" { "apk update" }
@@ -237,8 +237,8 @@ function Install-Package {
                     "DEBCONF_NONINTERACTIVE_SEEN=true " + `
                     "apt-get install -qq $forceFlag $packageSpec"
                 }
-                "dnf" { "LC_ALL=C.UTF-8 dnf install $forceFlag $packageSpec" }
-                "yum" { "LC_ALL=C.UTF-8 yum install $forceFlag $packageSpec" }
+                "dnf" { "LC_ALL=C.UTF-8 dnf install $forceFlag $packageSpec -q > /dev/null" }
+                "yum" { "LC_ALL=C.UTF-8 yum install $forceFlag $packageSpec -q > /dev/null" }
                 "zypper" { "LC_ALL=C.UTF-8 zypper install $forceFlag $packageSpec" }
                 "pacman" { "pacman -S $forceFlag $packageSpec" }
                 "apk" { "apk add $forceFlag $packageSpec" }

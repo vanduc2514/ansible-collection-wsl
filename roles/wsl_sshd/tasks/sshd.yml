@@ -92,7 +92,7 @@
     name: "{{ wsl_sshd_service_name }}"
     state: "{{ wsl_sshd_state }}"
     daemon_reload: true
-    dbus_timeout: "{{ wsl_sshd_dbus_timeout | default(120) }}"
+    dbus_timeout: "{{ wsl_sshd_dbus_timeout }}"
   when: wsl_sshd_service_type == "systemd"
 
 - name: Start SSHD service via sysvinit
