@@ -58,11 +58,13 @@
     path: /etc/wsl.conf
     content: "{{ lookup('ansible.builtin.template', 'wsl.conf.j2') }}"
     state: file
-    mode: 0644
+    mode: '644'
+  register: wsl_distribution_wsl_conf
   when: wsl_distribution_state != "absent"
 
 - name: Restart WSL distribution
   when:
+    - wsl_distribution_wsl_conf is defined
     - wsl_distribution_wsl_conf.changed
     - wsl_distribution_state == "run"
   block:
