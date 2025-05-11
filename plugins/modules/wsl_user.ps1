@@ -215,7 +215,7 @@ function Set-SudoAccess {
     )
 
     if ($Sudo) {
-        $sudoCmd = "echo '$UserName ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/$UserName && chmod 0440 /etc/sudoers.d/$UserName"
+        $sudoCmd = "echo '$UserName ALL=(ALL) ALL' > /etc/sudoers.d/$UserName && chmod 0440 /etc/sudoers.d/$UserName"
         if ($PSCmdlet.ShouldProcess($DistributionName, "Grant sudo access to user: $UserName")) {
             try {
                 Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $sudoCmd | Out-Null

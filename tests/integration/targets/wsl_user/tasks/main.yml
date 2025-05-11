@@ -12,3 +12,27 @@
     - name: Debug actual output if any test failed
       ansible.builtin.debug:
         msg: "{{ wsl_user_actual }}"
+
+- name: Test sudo requires password
+  block:
+    - name: Create test user with sudo access
+      vanduc2514.wsl_automation.wsl_user:
+        distribution: "{{ wsl_distribution }}"
+        name: testuser
+        password: TestPass123!
+        sudo: true
+        state: present
+      register: user_result
+
+    - name: Verify sudo requires password
+      ansible.windows.win_shell: |
+        wsl -d {{ wsl_distribution }} -u testuser -- sudo -n true
+      register: sudo_test
+      failed_when: sudo_test.rc == 1
+      ignore_errors: true
+
+    - name: Assert sudo command failed without password
+      assert:
+        that:
+          - sudo_test is failed
+          - "'sudo: a password is required' in sudo_test.stderr_lines"
