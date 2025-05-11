@@ -1,0 +1,18 @@
+- name: Test WSL Exist scenarios
+  block:
+    - name: Import basic test file scenario
+      ansible.builtin.import_tasks:
+        file: test_file.yml
+
+    - name: Import basic test directory scenario
+      ansible.builtin.import_tasks:
+        file: test_directory.yml
+
+    - name: Import symlink test scenario
+      ansible.builtin.import_tasks:
+        file: test_symlink.yml
+
+  rescue:
+    - name: Debug actual output if any test failed
+      ansible.builtin.debug:
+        msg: "{{ wsl_exists_actual }}"

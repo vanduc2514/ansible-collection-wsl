@@ -1,0 +1,37 @@
+- name: Test directory existence check
+  block:
+    - name: Create a test directory
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_distribution }}"
+        path: /tmp/test_dir
+        state: directory
+
+    - name: Check if test directory exists
+      vanduc2514.wsl_automation.wsl_exists:
+        distribution: "{{ wsl_distribution }}"
+        path: /tmp/test_dir
+      register: wsl_exists_actual
+
+    - name: Assert directory exists
+      ansible.builtin.assert:
+        that:
+          - wsl_exists_actual.exists == true
+          - wsl_exists_actual.path == '/tmp/test_dir'
+
+    - name: Check if non-existent directory exists
+      vanduc2514.wsl_automation.wsl_exists:
+        distribution: "{{ wsl_distribution }}"
+        path: /tmp/nonexistent_dir
+      register: wsl_exists_actual
+
+    - name: Assert non-existent directory check
+      ansible.builtin.assert:
+        that:
+          - wsl_exists_actual.exists == false
+          - wsl_exists_actual.path == '/tmp/nonexistent_dir'
+
+    - name: Clean up test directory
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_distribution }}"
+        path: /tmp/test_dir
+        state: absent

@@ -1,0 +1,61 @@
+- name: Test symlink existence check
+  block:
+    - name: Create a test file and symlink
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_distribution }}"
+        path: "{{ item }}"
+        content: "{{ 'Test content' if '/test.txt' in item else omit }}"
+        state: "{{ 'file' if '/test.txt' in item else 'directory' }}"
+      loop:
+        - /tmp/test.txt
+        - /tmp/test_dir
+
+    - name: Create symlinks
+      ansible.windows.win_shell: |
+        wsl -d {{ wsl_distribution }} -u root -- ln -s /tmp/test.txt /tmp/test_link
+        wsl -d {{ wsl_distribution }} -u root -- ln -s /tmp/test_dir /tmp/dir_link
+
+    - name: Check if symlinks exist
+      vanduc2514.wsl_automation.wsl_exists:
+        distribution: "{{ wsl_distribution }}"
+        path: "{{ item }}"
+      register: wsl_exists_actual
+      loop:
+        - /tmp/test_link
+        - /tmp/dir_link
+
+    - name: Assert symlinks exist
+      ansible.builtin.assert:
+        that:
+          - wsl_exists_actual.results[0].exists == true
+          - wsl_exists_actual.results[1].exists == true
+          - wsl_exists_actual.results[0].path == '/tmp/test_link'
+          - wsl_exists_actual.results[1].path == '/tmp/dir_link'
+
+    - name: Break symlinks by removing targets
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_distribution }}"
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/test.txt
+        - /tmp/test_dir
+
+    - name: Check if broken symlinks exist
+      vanduc2514.wsl_automation.wsl_exists:
+        distribution: "{{ wsl_distribution }}"
+        path: "{{ item }}"
+      register: wsl_exists_actual
+      loop:
+        - /tmp/test_link
+        - /tmp/dir_link
+
+    - name: Assert broken symlinks still exist
+      ansible.builtin.assert:
+        that:
+          - wsl_exists_actual.results[0].exists == true
+          - wsl_exists_actual.results[1].exists == true
+
+    - name: Clean up symlinks
+      ansible.windows.win_shell: |
+        wsl -d {{ wsl_distribution }} -u root -- rm /tmp/test_link /tmp/dir_link

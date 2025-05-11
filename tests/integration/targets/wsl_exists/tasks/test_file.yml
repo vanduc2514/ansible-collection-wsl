@@ -1,0 +1,38 @@
+- name: Test file existence check
+  block:
+    - name: Create a test file
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_distribution }}"
+        path: /tmp/test.txt
+        content: "Test content"
+        state: file
+
+    - name: Check if test file exists
+      vanduc2514.wsl_automation.wsl_exists:
+        distribution: "{{ wsl_distribution }}"
+        path: /tmp/test.txt
+      register: wsl_exists_actual
+
+    - name: Assert file exists
+      ansible.builtin.assert:
+        that:
+          - wsl_exists_actual.exists == true
+          - wsl_exists_actual.path == '/tmp/test.txt'
+
+    - name: Check if non-existent file exists
+      vanduc2514.wsl_automation.wsl_exists:
+        distribution: "{{ wsl_distribution }}"
+        path: /tmp/nonexistent.txt
+      register: wsl_exists_actual
+
+    - name: Assert non-existent file check
+      ansible.builtin.assert:
+        that:
+          - wsl_exists_actual.exists == false
+          - wsl_exists_actual.path == '/tmp/nonexistent.txt'
+
+    - name: Clean up test file
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_distribution }}"
+        path: /tmp/test.txt
+        state: absent
