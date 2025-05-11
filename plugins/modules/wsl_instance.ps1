@@ -26,7 +26,7 @@ $spec = @{
         rootfs_download_checksum_algorithm = @{
             type     = "str"
             choices  = @("md5", "sha1", "sha256", "sha384", "sha512")
-            default  = "md5"
+            default  = "sha256"
         }
         import_dir_path = @{
             type        = "str"
@@ -105,6 +105,7 @@ function List-WSLDistribution {
 
     return $distributions
 }
+
 
 function Get-WSLOnlineDistribution {
     $wslDistros = Invoke-WSLCommand -Arguments @("--list", "--online")
@@ -291,6 +292,10 @@ function Import-WSLDistribution {
 
     if ($PSCmdlet.ShouldProcess($DistributionName, 'Import WSL distribution')) {
         try {
+            if (-not (Test-Path -Path $ImportDirectoryPath)) {
+                New-Item -ItemType Directory -Path $ImportDirectoryPath -Force | Out-Null
+            }
+
             $wslArguments = @(
                 "--import", $DistributionName,
                 $ImportDirectoryPath, $RootFSPath
@@ -302,8 +307,6 @@ function Import-WSLDistribution {
         }
     }
 }
-
-
 
 
 function Set-WSLDistributionArchVersion {
@@ -436,7 +439,7 @@ $rootfs_download_path = if ($rootfs_download_path) {
     $rootfs_download_path
 } elseif ($rootfs_download) {
     $urlHash = Get-HashFromURL -Url $rootfs_path
-    $fileExtension = if ($import_bundle) { "zip" } else { "tar.gz" }
+    $fileExtension = if ($import_bundle) { "zip" } else { "wsl" }
     "$([System.IO.Path]::GetTempPath())\WSLRootFSDownloaded\${urlHash}.${fileExtension}"
 }
 
