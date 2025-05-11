@@ -26,8 +26,8 @@ These variables determine how the WSL distribution is installed, whether from th
 | Configuration Option | Description | Default |
 |---------------------|-------------|---------|
 | `wsl_distribution_install_web_download` | Whether to download distribution from the Microsoft Store | `true` |
-| `wsl_distribution_import_rootfs_path` | Local path to the rootfs tarball for custom distribution import | - |
-| `wsl_distribution_import_rootfs_download_path` | URL to import rootfs tarball. If the path is an external source, attempt to download it first. If the path is an AppX bundle or a zip file, set `wsl_distribution_import_bundle` to `true` | - |
+| `wsl_distribution_import_rootfs_path` | Path to import rootfs tarball. If the path is an external source, attempt to download it first. If the path is an AppX bundle or a zip file, set `wsl_distribution_import_bundle` to `true` | - |
+| `wsl_distribution_import_rootfs_download_path` | Path to store downloaded rootfs | `$env:Temp\WSLRootFSDownloaded` |
 | `wsl_distribution_import_rootfs_download_checksum` | Checksum value for verifying downloaded rootfs integrity | - |
 | `wsl_distribution_import_rootfs_download_checksum_algorithm` | Algorithm used for checksum verification | `sha256` |
 | `wsl_distribution_import_dir_path` | Target directory path where the distribution will be imported | default to `$env:ProgramData\WSLDistributions` |
@@ -52,6 +52,7 @@ The role uses the following configuration structure. For detailed information ab
 | `wsl_distribution_config_interop_enabled` | Enable Windows process interoperability | `true` |
 | `wsl_distribution_config_interop_appendWindowsPath` | Add Windows PATH to $PATH | `true` |
 | `wsl_distribution_config_user_default` | Default user for WSL distribution | `root` |
+| `wsl_distribution_config_defaultVhdSize` | Default size of the WSL2 VHD in bytes. | `1099511627776` (1TB) |
 
 ### Additional Configuration for default user
 
