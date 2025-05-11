@@ -9,12 +9,17 @@
   notify:
     - Restart Windows
 
+- name: Shutdown all WSL instances and VM
+  ansible.windows.win_shell: wsl --shutdown
+  changed_when: false
+  when: wsl_state == 'shutdown'
+
 - name: Install WSL binary
   ansible.windows.win_package:
     path: "https://github.com/microsoft/WSL/releases/download/{{ wsl_version }}/Microsoft.WSL_{{ wsl_version }}.0_x64_ARM64.msixbundle"
     provider: msix
     product_id: MicrosoftCorporationII.WindowsSubsystemForLinux
-    state: "{{ wsl_state }}"
+    state: "{{ wsl_state if wsl_state != 'shutdown' else 'present' }}"
   register: wsl_binary
   notify:
     - Restart Windows

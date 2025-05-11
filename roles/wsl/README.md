@@ -15,7 +15,7 @@ These variables control how `wsl` is installed
 |:---------|:------------|:---------|
 |`wsl_arch_version`| The WSL architecture version for new distributions (1 or 2) | `2` |
 |`wsl_version`| The WSL binary version from WSL Github Repository | `2.3.26` |
-|`wsl_state`| Whether the WSL binary should be installed (present) or removed (absent) | `present` |
+|`wsl_state`| Controls WSL state: 'present' (installed), 'absent' (removed), or 'shutdown' (terminate all WSL instances and VM) | `present` |
 
 ### WSL Configuration Variables
 
@@ -95,6 +95,16 @@ Install wsl with configuration
         wsl_config_processors: 4
         wsl_config_experimental_sparseVhd: true
         wsl_config_experimental_autoMemoryReclaim: dropCache
+```
+
+Shutdown all WSL instances and the WSL 2 VM
+
+```yaml
+- hosts: windows
+  roles:
+    - role: vanduc2514.wsl_automation.wsl
+      vars:
+        wsl_state: shutdown
 ```
 
 ## License
