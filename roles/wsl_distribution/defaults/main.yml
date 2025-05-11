@@ -1,3 +1,5 @@
+wsl_distribution_state: stop
+
 # Architecture version (1 or 2)
 wsl_distribution_arch_version: 2
 
