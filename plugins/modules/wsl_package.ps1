@@ -150,9 +150,13 @@ function Update-PackageCache {
     if ($PSCmdlet.ShouldProcess($DistributionName, 'Update package cache')) {
         try {
             $updateCacheCommand = switch ($PackageManager) {
-                "apt" { "apt-get update > /dev/null" }
-                "dnf" { "LC_ALL=C.UTF-8 dnf update -y -q > /dev/null" }
-                "yum" { "LC_ALL=C.UTF-8 yum update -y -q > /dev/null" }
+                "apt" {
+                    "DEBIAN_FRONTEND=noninteractive " + `
+                    "DEBCONF_NONINTERACTIVE_SEEN=true " + `
+                    "apt-get update"
+                }
+                "dnf" { "LC_ALL=C.UTF-8 dnf makecache -y -q &> /dev/null" }
+                "yum" { "LC_ALL=C.UTF-8 yum makecache -y -q &> /dev/null" }
                 "zypper" { "LC_ALL=C.UTF-8 zypper refresh" }
                 "pacman" { "pacman -Sy" }
                 "apk" { "apk update" }
@@ -237,8 +241,8 @@ function Install-Package {
                     "DEBCONF_NONINTERACTIVE_SEEN=true " + `
                     "apt-get install -qq $forceFlag $packageSpec"
                 }
-                "dnf" { "LC_ALL=C.UTF-8 dnf install $forceFlag $packageSpec -q > /dev/null" }
-                "yum" { "LC_ALL=C.UTF-8 yum install $forceFlag $packageSpec -q > /dev/null" }
+                "dnf" { "LC_ALL=C.UTF-8 dnf install $forceFlag $packageSpec -q &> /dev/null" }
+                "yum" { "LC_ALL=C.UTF-8 yum install $forceFlag $packageSpec -q &> /dev/null" }
                 "zypper" { "LC_ALL=C.UTF-8 zypper install $forceFlag $packageSpec" }
                 "pacman" { "pacman -S $forceFlag $packageSpec" }
                 "apk" { "apk add $forceFlag $packageSpec" }
@@ -300,7 +304,11 @@ function Remove-Package {
             }
 
             $removeCommand = switch ($PackageManager) {
-                "apt" { "apt-get remove $forceFlag $PackageName" }
+                "apt" {
+                    "DEBIAN_FRONTEND=noninteractive " + `
+                    "DEBCONF_NONINTERACTIVE_SEEN=true " + `
+                    "apt-get remove -qq $forceFlag $PackageName"
+                }
                 "dnf" { "LC_ALL=C.UTF-8 dnf remove $forceFlag $PackageName" }
                 "yum" { "LC_ALL=C.UTF-8 yum remove $forceFlag $PackageName" }
                 "zypper" { "LC_ALL=C.UTF-8 zypper remove $forceFlag $PackageName" }

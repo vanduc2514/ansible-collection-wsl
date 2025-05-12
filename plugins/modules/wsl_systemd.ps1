@@ -182,7 +182,7 @@ function Set-ServiceActive {
             $enableServiceParams = @{
                 DistributionName = $DistributionName
                 DistributionUser = 'root'
-                LinuxCommand = "systemctl $action $ServiceName"
+                LinuxCommand = "systemctl $action $ServiceName &> /dev/null"
             }
 
             Invoke-LinuxCommand @enableServiceParams | Out-Null
