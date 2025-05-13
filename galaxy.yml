@@ -15,7 +15,7 @@ tags:
   - vm
 dependencies:
   "ansible.windows": ">=1.14.0"
-  "community.general": ">=9.0.0"
+  "community.windows": ">=1.7.0"
 repository: https://github.com/vanduc2514/wsl-ansible-collection.git
 documentation: ""
 homepage: ""
