@@ -55,18 +55,6 @@ MaxAuthTries 3
 LoginGraceTime 60
 ```
 
-### Port Forwarding Configuration
-
-Setting these variables allows connecting to wsl distribution via ssh from LAN network
-
-**Note**: Port forwarding is non-idempotence because the IP of wsl distribution is dynamically changed between system restart.
-
-| Configuration Option | Description | Default |
-|---------------------|-------------|---------|
-| `wsl_sshd_port_forward_enabled` | Enable port forwarding from Windows to WSL | `false` |
-| `wsl_sshd_port_forward_windows_port` | Windows port to forward | `{{ wsl_sshd_port }}` |
-| `wsl_sshd_port_forward_wsl_port` | WSL port to forward to | `{{ wsl_sshd_port }}` |
-
 ## Example Playbook
 
 Basic setup with defaults (started state)
@@ -99,20 +87,6 @@ Remove SSH daemon and configuration
       vars:
         wsl_sshd_distribution_name: Ubuntu-22.04
         wsl_sshd_state: absent
-```
-
-Setup with custom port and port forwarding
-
-```yaml
-- hosts: windows
-  roles:
-    - role: vanduc2514.wsl_automation.wsl_sshd
-      vars:
-        wsl_sshd_distribution_name: Ubuntu-22.04
-        wsl_sshd_state: started
-        wsl_sshd_port: 2220
-        wsl_sshd_port_forward_enabled: true
-        wsl_sshd_port_forward_host_port: 3320
 ```
 
 ## License

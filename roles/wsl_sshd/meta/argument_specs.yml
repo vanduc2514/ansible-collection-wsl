@@ -84,18 +84,3 @@ argument_specs:
         type: dict
         default: {}
         description: Additional SSH configuration options to set
-
-      wsl_sshd_port_forward_enabled:
-        type: bool
-        default: true
-        description: Whether to enable port forwarding from Windows host to WSL
-
-      wsl_sshd_port_forward_host_port:
-        type: int
-        default: 9022
-        description: Port on Windows host to forward to WSL SSH port
-
-      wsl_sshd_port_forward_firewall_rule_name:
-        type: str
-        default: "WSL SSH"
-        description: Name of the Windows Firewall rule to create

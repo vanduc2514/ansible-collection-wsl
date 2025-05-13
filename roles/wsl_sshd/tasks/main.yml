@@ -1,6 +1,147 @@
-- name: Configure SSH daemon
-  ansible.builtin.import_tasks: sshd.yml
+- name: Install SSH server
+  vanduc2514.wsl_automation.wsl_package:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    name: "{{ wsl_sshd_package_name }}"
+    state: "{{ wsl_sshd_state | regex_replace('stopped', 'present') | regex_replace('started', 'present') }}"
+    update_cache: true
 
-- name: Configure port forwarding
-  ansible.builtin.import_tasks: port_forward.yml
-  when: wsl_sshd_port_forward_enabled
+- name: Create SSH directory
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    path: /etc/ssh
+    state: directory
+    mode: "755"
+    owner: root
+  when: wsl_sshd_state != 'absent'
+
+- name: Check if host keys exist
+  vanduc2514.wsl_automation.wsl_exists:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    path: "/etc/ssh/ssh_host_{{ item }}_key"
+  register: host_key_check
+  loop:
+    - rsa
+    - ecdsa
+    - ed25519
+  when: wsl_sshd_state != 'absent'
+
+- name: Generate SSH host keys
+  when:
+    - wsl_sshd_state != 'absent'
+    - wsl_sshd_force_generate_host_key or
+      (
+        host_key_check.results | map(attribute='exists') |
+        select('false') |
+        list |
+        length > 0
+      )
+  block:
+    - name: Remove existing host keys
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        path: "/etc/ssh/ssh_host_{{ item }}_key{% if public %}{{ '.pub' }}{% endif %}"
+        state: absent
+      with_nested:
+        - ['rsa', 'ecdsa', 'ed25519']
+        - [false, true]
+      loop_control:
+        loop_var: item
+        index_var: public
+      when: wsl_sshd_force_generate_host_key
+
+    - name: Generate host keys
+      ansible.windows.win_shell: wsl --distribution {{ wsl_sshd_distribution_name }} --user root -- ssh-keygen -A
+      register: generate_host_keys
+
+- name: Create and template sshd_config
+  vanduc2514.wsl_automation.wsl_file:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    path: /etc/ssh/sshd_config
+    content: "{{ lookup('ansible.builtin.template', 'sshd_config.j2') }}"
+    mode: '644'
+  register: create_template_sshd_config
+  when: wsl_sshd_state != 'absent'
+
+- name: Create and template systemd service override
+  when:
+    - wsl_sshd_state != 'absent'
+    - wsl_sshd_service_type == "systemd"
+    - wsl_sshd_systemd_service_override is defined
+  block:
+    - name: Create systemd override directory
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        path: /etc/systemd/system/{{ wsl_sshd_service_name }}.service.d
+        state: directory
+        mode: '755'
+
+    - name: Configure systemd override
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        path: /etc/systemd/system/{{ wsl_sshd_service_name }}.service.d/override.conf
+        content: "{{ wsl_sshd_systemd_service_override }}"
+        mode: '644'
+      register: configure_systemd_override
+
+- name: Configure SSHD service via systemd
+  vanduc2514.wsl_automation.wsl_systemd:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    name: "{{ wsl_sshd_service_name }}"
+    state: "{{ wsl_sshd_state }}"
+    daemon_reload: true
+    dbus_timeout: "{{ wsl_sshd_dbus_timeout }}"
+  when: wsl_sshd_service_type == "systemd"
+
+- name: Configure SSHD service via sysvinit
+  vanduc2514.wsl_automation.wsl_sysvinit:
+    distribution: "{{ wsl_sshd_distribution_name }}"
+    name: "{{ wsl_sshd_service_name }}"
+    state: "{{ wsl_sshd_state }}"
+  when: wsl_sshd_service_type == "sysvinit"
+
+- name: Restart sshd via systemd
+  when:
+    - wsl_sshd_service_type == "systemd"
+    - (generate_host_keys is defined and generate_host_keys.changed) or
+      (create_template_sshd_config is defined and create_template_sshd_config.changed) or
+      (configure_systemd_override is defined and configure_systemd_override.changed)
+  block:
+    - name: (Restart) Stop sshd via systemd
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        name: "{{ wsl_sshd_service_name }}"
+        state: stopped
+
+    - name: (Restart) Start sshd via systemd
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        name: "{{ wsl_sshd_service_name }}"
+        state: started
+        daemon_reload: true
+
+    - name: Set ansible fact
+      ansible.builtin.set_fact:
+        wsl_sshd_restarted: true
+
+- name: Restart sshd via sysvinit
+  when:
+    - wsl_sshd_service_type == "sysvinit"
+    - (generate_host_keys is defined and generate_host_keys.changed) or
+      (create_template_sshd_config is defined and create_template_sshd_config.changed) or
+      (configure_systemd_override is defined and configure_systemd_override.changed)
+  block:
+    - name: (Restart) Stop sshd via sysvinit
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        name: "{{ wsl_sshd_service_name }}"
+        state: stopped
+
+    - name: (Restart) Start sshd via sysvinit
+      vanduc2514.wsl_automation.wsl_sysvinit:
+        distribution: "{{ wsl_sshd_distribution_name }}"
+        name: "{{ wsl_sshd_service_name }}"
+        state: started
+
+    - name: Set ansible fact
+      ansible.builtin.set_fact:
+        wsl_sshd_restarted: true

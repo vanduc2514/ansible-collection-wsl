@@ -10,7 +10,9 @@ AuthorizedKeysFile {{ wsl_sshd_authorized_keys_file }}
 
 X11Forwarding {{ wsl_sshd_x11_forwarding | bool | ternary('yes', 'no') }}
 
+{% if wsl_sshd_subsystem_sftp is defined %}
 Subsystem sftp {{ wsl_sshd_subsystem_sftp }}
+{% endif %}
 
 {% if wsl_sshd_extra_configs %}
 {% for key, value in wsl_sshd_extra_configs.items() %}
