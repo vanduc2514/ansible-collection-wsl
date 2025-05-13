@@ -1,5 +1,35 @@
 releases:
   1.0.0:
     changes:
-      release_summary: 'First stable release of `wsl_automation`` collection'
+      release_summary: 'First stable release of `wsl_automation` collection'
     release_date: '2025-05-06'
+
+  1.0.1:
+    changes:
+      release_summary: 'Maintenance release focusing on stability, usability, and bug fixes'
+      additions:
+        - 'New `wsl_exists` module for checking file/directory existence in WSL'
+      improvements:
+        - 'Added shutdown condition for WSL based on configuration changes (wsl role)'
+        - 'Updated default checksum algorithm to sha256 and ensured import directory exists (wsl_distribution role)'
+        - 'Added sudo command integration tests and password requirement (wsl_distribution role)'
+        - 'Removed restart handler and added default for wsl_distribution_state (wsl_distribution role)'
+        - 'Added missing configuration variables and corrected rootfs path definition (wsl_distribution role)'
+        - 'Added wsl_sshd_dbus_timeout documentation (wsl_sshd role)'
+        - 'Replaced handler for restart sshd with task (wsl_sshd role)'
+        - 'Used wsl_exists module for checking host keys exist (wsl_sshd role)'
+        - 'Enhanced WSL distribution and SSHD tasks with restart verification'
+        - 'Converted camelCase variables to snake_case'
+        - 'Improved output handling by redirecting to null'
+      bug_fixes:
+        - 'Fixed failing sudo test for wsl_distribution role'
+        - 'Fixed handler missing issue for role wsl_distribution'
+        - 'Fixed error when restarting WSL distribution without wsl_conf defined'
+        - 'Fixed generate ssh host keys failing'
+        - 'Fixed incorrect name for localhostforwarding'
+        - 'Fixed ansible-lint issues'
+      cleanup:
+        - 'Added inventory.yml to gitignore'
+        - 'Removed incorrect license information'
+        - 'Changed tone of README'
+    release_date: '2025-05-12'

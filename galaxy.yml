@@ -1,6 +1,6 @@
 namespace: vanduc2514
 name: wsl_automation
-version: 1.0.0
+version: 1.0.1
 readme: README.md
 authors:
   - Duc Nguyen (@vanduc2514) <vanduc2514@gmail.com>
