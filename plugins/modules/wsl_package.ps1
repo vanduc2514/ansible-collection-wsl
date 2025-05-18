@@ -255,7 +255,24 @@ function Install-Package {
                 LinuxCommand = $installCommand
             }
 
-            Invoke-LinuxCommand @installCommandArguments | Out-Null
+            $maxRetries = 5
+            $retryCount = 0
+            $retryIntervalSeconds = 2
+            $success = $false
+
+            while (-not $success -and $retryCount -lt $maxRetries) {
+                try {
+                    Invoke-LinuxCommand @installCommandArguments | Out-Null
+                    $success = $true
+                }
+                catch {
+                    $retryCount++
+                    if ($retryCount -ge $maxRetries) {
+                        throw "Failed to install package '$PackageName' after $maxRetries attempts: $($_.Exception.Message)"
+                    }
+                    Start-Sleep -Seconds $retryIntervalSeconds
+                }
+            }
         } catch {
             throw "Failed to install package '$PackageName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
