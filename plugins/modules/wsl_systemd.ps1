@@ -54,7 +54,7 @@ function Get-ServiceStatus {
         $isServiceEnabledCommandParams = @{
             DistributionName = $DistributionName
             DistributionUser = 'root'
-            LinuxCommand = "systemctl is-enabled $ServiceName"
+            LinuxCommand = "systemctl is-enabled $ServiceName 2>&1 || true"
         }
         $enabled = (Invoke-LinuxCommand @isServiceEnabledCommandParams).Trim() -eq 'enabled'
 
@@ -151,7 +151,7 @@ function Set-ServiceEnabled {
             $enableServiceParams = @{
                 DistributionName = $DistributionName
                 DistributionUser = 'root'
-                LinuxCommand = "systemctl $action $ServiceName 2>/dev/null || true"
+                LinuxCommand = "systemctl $action $ServiceName 2>&1 || true"
             }
 
             Invoke-LinuxCommand @enableServiceParams | Out-Null
@@ -182,7 +182,7 @@ function Set-ServiceActive {
             $enableServiceParams = @{
                 DistributionName = $DistributionName
                 DistributionUser = 'root'
-                LinuxCommand = "systemctl $action $ServiceName &> /dev/null"
+                LinuxCommand = "systemctl $action $ServiceName"
             }
 
             Invoke-LinuxCommand @enableServiceParams | Out-Null
@@ -224,17 +224,6 @@ try {
         $module.Result.daemon_reloaded = $true
     }
 
-    if ($enabled -ne $service_info.enabled) {
-        $enableParams = @{
-            DistributionName = $distribution_name
-            ServiceName = $service_name
-            Enabled = $enabled
-            WhatIf = $check_mode
-        }
-        Set-ServiceEnabled @enableParams
-        Set-ModuleChanged -Module $module
-    }
-
     if ($state -eq 'started' -and -not $service_info.active) {
         $startServiceParams = @{
             DistributionName = $distribution_name
@@ -254,6 +243,17 @@ try {
             WhatIf = $check_mode
         }
         Set-ServiceActive @stopServiceParams
+        Set-ModuleChanged -Module $module
+    }
+
+    if ($enabled -ne $service_info.enabled) {
+        $enableParams = @{
+            DistributionName = $distribution_name
+            ServiceName = $service_name
+            Enabled = $enabled
+            WhatIf = $check_mode
+        }
+        Set-ServiceEnabled @enableParams
         Set-ModuleChanged -Module $module
     }
 
