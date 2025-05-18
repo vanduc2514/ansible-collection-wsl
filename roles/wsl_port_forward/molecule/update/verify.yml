@@ -1,0 +1,103 @@
+- name: Verify
+  hosts: windows
+  gather_facts: false
+  vars:
+    initial_host_port: 8888
+    update_host_port: 9999
+    policy_id: WSL-Web-Service
+
+  tasks:
+    # Verify firewall rule for new port
+    - name: Check firewall rule configuration
+      ansible.windows.win_shell: Get-NetFirewallRule -DisplayName "{{ policy_id }}" | Get-NetFirewallPortFilter
+      register: firewall_rule
+      changed_when: false
+
+    - name: Verify firewall rule configuration
+      ansible.builtin.assert:
+        that:
+          - "'TCP' in firewall_rule.stdout"
+          - "(update_host_port | string) in firewall_rule.stdout"
+        fail_msg: |
+          Firewall rule is not configured correctly. Current configuration:
+          {{ firewall_rule.stdout }}
+        success_msg: "Firewall rule is correctly configured with new port"
+
+    # Verify port forwarding for new port
+    - name: Get port proxy configuration for new port
+      ansible.windows.win_shell: netsh interface portproxy show v4tov4
+      register: new_port_proxy_config
+      changed_when: false
+
+    - name: Verify port proxy configuration for new port
+      ansible.builtin.assert:
+        that:
+          - "'0.0.0.0' in new_port_proxy_config.stdout"
+          - "(update_host_port | string) in new_port_proxy_config.stdout"
+        fail_msg: |
+          Port forwarding is not configured correctly. Current configuration:
+          {{ new_port_proxy_config.stdout }}
+        success_msg: "Port forwarding is correctly configured with new port"
+
+    # Verify old port forwarding is removed
+    - name: Check if old port forwarding still exists
+      ansible.windows.win_shell: netsh interface portproxy show v4tov4
+      register: old_port_check
+      changed_when: false
+
+    - name: Verify old port forwarding is removed
+      ansible.builtin.assert:
+        that:
+          - "(initial_host_port | string) not in old_port_check.stdout"
+        fail_msg: |
+          Old port forwarding rule still exists. Current configuration:
+          {{ old_port_check.stdout }}
+        success_msg: "Old port forwarding rule successfully removed"
+
+    # Verify web service connectivity through the new port forwarding
+    - name: Test web service connectivity through new port from control node
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ update_host_port }}"
+        method: GET
+        return_content: true
+        validate_certs: false
+        follow_redirects: all
+        timeout: 5
+      register: web_service_test
+
+    - name: Display web service test result
+      ansible.builtin.debug:
+        var: web_service_test
+
+    - name: Verify web service connectivity through port forwarding
+      ansible.builtin.assert:
+        that:
+          - web_service_test.status == 200
+          - "'WSL Port Forward Test' in web_service_test.content"
+        fail_msg: |
+          Web service is not accessible through the new port forwarding. Test result:
+          {{ web_service_test }}
+        success_msg: "Web service is accessible through the new port forwarding"
+
+    # Verify old port is no longer accessible
+    - name: Test old port is no longer accessible
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ initial_host_port }}"
+        method: GET
+        validate_certs: false
+        follow_redirects: all
+        timeout: 2
+      register: old_port_test
+      failed_when: false
+      ignore_errors: true
+
+    - name: Verify old port is no longer accessible
+      ansible.builtin.assert:
+        that:
+          - old_port_test.status == -1 or old_port_test.status >= 500
+        fail_msg: |
+          The old port forwarding is still accessible. Test result:
+          {{ old_port_test }}
+        success_msg: "The old port forwarding is no longer accessible"

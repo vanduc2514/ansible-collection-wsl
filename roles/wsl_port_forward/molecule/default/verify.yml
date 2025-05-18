@@ -1,0 +1,67 @@
+- name: Verify
+  hosts: windows
+  gather_facts: false
+  vars:
+    target_port: 8080
+    host_port: 8888
+    policy_id: WSL-Web-Service
+
+  tasks:
+    # Verify firewall rule
+    - name: Check firewall rule configuration
+      ansible.windows.win_shell: Get-NetFirewallRule -DisplayName "{{ policy_id }}" | Get-NetFirewallPortFilter
+      register: firewall_rule
+      changed_when: false
+
+    - name: Verify firewall rule configuration
+      ansible.builtin.assert:
+        that:
+          - "'TCP' in firewall_rule.stdout"
+          - "(host_port | string) in firewall_rule.stdout"
+        fail_msg: |
+          Firewall rule is not configured correctly. Current configuration:
+          {{ firewall_rule.stdout }}
+        success_msg: "Firewall rule is correctly configured"
+
+    # Verify port forwarding
+    - name: Get port proxy configuration
+      ansible.windows.win_shell: netsh interface portproxy show v4tov4
+      register: port_proxy_config
+      changed_when: false
+
+    - name: Verify port proxy configuration
+      ansible.builtin.assert:
+        that:
+          - "'0.0.0.0' in port_proxy_config.stdout"
+          - "(host_port | string) in port_proxy_config.stdout"
+          - "(target_port | string) in port_proxy_config.stdout"
+        fail_msg: |
+          Port forwarding is not configured correctly. Current configuration:
+          {{ port_proxy_config.stdout }}
+        success_msg: "Port forwarding is correctly configured"
+
+    # Verify web service connectivity through port forwarding
+    - name: Test web service connectivity through new port from control node
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ host_port }}"
+        method: GET
+        return_content: true
+        validate_certs: false
+        follow_redirects: all
+        timeout: 5
+      register: web_service_test
+
+    - name: Display web service test result
+      ansible.builtin.debug:
+        var: web_service_test
+
+    - name: Verify web service connectivity through port forwarding
+      ansible.builtin.assert:
+        that:
+          - web_service_test.status == 200
+          - "'WSL Port Forward Test' in web_service_test.content"
+        fail_msg: |
+          Web service is not accessible through the new port forwarding. Test result:
+          {{ web_service_test }}
+        success_msg: "Web service is accessible through the new port forwarding"

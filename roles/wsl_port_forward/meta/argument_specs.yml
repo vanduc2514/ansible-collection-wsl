@@ -1,0 +1,35 @@
+---
+argument_specs:
+  main:
+    short_description: Configure port forwarding from Windows host to WSL distribution
+    description: |
+      This role configures port forwarding and firewall rules on Windows host to allow
+      connections to services running in WSL distributions.
+    author: vanduc2514
+    options:
+      wsl_port_forward_policy_id:
+        type: str
+        description: >
+          The unique identifier for the Windows Firewall rule associated with this port forwarding.
+          This identifier is used to identify and manage the firewall rule.
+        default: "WSL Port Forward"
+      wsl_port_forward_host_port:
+        type: int
+        description: >
+          The port number to listen on the Windows host. This is the port that will be accessible
+          from the Windows host and other machines on the network (if allowed by the firewall).
+        required: true
+      wsl_port_forward_target_port:
+        type: int
+        description: >
+          The port number to forward to in the WSL distribution. This is the port where your service
+          is running inside the WSL environment.
+        required: true
+      wsl_port_forward_state:
+        type: str
+        description: >
+          The desired state of the port forwarding configuration and its associated firewall rule.
+          When set to 'present', creates or updates the port forwarding and firewall rule.
+          When set to 'absent', removes both the port forwarding and firewall rule.
+        choices: ['present', 'absent']
+        default: present

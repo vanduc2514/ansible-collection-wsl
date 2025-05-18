@@ -1,0 +1,15 @@
+- name: Cleanup
+  hosts: windows
+  gather_facts: false
+  vars:
+    host_port: 9999
+    target_port: 8080
+    policy_id: WSL-Web-Service
+
+  roles:
+    - role: vanduc2514.wsl_automation.wsl_port_forward
+      vars:
+        wsl_port_forward_policy_id: "{{ policy_id }}"
+        wsl_port_forward_host_port: "{{ host_port }}"
+        wsl_port_forward_target_port: "{{ target_port }}"
+        wsl_port_forward_state: absent

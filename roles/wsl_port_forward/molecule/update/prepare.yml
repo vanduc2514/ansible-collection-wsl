@@ -1,0 +1,47 @@
+- name: Prepare
+  hosts: windows
+  gather_facts: true
+  vars:
+    distribution: Ubuntu-18.04
+    initial_host_port: 8888
+    initial_target_port: 8080
+    policy_id: WSL-Web-Service
+
+  pre_tasks:
+    - name: Create a test webpage
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ distribution }}"
+        path: "/tmp/index.html"
+        content: "<html><body><h1>WSL Port Forward Test</h1><p>This is a test web server running in WSL</p></body></html>"
+        mode: "644"
+
+    - name: Create service unit file
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ distribution }}"
+        path: "/etc/systemd/system/test-webserver.service"
+        content: |
+          [Unit]
+          Description=Test Web Server
+
+          [Service]
+          Type=simple
+          WorkingDirectory=/tmp
+          ExecStart=/usr/bin/python3 -m http.server {{ initial_target_port }}
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: "644"
+
+    - name: Start the web server service
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ distribution }}"
+        daemon_reload: true
+        name: test-webserver
+
+  roles:
+    - role: vanduc2514.wsl_automation.wsl_port_forward
+      vars:
+        wsl_port_forward_policy_id: "{{ policy_id }}"
+        wsl_port_forward_host_port: "{{ initial_host_port }}"
+        wsl_port_forward_target_port: "{{ initial_target_port }}"

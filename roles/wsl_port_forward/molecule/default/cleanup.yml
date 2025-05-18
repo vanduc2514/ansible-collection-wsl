@@ -1,0 +1,16 @@
+- name: Cleanup
+  hosts: windows
+  gather_facts: false
+  vars:
+    target_port: 8080
+    host_port: 8888
+    policy_id: WSL-Web-Service
+    distribution: Ubuntu-18.04
+
+  roles:
+    - role: vanduc2514.wsl_automation.wsl_port_forward
+      vars:
+        wsl_port_forward_host_port: "{{ host_port }}"
+        wsl_port_forward_target_port: "{{ target_port }}"
+        wsl_port_forward_policy_id: "{{ policy_id }}"
+        wsl_port_forward_state: absent

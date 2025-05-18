@@ -1,0 +1,95 @@
+- name: Get existing host port
+  ansible.windows.win_shell: |
+    Get-NetFirewallRule -DisplayName "{{ wsl_port_forward_policy_id }}" -ErrorAction SilentlyContinue |
+    Get-NetFirewallPortFilter -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty LocalPort
+  register: host_port_shell
+  changed_when: false
+  failed_when: false
+
+- name: Set host port fact
+  ansible.builtin.set_fact:
+    host_port: "{{ host_port_shell.stdout | trim | string }}"
+  when: host_port_shell.rc == 0
+
+- name: Get existing port proxy configuration
+  ansible.windows.win_shell: |
+    $config = netsh interface portproxy show v4tov4 |
+    Select-String -Pattern "{{ host_port }}"
+    if ($config -and $config -ne '') {
+      $parts = $config -split '\s+'
+      $parts = $parts | Where-Object { $_ -ne "" }
+      @{
+        listen_address = $parts[0]
+        listen_port = $parts[1]
+        connect_address = $parts[2]
+        connect_port = $parts[3]
+      } | ConvertTo-Json
+    }
+  register: existing_portproxy_interface_shell
+  changed_when: false
+  failed_when: false
+  when: host_port_shell.rc == 0
+
+- name: Set portproxy interface fact
+  ansible.builtin.set_fact:
+    existing_portproxy_interface: "{{ existing_portproxy_interface_shell.stdout | trim | from_json }}"
+  when:
+    - host_port_shell.rc == 0
+    - existing_portproxy_interface_shell.stdout != ''
+
+- name: Get WSL distribution IP
+  ansible.windows.win_reg_stat:
+    path: HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss
+  register: wsl_port_forward_reg_stat
+  when: wsl_port_forward_state == 'present'
+
+- name: Set WSL NAT IP fact
+  ansible.builtin.set_fact:
+    wsl_nat_ip: "{{ wsl_port_forward_reg_stat.properties.NatIpAddress.value }}"
+  when:
+    - wsl_port_forward_state == 'present'
+    - wsl_port_forward_reg_stat.exists
+
+- name: Delete existing port proxy configuration
+  ansible.windows.win_command: >-
+    netsh interface portproxy delete v4tov4
+    listenport={{ host_port }}
+    listenaddress=0.0.0.0
+    protocol=tcp
+  when:
+    - host_port is defined
+    - existing_portproxy_interface is defined
+    - wsl_port_forward_state == 'absent' or
+      (
+        wsl_nat_ip | string != existing_portproxy_interface.connect_address | string or
+        wsl_port_forward_host_port | string != existing_portproxy_interface.listen_port | string or
+        wsl_port_forward_target_port | string != existing_portproxy_interface.connect_port | string
+      )
+
+- name: Add port proxy configuration
+  ansible.windows.win_command: >-
+    netsh interface portproxy add v4tov4
+    listenport={{ wsl_port_forward_host_port }}
+    connectaddress={{ wsl_nat_ip }}
+    connectport={{ wsl_port_forward_target_port }}
+    listenaddress=0.0.0.0
+    protocol=tcp
+  when:
+    - wsl_port_forward_state == 'present'
+    - host_port_shell.rc == 1 or
+      (
+        wsl_nat_ip | string != existing_portproxy_interface.connect_address | string or
+        wsl_port_forward_host_port | string != existing_portproxy_interface.listen_port | string or
+        wsl_port_forward_target_port | string != existing_portproxy_interface.connect_port | string
+      )
+
+- name: Configure Windows Firewall rule
+  community.windows.win_firewall_rule:
+    name: "{{ wsl_port_forward_policy_id }}"
+    localport: "{{ wsl_port_forward_host_port }}"
+    action: allow
+    direction: in
+    protocol: tcp
+    state: "{{ wsl_port_forward_state }}"
+    enabled: "{{ wsl_port_forward_state == 'present' }}"

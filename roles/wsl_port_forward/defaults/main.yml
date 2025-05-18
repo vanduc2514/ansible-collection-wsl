@@ -1,0 +1,7 @@
+wsl_port_forward_state: present
+
+wsl_port_forward_policy_id: "WSL Port Forward"
+
+# Required variables
+# wsl_port_forward_host_port: <port number>  # The port to listen on Windows host
+# wsl_port_forward_target_port: <port number>  # The port to forward to in WSL

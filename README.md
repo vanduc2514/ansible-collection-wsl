@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The `vanduc2514.wsl_automation` collection provides Ansible modules and roles for managing Windows Subsystem for Linux (WSL) environments. It uses PowerShell modules to execute WSL commands, enabling automation of WSL distribution management and configuration.
+The `vanduc2514.wsl_automation` collection provides Ansible modules and roles for managing multiple Windows Subsystem for Linux (WSL) environments. Underlying, It uses PowerShell modules to execute WSL commands, enabling automation of WSL distribution management and configuration.
 
 ## System Requirements
 
@@ -36,13 +36,11 @@ Configures the WSL system environment:
     wsl_config_processors: 4
 ```
 
-This role handles WSL2 kernel installation, Windows feature configuration, and system-wide WSL parameters to establish the foundation for WSL distributions.
-
 [Role documentation](roles/wsl/README.md)
 
 ### wsl_distribution
 
-Manages WSL distribution lifecycle:
+Manages WSL distributions including installation, basic user management and distribution configuration.
 
 ```yaml
 - role: vanduc2514.wsl_automation.wsl_distribution
@@ -51,38 +49,51 @@ Manages WSL distribution lifecycle:
     wsl_distribution_config_user_default: "wsl_admin"
 ```
 
-This role provides comprehensive distribution management capabilities, including installation, configuration, user account provisioning, and background process configuration.
-
 [Role Documentation](roles/wsl_distribution/README.md)
 
 ### wsl_sshd
 
-Implements secure SSH access for WSL distributions:
-
-This role configures OpenSSH Server in specified WSL distributions with options for local access configuration and controlled remote connectivity. Implementation follows security best practices with configurable authentication parameters.
-
-#### Secure Local Access
-
-This configuration implements a security-focused approach that limits SSH access through the Windows host as a secure jump server:
+Install and Configure OpenSSH Server in WSL distribution
 
 ```yaml
 - role: vanduc2514.wsl_automation.wsl_sshd
   vars:
     wsl_sshd_distribution_name: Ubuntu-22.04
     wsl_sshd_port: 2222
-    # port_forward is disabled by default
+    wsl_sshd_password_authentication: false
+    wsl_sshd_permit_root_login: false
 ```
 
-Connection is established through the Windows host:
+After configuration, WSL Distribution can be access via SSH with Windows Jump Host
 ```bash
-ssh -J windows_host wsl_user@localhost -p 2222
+ssh -o ProxyCommand="ssh -W %h:%p windows_host" wsl_user@localhost -p 2222
 ```
 
-#### External Access Configuration
+[Role Documentation](roles/wsl_sshd/README.md)
 
-⚠️ **WARNING**: External access configuration requires careful security implementation. The following parameters provide a starting point for secure configuration but should be supplemented with appropriate network security measures.
+### wsl_port_forward
 
-1. Initial distribution security configuration:
+Forward a port in WSL distribution to Windows, allow accessing through LAN
+
+```yaml
+- role: vanduc2514.wsl_automation.wsl_port_forward
+  vars:
+    wsl_port_forward_policy_name: WSL-Port-Forward
+    wsl_port_forward_host_port: 8080
+    wsl_port_forward_target_port: 80
+```
+
+[Role Documentation](roles/wsl_port_forward/README.md)
+
+## Internet SSH Access Configuration
+
+Enable remote SSH access from the internet with port forwarding.
+
+⚠️ **WARNING**: Expose WSL distribution to the internet is dangerous and requires careful security configuration. The following parameters provide a starting point for secure configuration but should be supplemented with additional security harderning measures.
+
+### Example configuration
+
+1. Configure WSL Distribution with additional password and SSH authorized key (public key)
 
 ```yaml
 - role: vanduc2514.wsl_automation.wsl_distribution
@@ -94,16 +105,13 @@ ssh -J windows_host wsl_user@localhost -p 2222
       - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
 ```
 
-2. SSH server hardening with security parameters:
+2. (Optional) Configure OpenSSH Server with additional security configuration
 
 ```yaml
 - role: vanduc2514.wsl_automation.wsl_sshd
   vars:
     wsl_sshd_distribution_name: Ubuntu-22.04
     wsl_sshd_port: 2222
-    wsl_sshd_port_forward_enabled: true
-    # The port to forward in your router
-    wsl_sshd_port_forward_host_port: 3322
     wsl_sshd_password_authentication: false
     wsl_sshd_permit_root_login: false
     wsl_sshd_extra_configs:
@@ -113,18 +121,38 @@ ssh -J windows_host wsl_user@localhost -p 2222
       LoginGraceTime: 60
 ```
 
-3. Additional security measures to consider:
-   - Network firewall configuration
-   - Port forwarding security
-   - Host-based intrusion detection
-   - Security monitoring implementation
-   - System update procedures
-   - Authentication failure monitoring (e.g., fail2ban)
-   - DDoS mitigation strategy
+3. Forward SSH port `2222` to `3322` in Windows. Change the `host_port` and `target_port` base on your setup
 
-When security requirements are stringent, the **Secure Local Access** configuration is recommended.
+```yaml
+- role: vanduc2514.wsl_automation.wsl_port_forward
+  vars:
+    wsl_port_forward_policy_name: WSL-Port-Forward-SSH
+    wsl_port_forward_host_port: 3322
+    wsl_port_forward_target_port: 2222
+```
 
-[Role Documentation](roles/wsl_sshd/README.md)
+Verify if WSL Distribution can be access via SSH through LAN
+
+```bash
+ssh wsl_user@$WINDOWS_HOST -p 3322
+```
+
+4. On router, login to Admin console (or setting page) then forward host port `3322` to Windows's IP address
+
+Verify if WSL Distribution can be access from the internet
+
+```bash
+ssh wsl_user@$WINDOWS_EXTERNAL_IP -p 3322
+```
+
+### Additional security considerations
+
+- Network firewall
+- Additional authentication mechanism (e.g. Two-factor)
+- Frequent updates software
+- DDoS protection
+- Authentication failure monitoring (e.g., fail2ban)
+- Security monitoring
 
 ## Modules
 
@@ -210,7 +238,6 @@ Store sensitive values such as passwords in an Ansible vault file.
         wsl_sshd_port: 2222
         wsl_sshd_password_authentication: false
         wsl_sshd_permit_root_login: false
-        wsl_sshd_port_forward_enabled: false
 ```
 
 ## Additional Resources
