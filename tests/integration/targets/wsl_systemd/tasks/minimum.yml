@@ -3,7 +3,7 @@
     distribution: "{{ wsl_distribution }}"
     name: dummy
     state: stopped
-  ignore_errors: true
+  failed_when: false
 
 - name: Test basic service start scenario
   block:

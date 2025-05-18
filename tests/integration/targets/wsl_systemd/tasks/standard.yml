@@ -42,4 +42,3 @@
         that:
           - not wsl_systemd_actual is changed
           - wsl_systemd_actual.daemon_reloaded
-
