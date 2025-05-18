@@ -87,6 +87,7 @@
   vanduc2514.wsl_automation.wsl_systemd:
     distribution: "{{ wsl_sshd_distribution_name }}"
     name: "{{ wsl_sshd_service_name }}"
+    enabled: "{{ wsl_sshd_enabled }}"
     state: "{{ wsl_sshd_state }}"
     daemon_reload: true
     dbus_timeout: "{{ wsl_sshd_dbus_timeout }}"
@@ -110,14 +111,15 @@
       vanduc2514.wsl_automation.wsl_systemd:
         distribution: "{{ wsl_sshd_distribution_name }}"
         name: "{{ wsl_sshd_service_name }}"
+        enabled: "{{ wsl_sshd_enabled }}"
         state: stopped
 
     - name: (Restart) Start sshd via systemd
       vanduc2514.wsl_automation.wsl_systemd:
         distribution: "{{ wsl_sshd_distribution_name }}"
         name: "{{ wsl_sshd_service_name }}"
+        enabled: "{{ wsl_sshd_enabled }}"
         state: started
-        daemon_reload: true
 
     - name: Set ansible fact
       ansible.builtin.set_fact:

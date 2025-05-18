@@ -110,11 +110,12 @@
         override_content: "{{ service_override.content | b64decode }}"
 
     # Verify service status
-    - name: Verify SSHD service is running
+    - name: Verify SSHD service is running and enabled
       vanduc2514.wsl_automation.wsl_systemd:
         distribution: "{{ distribution }}"
         name: sshd
         state: started
+        enabled: true
       check_mode: true
       register: service_result
       failed_when: service_result is changed

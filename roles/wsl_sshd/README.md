@@ -20,6 +20,7 @@ These variables control the core behavior of the SSH daemon service.
 | `wsl_sshd_service_name` | Name of the SSH daemon service | `ssh` |
 | `wsl_sshd_service_type` | Type of service management to use (systemd or sysvinit) | `systemd` |
 | `wsl_sshd_state` | Desired state of the SSH daemon service (started, stopped, absent) | `started` |
+| `wsl_sshd_enabled` | Whether the SSHD service should start after the WSL distribution run | `true` |
 | `wsl_sshd_dbus_timeout` | Timeout in seconds for waiting on dbus to be ready when using systemd | `120` |
 
 ### SSH Configuration

@@ -30,6 +30,11 @@ argument_specs:
         choices: [started, stopped, absent]
         description: Desired state of the SSH daemon service
 
+      wsl_sshd_enabled:
+        type: bool
+        default: true
+        description: Whether the SSHD service should start after the WSL distribution run
+
       wsl_sshd_force_generate_host_key:
         type: bool
         default: false

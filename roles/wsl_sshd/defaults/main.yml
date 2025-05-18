@@ -6,6 +6,7 @@ wsl_sshd_service_name: ssh
 wsl_sshd_service_type: systemd
 wsl_sshd_state: started
 wsl_sshd_dbus_timeout: 120
+wsl_sshd_enabled: true
 
 # Host key configuration
 wsl_sshd_force_generate_host_key: false
