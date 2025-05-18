@@ -9,14 +9,7 @@
         distribution: "{{ wsl_distribution }}"
         name: "{{ current_packages.version_package }}"
         state: absent
-      ignore_errors: true
-
-    - name: Remove cache package
-      vanduc2514.wsl_automation.wsl_package:
-        distribution: "{{ wsl_distribution }}"
-        name: "{{ current_packages.cache_package }}"
-        state: absent
-      ignore_errors: true
+      failed_when: false
 
 - name: Test package installation with specific version scenario
   block:
@@ -25,6 +18,7 @@
         distribution: "{{ wsl_distribution }}"
         name: "{{ current_packages.version_package }}"
         version: "{{ current_packages.version_value }}"
+        update_cache: true
         state: present
       check_mode: true
       register: wsl_package_actual
@@ -39,6 +33,7 @@
         distribution: "{{ wsl_distribution }}"
         name: "{{ current_packages.version_package }}"
         version: "{{ current_packages.version_value }}"
+        update_cache: true
         state: present
       register: wsl_package_actual
 
@@ -52,47 +47,6 @@
         distribution: "{{ wsl_distribution }}"
         name: "{{ current_packages.version_package }}"
         version: "{{ current_packages.version_value }}"
-        state: present
-      register: wsl_package_actual
-
-    - name: Assert operation is idempotent
-      ansible.builtin.assert:
-        that:
-          - not wsl_package_actual is changed
-
-- name: Test package cache update scenario
-  block:
-    - name: Test package cache update in check_mode
-      vanduc2514.wsl_automation.wsl_package:
-        distribution: "{{ wsl_distribution }}"
-        name: "{{ current_packages.cache_package }}"
-        update_cache: true
-        state: present
-      check_mode: true
-      register: wsl_package_actual
-
-    - name: Assert no change in check_mode
-      ansible.builtin.assert:
-        that:
-          - not wsl_package_actual is changed
-
-    - name: Test package cache update
-      vanduc2514.wsl_automation.wsl_package:
-        distribution: "{{ wsl_distribution }}"
-        name: "{{ current_packages.cache_package }}"
-        update_cache: true
-        state: present
-      register: wsl_package_actual
-
-    - name: Assert operation changed
-      ansible.builtin.assert:
-        that:
-          - wsl_package_actual is changed
-
-    - name: Test idempotency of package cache update
-      vanduc2514.wsl_automation.wsl_package:
-        distribution: "{{ wsl_distribution }}"
-        name: "{{ current_packages.cache_package }}"
         update_cache: true
         state: present
       register: wsl_package_actual
@@ -108,10 +62,4 @@
       vanduc2514.wsl_automation.wsl_package:
         distribution: "{{ wsl_distribution }}"
         name: "{{ current_packages.version_package }}"
-        state: absent
-
-    - name: Remove cache package
-      vanduc2514.wsl_automation.wsl_package:
-        distribution: "{{ wsl_distribution }}"
-        name: "{{ current_packages.cache_package }}"
         state: absent

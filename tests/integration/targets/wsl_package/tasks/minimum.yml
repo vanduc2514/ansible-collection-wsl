@@ -3,7 +3,7 @@
     distribution: "{{ wsl_distribution }}"
     name: zip
     state: absent
-  ignore_errors: true
+  failed_when: false
 
 - name: Test basic package installation scenario
   block:
@@ -12,6 +12,7 @@
         distribution: "{{ wsl_distribution }}"
         name: zip
         state: present
+        update_cache: true
       check_mode: true
       register: wsl_package_actual
 
@@ -25,6 +26,7 @@
         distribution: "{{ wsl_distribution }}"
         name: zip
         state: present
+        update_cache: true
       register: wsl_package_actual
 
     - name: Assert operation changed
@@ -37,6 +39,7 @@
         distribution: "{{ wsl_distribution }}"
         name: zip
         state: present
+        update_cache: true
       register: wsl_package_actual
 
     - name: Assert operation is idempotent

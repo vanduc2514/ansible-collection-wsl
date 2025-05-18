@@ -1,6 +1,6 @@
 - name: Ensure test distributions exist
   vanduc2514.wsl_automation.wsl_instance:
-    name: "{{ item.name }}"
+    distribution: "{{ item.name }}"
     rootfs_path: "{{ item.rootfs_path | default(omit) }}"
     import_bundle: "{{ item.import_bundle | default(omit) }}"
     rootfs_download_checksum: "{{ item.rootfs_download_checksum | default(omit) }}"
