@@ -44,6 +44,10 @@ options:
             - Daemon-reload runs regardless of whether the module starts/stops or enables/disables anything.
         type: bool
         default: false
+    dbus_timeout:
+        description: Timeout waiting for DBUS connection
+        type: int
+        default: 120
 notes:
     - This module requires PowerShell.
     - This module requires WSL to be installed and configured.
