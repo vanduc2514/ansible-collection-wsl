@@ -17,6 +17,7 @@ wsl_distribution_config_user_default: root
 wsl_distribution_config_user_default_login_shell: /bin/bash
 wsl_distribution_config_user_default_sudo: false
 wsl_distribution_config_user_default_authorized_keys: []
+wsl_distribution_config_user_default_unlock_no_password: true
 # Boot section
 wsl_distribution_config_boot_systemd: true
 ## Automount

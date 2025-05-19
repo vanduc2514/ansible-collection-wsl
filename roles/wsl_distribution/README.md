@@ -64,8 +64,10 @@ These variables control the creation and configuration of the default user in th
 | `wsl_distribution_config_user_default_home_path` | Home directory for the default user | Default to `/home/user` |
 | `wsl_distribution_config_user_default_login_shell` | Login shell for the default user | `/bin/sh` |
 | `wsl_distribution_config_user_default_sudo` | Whether to grant sudo privileges to the default user | `false` |
-| `wsl_distribution_config_user_default_password` | Password for the default user in plain text. Set this value will reset user password for every run | - |
+| `wsl_distribution_config_user_default_password` | Password (hashed) for the default user. | - |
+| `wsl_distribution_config_user_default_password_update` | Update the password (hashed) for the default user. Will always trigger a change | - |
 | `wsl_distribution_config_user_default_authorized_keys` | List of SSH public keys to add to authorized_keys for the default user | `[]` |
+| `wsl_distribution_config_user_default_unlock_no_password` | Unlock the user if no password provided | `true` |
 
 ### Extra WSL Configuration
 
@@ -134,7 +136,7 @@ Import from local `tar` ball
     - role: wsl_distribution
       vars:
         wsl_distribution_name: CustomLinux
-        wsl_distribution_import_rootfs_path: "C:\\Downloads\\CustomLinux.tar"
+        wsl_distribution_import_rootfs_path: C:\\Downloads\\CustomLinux.tar
         wsl_distribution_import_dir_path: D:\\WSL\\CustomLinux
         wsl_distribution_config_boot_systemd: true
         wsl_distribution_config_user_default: "myuser"
@@ -151,12 +153,12 @@ Create a distribution with a custom default user
       vars:
         wsl_distribution_name: Ubuntu
         wsl_distribution_config_boot_systemd: true
-        wsl_distribution_config_user_default_name: "wsluser"
+        wsl_distribution_config_user_default_name: wsluser
         wsl_distribution_config_user_default_uid: 1000
-        wsl_distribution_config_user_default_home_path: "/home/wsluser"
-        wsl_distribution_config_user_default_login_shell: "/bin/bash"
+        wsl_distribution_config_user_default_home_path: /home/wsluser
+        wsl_distribution_config_user_default_login_shell: /bin/bash
         wsl_distribution_config_user_default_sudo: true
-        wsl_distribution_config_user_default_password: "secure_password"
+        wsl_distribution_config_user_default_password: $6$qDOiWqJJE6CRL5...
 ```
 
 Create a distribution with SSH authorized keys:
@@ -169,11 +171,38 @@ Create a distribution with SSH authorized keys:
       vars:
         wsl_distribution_name: Ubuntu
         wsl_distribution_config_boot_systemd: true
-        wsl_distribution_config_user_default: "wsluser"
+        wsl_distribution_config_user_default: wsluser
         wsl_distribution_config_user_default_sudo: true
         wsl_distribution_config_user_default_authorized_keys:
-          - "ssh-rsa AAAAB3NzaC1yc2EAAAADA... user@host"
+          - ssh-rsa AAAAB3NzaC1yc2EAAAADA... user@host
           - "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+```
+
+Create a distribution with a passwordless user and lock the user:
+
+```yaml
+- name: Install WSL Distribution with passwordless user
+  hosts: windows
+  roles:
+    - role: vanduc2514.wsl_automation_wsl_distribution
+      vars:
+        wsl_distribution_name: Ubuntu
+        wsl_distribution_config_user_default: myuser
+        wsl_distribution_config_user_default_sudo: true
+        wsl_distribution_config_user_default_unlock_no_password: false
+```
+
+Update user password in an existing distribution:
+
+```yaml
+- name: Update user password in WSL Distribution
+  hosts: windows
+  roles:
+    - role: vanduc2514.wsl_automation_wsl_distribution
+      vars:
+        wsl_distribution_name: Ubuntu
+        wsl_distribution_config_user_default: myuser
+        wsl_distribution_config_user_default_password_update: $6$YvU74HF4CyK/...
 ```
 
 ## License

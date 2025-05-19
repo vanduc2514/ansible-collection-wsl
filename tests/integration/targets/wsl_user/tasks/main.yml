@@ -1,3 +1,10 @@
+- name: Ensure Test distribution Exist
+  vanduc2514.wsl_automation.wsl_instance:
+    distribution: "{{ wsl_distribution }}"
+    rootfs_path: https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64-root.tar.xz
+    rootfs_download_path: D:\Ansible\{{ wsl_distribution }}-rootfs.tar.xz
+    import_dir_path: D:\Ansible\{{ wsl_distribution }}
+
 - name: Test WSL User scenarios
   block:
     - name: Import minimum scenario
@@ -18,21 +25,24 @@
     - name: Create test user with sudo access
       vanduc2514.wsl_automation.wsl_user:
         distribution: "{{ wsl_distribution }}"
-        name: testuser
-        password: TestPass123!
+        name: testsudo_user
         sudo: true
         state: present
       register: user_result
 
     - name: Verify sudo requires password
       ansible.windows.win_shell: |
-        wsl -d {{ wsl_distribution }} -u testuser -- sudo -n true
-      register: sudo_test
-      failed_when: sudo_test.rc == 1
-      ignore_errors: true
+        wsl -d {{ wsl_distribution }} -u testsudo_user -- sudo -n true
+      register: testsudo_user_out
+      failed_when: false
 
     - name: Assert sudo command failed without password
       ansible.builtin.assert:
         that:
-          - sudo_test is failed
-          - "'sudo: a password is required' in sudo_test.stderr_lines"
+          - testsudo_user_out.rc == 1
+          - "'sudo: a password is required' in testsudo_user_out.stderr_lines"
+
+- name: Remove Test distribution
+  vanduc2514.wsl_automation.wsl_instance:
+    distribution: "{{ wsl_distribution }}"
+    state: absent

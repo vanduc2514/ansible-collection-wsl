@@ -39,6 +39,20 @@
         that:
           - not wsl_user_actual is changed
 
+    - name: Verify user account is unlocked
+      ansible.windows.win_shell: >-
+        wsl
+        --distribution {{ wsl_distribution }}
+        --user root
+        bash -c "passwd -S testuser1 | grep -q 'NP'"
+      register: unlock_check
+
+    - name: Assert user is unlocked
+      ansible.builtin.assert:
+        that:
+          - unlock_check.rc == 0
+        fail_msg: "User account is not unlocked as expected: {{ unlock_check }}"
+
 - name: Test user removal scenario
   block:
     - name: Test user removal in check_mode

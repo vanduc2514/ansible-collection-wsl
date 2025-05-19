@@ -30,6 +30,14 @@ $spec = @{
             type     = "str"
             no_log   = $true
         }
+        password_update = @{
+            type     = "str"
+            no_log   = $true
+        }
+        unlock_no_password = @{
+            type     = "bool"
+            default  = $true
+        }
         remove_home = @{
             type     = "bool"
             default  = $false
@@ -142,7 +150,10 @@ function New-User {
         $HomePath,
 
         [string]
-        $LoginShell
+        $LoginShell,
+
+        [string]
+        $Password
     )
 
     $userAddCmdArgs = @(
@@ -153,11 +164,17 @@ function New-User {
         if ($LoginShell) { '--shell', $LoginShell }
     )
 
-    $userAddCmd = "useradd $($userAddCmdArgs -join ' ')"
+    if ($Password) {
+        $passwordBytes = [System.Text.Encoding]::UTF8.GetBytes($Password)
+        $base64Password = [Convert]::ToBase64String($passwordBytes)
+        $userAddCmdArgs += @('--password', "'`$(echo $base64Password | base64 -d)'") # forward the encoded password to base64 in wsl distribution
+    }
+
+    $userAddCmd = "useradd $($userAddCmdArgs -join ' ') $UserName"
 
     if ($PSCmdlet.ShouldProcess($DistributionName, "Create user: $UserName")) {
         try {
-            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand "$userAddCmd $UserName" | Out-Null
+            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $userAddCmd | Out-Null
         } catch {
             throw "Failed to create user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
@@ -165,7 +182,7 @@ function New-User {
 }
 
 
-function Set-User {
+function Update-User {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]
@@ -181,7 +198,10 @@ function Set-User {
         $HomePath,
 
         [string]
-        $LoginShell
+        $LoginShell,
+
+        [bool]
+        $unlock_no_password = $false
     )
 
     $userModCmdArgs = @(
@@ -190,9 +210,9 @@ function Set-User {
         if ($LoginShell) { '--shell', $LoginShell }
     )
 
-    $userModCmd = "usermod $($userModCmdArgs -join ' ')"
-
     if ($userModCmdArgs.Count -gt 0) {
+        $userModCmd = "usermod $($userModCmdArgs -join ' ')"
+
         if ($PSCmdlet.ShouldProcess($DistributionName, "Modify user properties for: $UserName")) {
             try {
                 Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand "$userModCmd $UserName" | Out-Null
@@ -239,7 +259,27 @@ function Set-SudoAccess {
 }
 
 
-function Set-Password {
+function Clear-UserPassword {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [string]
+        $DistributionName,
+
+        [string]
+        $UserName
+    )
+
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Clear password for user: $UserName")) {
+        try {
+            Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand "passwd -d $UserName" | Out-Null
+        } catch {
+            throw "Failed to clear password for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+        }
+    }
+}
+
+
+function Update-Password {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]
@@ -249,15 +289,18 @@ function Set-Password {
         $UserName,
 
         [string]
-        $RawPassword
+        $Password
     )
 
-    if ($PSCmdlet.ShouldProcess($DistributionName, "Set password for user: $UserName")) {
-        $passwordCmd = "echo '${UserName}:${RawPassword}' | chpasswd"
+    $passwordBytes = [System.Text.Encoding]::UTF8.GetBytes($Password)
+    $base64Password = [Convert]::ToBase64String($passwordBytes)
+
+    if ($PSCmdlet.ShouldProcess($DistributionName, "Update password for user: $UserName")) {
+        $passwordCmd = "echo '${UserName}:`$(echo $base64Password | base64 -d)' | chpasswd -e" # forward the encoded password to base64 in wsl distribution
         try {
             Invoke-LinuxCommand -DistributionName $DistributionName -LinuxCommand $passwordCmd | Out-Null
         } catch {
-            throw "Failed to set password for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
+            throw "Failed to update password for user '$UserName' in WSL distribution '$DistributionName': $($_.Exception.Message)"
         }
     }
 }
@@ -272,7 +315,9 @@ $uid = $module.Params.uid
 $home_path = $module.Params.home_path
 $login_shell = $module.Params.login_shell
 $sudo = $module.Params.sudo
-$raw_password = $module.Params.password
+$password = $module.Params.password
+$password_update = $module.Params.password_update
+$unlock_no_password = $module.Params.unlock_no_password
 $remove_home = $module.Params.remove_home
 $state = $module.Params.state
 $check_mode = $module.CheckMode
@@ -314,9 +359,20 @@ try {
             UID = $uid
             HomePath = $home_path
             LoginShell = $login_shell
+            Password = $password
             WhatIf = $check_mode
         }
         New-User @newUserParams
+
+        if (-not $password -and $unlock_no_password) {
+            $clearPasswordParams = @{
+                DistributionName = $distribution_name
+                UserName = $name
+                WhatIf = $check_mode
+            }
+            Clear-UserPassword @clearPasswordParams
+        }
+
         $user = Get-UserInfo -DistributionName $distribution_name -UserName $name
         Set-ModuleChanged -Module $module
     }
@@ -330,7 +386,7 @@ try {
             UID = $uid
             WhatIf = $check_mode
         }
-        Set-User @setUserUIDCommandArguments
+        Update-User @setUserUIDCommandArguments
         Set-ModuleChanged -Module $module
     }
 
@@ -341,7 +397,7 @@ try {
             HomePath = $home_path
             WhatIf = $check_mode
         }
-        Set-User @setUserHomePathCommandArguments
+        Update-User @setUserHomePathCommandArguments
         Set-ModuleChanged -Module $module
     }
 
@@ -352,7 +408,7 @@ try {
             LoginShell = $login_shell
             WhatIf = $check_mode
         }
-        Set-User @setUserLoginShellCommandArguments
+        Update-User @setUserLoginShellCommandArguments
         Set-ModuleChanged -Module $module
     }
 
@@ -369,14 +425,14 @@ try {
         Set-ModuleChanged -Module $module
     }
 
-    if ($raw_password) {
-        $setPasswordParams = @{
+    if ($password_update) {
+        $updatePasswordParams = @{
             DistributionName = $distribution_name
             UserName = $name
-            RawPassword = $raw_password
+            Password = $password_update
             WhatIf = $check_mode
         }
-        Set-Password @setPasswordParams
+        Update-Password @updatePasswordParams
         Set-ModuleChanged -Module $module
     }
 

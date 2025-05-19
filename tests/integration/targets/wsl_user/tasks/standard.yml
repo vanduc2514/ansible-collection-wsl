@@ -91,13 +91,13 @@
           - not wsl_user_actual is changed
 
 
-- name: Test password modification scenario
+- name: Test user creation without password and lock scenario
   block:
-    - name: Test password modification in check_mode
+    - name: Test user creation without password and lock in check_mode
       vanduc2514.wsl_automation.wsl_user:
-        name: sudouser
+        name: locked_user
         distribution: "{{ wsl_distribution }}"
-        password: newpassword123
+        unlock_no_password: false
         state: present
       check_mode: true
       register: wsl_user_actual
@@ -107,11 +107,11 @@
         that:
           - not wsl_user_actual is changed
 
-    - name: Test password modification
+    - name: Test user creation without password and lock
       vanduc2514.wsl_automation.wsl_user:
-        name: sudouser
+        name: locked_user
         distribution: "{{ wsl_distribution }}"
-        password: newpassword123
+        unlock_no_password: false
         state: present
       register: wsl_user_actual
 
@@ -120,11 +120,156 @@
         that:
           - wsl_user_actual is changed
 
-    - name: Test non-idempotency of password modification
+    - name: Test user creation without password and lock idempotency
       vanduc2514.wsl_automation.wsl_user:
-        name: sudouser
+        name: locked_user
         distribution: "{{ wsl_distribution }}"
-        password: newpassword123
+        unlock_no_password: false
+        state: present
+      register: wsl_user_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_user_actual is changed
+
+    - name: Verify user account is locked
+      ansible.windows.win_shell: >-
+        wsl
+        --distribution {{ wsl_distribution }}
+        --user root
+        bash -c "passwd -S locked_user | grep -q 'L'"
+      register: lock_check
+
+    - name: Assert user is locked
+      ansible.builtin.assert:
+        that:
+          - lock_check.rc == 0
+        fail_msg: "User account is not locked as expected: {{ lock_check }}"
+
+- name: Test user creation with password scenario
+  block:
+    - name: Set hashed password
+      ansible.builtin.set_fact:
+        hashed_password: >- # Generate with openssl passwd -6 'Test@#$%&*'
+          $6$lLm2I/vOK7jPPpGB$rvIGQWP3.RsfNi/l77FSG80VflClvq9DBnnGBe1mmWMQrth8TbTlypSA4rRfH4XtCJnebf0dIRB5LEDXrcaI10
+
+    - name: Test user creation with password in check_mode
+      vanduc2514.wsl_automation.wsl_user:
+        name: testpass_user
+        distribution: "{{ wsl_distribution }}"
+        password: "{{ hashed_password }}"
+        state: present
+      check_mode: true
+      register: wsl_user_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_user_actual is changed
+
+    - name: Create user with hashed password
+      vanduc2514.wsl_automation.wsl_user:
+        name: testpass_user
+        distribution: "{{ wsl_distribution }}"
+        password: "{{ hashed_password }}"
+        state: present
+      register: wsl_user_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_user_actual is changed
+
+    - name: Test idempotency of user creation with password
+      vanduc2514.wsl_automation.wsl_user:
+        name: testpass_user
+        distribution: "{{ wsl_distribution }}"
+        password: "{{ hashed_password }}"
+        state: present
+      register: wsl_user_actual
+
+    - name: Assert operation is idempotent
+      ansible.builtin.assert:
+        that:
+          - not wsl_user_actual is changed
+
+    - name: Retrieve shadow file content
+      vanduc2514.wsl_automation.wsl_slurp:
+        path: /etc/shadow
+        distribution: "{{ wsl_distribution }}"
+      register: shadow_file
+
+    - name: Extract user's password hash
+      ansible.builtin.set_fact:
+        shadow_lines: "{{ (shadow_file.content | b64decode).split('\n') }}"
+
+    - name: Find user in shadow file
+      ansible.builtin.set_fact:
+        stored_hash: "{{ (item.split(':'))[1] }}"
+      with_items: "{{ shadow_lines }}"
+      when: item.startswith('testpass_user:')
+      no_log: true
+
+    - name: Verify stored hash matches provided hash
+      ansible.builtin.assert:
+        that:
+          - stored_hash | trim == hashed_password
+        fail_msg: "Hash mismatch in shadow file, shadow: {{ stored_hash }}, hashed: {{ hashed_password }}"
+        success_msg: "Password hash correctly stored"
+
+    - name: Retrieve passwd status
+      vanduc2514.wsl_automation.wsl_slurp:
+        path: /etc/passwd
+        distribution: "{{ wsl_distribution }}"
+      register: passwd_file
+
+    - name: Assert password is set properly
+      ansible.builtin.assert:
+        that:
+          - (passwd_file.content | b64decode).split('\n') | select('search', '^testpass_user:') | length > 0
+        fail_msg: "User not found in passwd file"
+        success_msg: "User exists in passwd file"
+
+- name: Test password update scenario
+  block:
+    - name: Set hashed password for update
+      ansible.builtin.set_fact:
+        new_hashed_password: >- # Generate with openssl passwd -6 'NewPass@123!'
+          $6$z69.4Ci8/Qif3Voi$TBoEy.lDNQRr3Ii.ZYfcsYdnl/WsdaPaQv1ET2P8BaGrz1aSVSmUMezCU3wqyBpED7/9g1oi17BkUgEKoHKiB1
+
+    - name: Test password update in check_mode
+      vanduc2514.wsl_automation.wsl_user:
+        name: testpass_user
+        distribution: "{{ wsl_distribution }}"
+        password_update: "{{ new_hashed_password }}"
+        state: present
+      check_mode: true
+      register: wsl_user_actual
+
+    - name: Assert no change in check_mode
+      ansible.builtin.assert:
+        that:
+          - not wsl_user_actual is changed
+
+    - name: Test password update
+      vanduc2514.wsl_automation.wsl_user:
+        name: testpass_user
+        distribution: "{{ wsl_distribution }}"
+        password_update: "{{ new_hashed_password }}"
+        state: present
+      register: wsl_user_actual
+
+    - name: Assert operation changed
+      ansible.builtin.assert:
+        that:
+          - wsl_user_actual is changed
+
+    - name: Test password update always triggers change
+      vanduc2514.wsl_automation.wsl_user:
+        name: testpass_user
+        distribution: "{{ wsl_distribution }}"
+        password_update: "{{ new_hashed_password }}"
         state: present
       register: wsl_user_actual
 
@@ -132,6 +277,30 @@
       ansible.builtin.assert:
         that:
           - wsl_user_actual is changed
+
+    - name: Retrieve updated shadow file content
+      vanduc2514.wsl_automation.wsl_slurp:
+        path: /etc/shadow
+        distribution: "{{ wsl_distribution }}"
+      register: updated_shadow_file
+
+    - name: Extract user's updated password hash
+      ansible.builtin.set_fact:
+        updated_shadow_lines: "{{ (updated_shadow_file.content | b64decode).split('\n') }}"
+
+    - name: Find updated user in shadow file
+      ansible.builtin.set_fact:
+        updated_stored_hash: "{{ (item.split(':'))[1] }}"
+      with_items: "{{ updated_shadow_lines }}"
+      when: item.startswith('testpass_user:')
+      no_log: true
+
+    - name: Verify updated hash matches new provided hash
+      ansible.builtin.assert:
+        that:
+          - updated_stored_hash | trim == new_hashed_password
+        fail_msg: "Password hash in shadow file does not match expected updated hash: {{ new_hashed_password }}"
+        success_msg: "New password hash was correctly stored in shadow file"
 
 - name: Test root user immutability for uid and sudo access
   block:
@@ -154,6 +323,20 @@
     - name: Remove sudouser
       vanduc2514.wsl_automation.wsl_user:
         name: sudouser
+        remove_home: true
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+
+    - name: Remove locked_user
+      vanduc2514.wsl_automation.wsl_user:
+        name: locked_user
+        remove_home: true
+        distribution: "{{ wsl_distribution }}"
+        state: absent
+
+    - name: Remove testpass_user
+      vanduc2514.wsl_automation.wsl_user:
+        name: testpass_user
         remove_home: true
         distribution: "{{ wsl_distribution }}"
         state: absent

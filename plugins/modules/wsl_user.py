@@ -47,10 +47,21 @@ options:
     default: false
   password:
     description:
-      - Password for the user account.
-      - This is not idempotent and will be updated whenever specified.
+      - Password (hashed) for the user account.
+      - If this is omitted, the account will be created without a password.
+      - If C(unlock_no_password) is true, the account will be unlocked after creation.
     type: str
     no_log: true
+  password_update:
+    description:
+      - Update the user password (hashed) with the given value
+      - Module always C(changed) if this value is set
+    type: str
+    no_log: true
+  unlock_no_password:
+    description: If C(true), unlocks the user when creating a new user without a password.
+    type: bool
+    default: true
   remove_home:
     description:
       - When C(state=absent), also remove the user's home directory.

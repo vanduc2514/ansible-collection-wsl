@@ -21,6 +21,8 @@
     login_shell: "{{ wsl_distribution_config_user_default_login_shell }}"
     sudo: "{{ wsl_distribution_config_user_default_sudo }}"
     password: "{{ wsl_distribution_config_user_default_password | default(omit) }}"
+    password_update: "{{ wsl_distribution_config_user_default_password_update | default(omit) }}"
+    unlock_no_password: "{{ wsl_distribution_config_user_default_unlock_no_password }}"
     state: present
   register: wsl_distribution_default_user
   when:
