@@ -22,11 +22,11 @@
     sudo: "{{ wsl_distribution_config_user_default_sudo }}"
     password: "{{ wsl_distribution_config_user_default_password | default(omit) }}"
     state: present
+  register: wsl_distribution_default_user
   when:
     - wsl_distribution_state != "absent"
     - wsl_distribution_config_user_default is defined
     - wsl_distribution_config_user_default | length > 0
-  notify: Restart distribution
 
 - name: Create .ssh directory for default user
   vanduc2514.wsl_automation.wsl_file:
@@ -59,8 +59,25 @@
     content: "{{ lookup('ansible.builtin.template', 'wsl.conf.j2') }}"
     state: file
     mode: '644'
+  register: wsl_distribution_wsl_conf
   when: wsl_distribution_state != "absent"
-  notify: Restart distribution
 
-- name: Flush handlers
-  ansible.builtin.meta: flush_handlers
+- name: Restart WSL distribution
+  when:
+    - (wsl_distribution_default_user is defined and wsl_distribution_default_user.changed) or
+      (wsl_distribution_wsl_conf is defined and wsl_distribution_wsl_conf.changed)
+    - wsl_distribution_state == "run"
+  block:
+    - name: (Restart) Stop wsl distribution
+      vanduc2514.wsl_automation.wsl_instance:
+        distribution: "{{ wsl_distribution_name }}"
+        state: stop
+
+    - name: (Restart) Run wsl distribution
+      vanduc2514.wsl_automation.wsl_instance:
+        distribution: "{{ wsl_distribution_name }}"
+        state: run
+
+    - name: Set ansible fact
+      ansible.builtin.set_fact:
+        wsl_distribution_restarted: true
