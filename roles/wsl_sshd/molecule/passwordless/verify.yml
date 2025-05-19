@@ -1,0 +1,137 @@
+- name: Verify
+  hosts: windows
+  gather_facts: false
+  vars:
+    test_user: ansible
+    sshd_port: 2222
+    distribution: Ubuntu-20.04
+
+  tasks:
+    # Verify host keys were generated correctly
+    - name: Verify SSH host keys in WSL
+      block:
+        - name: Read host private keys from WSL
+          vanduc2514.wsl_automation.wsl_slurp:
+            distribution: "{{ distribution }}"
+            path: "/etc/ssh/ssh_host_{{ item }}_key"
+          register: wsl_private_keys
+          loop:
+            - rsa
+            - ecdsa
+            - ed25519
+
+        - name: Read host public keys from WSL
+          vanduc2514.wsl_automation.wsl_slurp:
+            distribution: "{{ distribution }}"
+            path: "/etc/ssh/ssh_host_{{ item }}_key.pub"
+          register: wsl_public_keys
+          loop:
+            - rsa
+            - ecdsa
+            - ed25519
+
+        - name: Verify host keys exist and have content
+          ansible.builtin.assert:
+            that:
+              - wsl_private_keys.results[idx].content | b64decode | length > 0
+              - wsl_public_keys.results[idx].content | b64decode | length > 0
+            fail_msg: "Host key {{ item }} is empty or missing"
+            success_msg: "Host key {{ item }} exists and has content"
+          loop:
+            - rsa
+            - ecdsa
+            - ed25519
+          loop_control:
+            index_var: idx
+
+    # Verify SSHD installation and configuration
+    - name: Verify SSHD package is installed
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: "{{ distribution }}"
+        name: openssh-server
+        state: present
+      check_mode: true
+      register: package_result
+      failed_when: package_result is changed
+
+    - name: Read SSHD configuration
+      vanduc2514.wsl_automation.wsl_slurp:
+        distribution: "{{ distribution }}"
+        path: /etc/ssh/sshd_config
+      register: sshd_config
+
+    - name: Set expected port for verification
+      ansible.builtin.set_fact:
+        expected_port: "Port {{ sshd_port }}"
+
+    - name: Verify SSHD configuration
+      ansible.builtin.assert:
+        that:
+          - sshd_config_content.find(expected_port) != -1
+          - sshd_config_content.find('ListenAddress 0.0.0.0') != -1
+          - sshd_config_content.find('PermitRootLogin no') != -1
+          - sshd_config_content.find('PasswordAuthentication no') != -1
+          - sshd_config_content.find('PubkeyAuthentication yes') != -1
+          - sshd_config_content.find('MaxAuthTries 3') != -1
+          - sshd_config_content.find('LoginGraceTime 60') != -1
+          - sshd_config_content.find('ClientAliveInterval 300') != -1
+          - sshd_config_content.find('ClientAliveCountMax 3') != -1
+        fail_msg: |
+          SSHD configuration is not set correctly. Current config:
+          {{ sshd_config_content }}
+        success_msg: "SSHD configuration is correctly set"
+      vars:
+        sshd_config_content: "{{ sshd_config.content | b64decode }}"
+
+    # Verify systemd service configuration
+    - name: Read systemd override directory
+      vanduc2514.wsl_automation.wsl_file:
+        distribution: "{{ distribution }}"
+        path: /etc/systemd/system/sshd.service.d
+        state: directory
+      check_mode: true
+      register: override_dir
+      failed_when: override_dir is changed
+
+    - name: Read systemd service override
+      vanduc2514.wsl_automation.wsl_slurp:
+        distribution: "{{ distribution }}"
+        path: /etc/systemd/system/ssh.service.d/override.conf
+      register: service_override
+
+    - name: Verify systemd override content
+      ansible.builtin.assert:
+        that:
+          - override_content.find('[Service]') != -1
+          - override_content.find('Environment=SSH_OPTS=-o TCPKeepAlive=yes') != -1
+        fail_msg: "Systemd override configuration is not set correctly"
+        success_msg: "Systemd override configuration is correctly set"
+      vars:
+        override_content: "{{ service_override.content | b64decode }}"
+
+    # Verify service status
+    - name: Verify SSHD service is running and enabled
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: "{{ distribution }}"
+        name: sshd
+        state: started
+        enabled: true
+      check_mode: true
+      register: service_result
+      failed_when: service_result is changed
+
+    - name: Test SSH connection from controller using jump host
+      ansible.builtin.shell: |
+        ssh -i ~/.ssh/id_ed25519 \
+            -p {{ sshd_port }} \
+            -o "ConnectTimeout=10" \
+            -o "StrictHostKeyChecking=no" \
+            -o "ProxyCommand=ssh -W %h:%p {{ ansible_user }}@{{ ansible_host }}" \
+            {{ test_user }}@127.0.0.1 \
+            "echo 'SSH connection successful'"
+      register: ssh_test
+      delegate_to: localhost
+      failed_when: "'SSH connection successful' not in ssh_test.stdout"
+      changed_when: false
+      args:
+        executable: /bin/bash

@@ -1,0 +1,22 @@
+- name: Cleanup
+  hosts: windows
+  gather_facts: false
+  tasks:
+    - name: Stop SSHD service
+      vanduc2514.wsl_automation.wsl_systemd:
+        distribution: Ubuntu-20.04
+        name: ssh
+        state: stopped
+
+    - name: Remove SSHD package
+      vanduc2514.wsl_automation.wsl_package:
+        distribution: Ubuntu-20.04
+        name: openssh-server
+        state: absent
+
+    - name: Remove test user
+      vanduc2514.wsl_automation.wsl_user:
+        distribution: Ubuntu-20.04
+        name: ansible
+        state: absent
+        remove_home: true
