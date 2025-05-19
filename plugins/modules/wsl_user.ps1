@@ -146,11 +146,14 @@ function New-User {
     )
 
     $userAddCmdArgs = @(
+        '--create-home'
+        '--home-dir', $HomePath
+        '--user-group'
         if ($UID) { '--uid', $UID }
         if ($LoginShell) { '--shell', $LoginShell }
     )
 
-    $userAddCmd = "useradd --home-dir $HomePath $($userAddCmdArgs -join ' ')"
+    $userAddCmd = "useradd $($userAddCmdArgs -join ' ')"
 
     if ($PSCmdlet.ShouldProcess($DistributionName, "Create user: $UserName")) {
         try {
